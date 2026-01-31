@@ -13,9 +13,15 @@ model Company {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users      User[]
-  projects   Project[]
-  timeEntries TimeEntry[]
+  economicRevenueAccount String?
+  economicCounterAccount String?
+  economicVatCode        String?
+  economicCurrency       String  @default("DKK")
+
+  users            User[]
+  projects         Project[]
+  timeEntries      TimeEntry[]
+  vacationRequests VacationRequest[]
 }
 
 model User {
@@ -34,8 +40,9 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  timeEntries TimeEntry[]
+  company          Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  timeEntries      TimeEntry[]
+  vacationRequests VacationRequest[]
 
   @@index([companyId])
   @@index([clerkId])
@@ -78,4 +85,26 @@ model TimeEntry {
   @@index([projectId])
   @@index([companyId])
   @@index([date])
+}
+
+model VacationRequest {
+  id         String    @id @default(cuid())
+  userId     String
+  companyId  String
+  startDate  DateTime
+  endDate    DateTime
+  type       String    @default("vacation") // "vacation" | "sick" | "personal"
+  status     String    @default("pending")  // "pending" | "approved" | "rejected"
+  note       String?
+  reviewedBy String?
+  reviewedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([companyId])
+  @@index([status])
 }

@@ -9,6 +9,7 @@ import {
   format,
   eachDayOfInterval,
   isToday,
+  differenceInBusinessDays,
 } from "date-fns";
 import {
   ChevronLeft,
@@ -101,6 +102,8 @@ export default function DashboardPage() {
   const [comment, setComment] = useState("");
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const [saving, setSaving] = useState(false);
+  const [vacationDaysUsed, setVacationDaysUsed] = useState(0);
+  const [vacationDaysTotal, setVacationDaysTotal] = useState(25);
 
   const weekStart = useMemo(() => startOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
   const weekEnd = useMemo(() => endOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
@@ -112,9 +115,10 @@ export default function DashboardPage() {
       const start = format(weekStart, "yyyy-MM-dd");
       const end = format(weekEnd, "yyyy-MM-dd");
 
-      const [entriesRes, projectsRes] = await Promise.all([
+      const [entriesRes, projectsRes, vacationsRes] = await Promise.all([
         fetch(`/api/time-entries?startDate=${start}&endDate=${end}`),
         fetch("/api/projects"),
+        fetch("/api/vacations"),
       ]);
 
       if (entriesRes.ok) {
@@ -124,6 +128,15 @@ export default function DashboardPage() {
       if (projectsRes.ok) {
         const data = await projectsRes.json();
         setProjects(data.filter((p: Project & { active?: boolean }) => p.active !== false));
+      }
+      if (vacationsRes.ok) {
+        const vacations = await vacationsRes.json();
+        const approved = vacations.filter((v: { status: string }) => v.status === "approved");
+        const usedDays = approved.reduce((sum: number, v: { startDate: string; endDate: string }) => {
+          const days = differenceInBusinessDays(new Date(v.endDate), new Date(v.startDate)) + 1;
+          return sum + Math.max(days, 1);
+        }, 0);
+        setVacationDaysUsed(usedDays);
       }
     } catch (error) {
       console.error("Failed to fetch data:", error);
@@ -179,7 +192,7 @@ export default function DashboardPage() {
   }
 
   async function handleSave() {
-    if (!hours || !selectedDate || !selectedProjectId) return;
+    if (!hours || !selectedDate || !selectedProjectId || !comment.trim()) return;
     setSaving(true);
 
     try {
@@ -283,9 +296,10 @@ export default function DashboardPage() {
         />
         <StatCard
           title="Vacation"
-          value="0h"
+          value={`${vacationDaysUsed}d`}
           icon={Palmtree}
           color="bg-amber-50 text-amber-600"
+          subtitle="days used"
         />
         <StatCard
           title="Total"
@@ -301,7 +315,7 @@ export default function DashboardPage() {
         />
         <StatCard
           title="Vacation Days"
-          value="25"
+          value={`${vacationDaysTotal - vacationDaysUsed}`}
           icon={CalendarDays}
           color="bg-sky-50 text-sky-600"
           subtitle="remaining"
@@ -476,7 +490,7 @@ export default function DashboardPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Comment (optional)</Label>
+              <Label>Comment</Label>
               <Textarea
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
@@ -494,7 +508,7 @@ export default function DashboardPage() {
             <Button variant="outline" onClick={() => setModalOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={saving || !hours || !selectedProjectId}>
+            <Button onClick={handleSave} disabled={saving || !hours || !selectedProjectId || !comment.trim()}>
               {saving ? "Saving..." : editingEntry ? "Update" : "Log Time"}
             </Button>
           </DialogFooter>

@@ -27,7 +27,7 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const [company, users, projects, timeEntries] = await Promise.all([
+    const [company, users, projects, timeEntries, vacationRequests] = await Promise.all([
       db.company.findUnique({ where: { id: user.companyId } }),
       db.user.findMany({ where: { companyId: user.companyId } }),
       db.project.findMany({ where: { companyId: user.companyId } }),
@@ -35,6 +35,11 @@ export async function GET() {
         where: { companyId: user.companyId },
         include: { user: true, project: true },
         orderBy: { date: "asc" },
+      }),
+      db.vacationRequest.findMany({
+        where: { companyId: user.companyId },
+        include: { user: true },
+        orderBy: { startDate: "asc" },
       }),
     ]);
 
@@ -66,6 +71,22 @@ export async function GET() {
     ]);
     zip.file("time-entries.csv", toCsv(entryHeaders, entryRows));
 
+    // Vacations CSV
+    const vacationHeaders = ["ID", "User Email", "User Name", "Start Date", "End Date", "Type", "Status", "Note", "Reviewed By", "Reviewed At"];
+    const vacationRows = vacationRequests.map((v) => [
+      v.id,
+      v.user.email,
+      `${v.user.firstName || ""} ${v.user.lastName || ""}`.trim(),
+      v.startDate.toISOString().split("T")[0],
+      v.endDate.toISOString().split("T")[0],
+      v.type,
+      v.status,
+      v.note || "",
+      v.reviewedBy || "",
+      v.reviewedAt ? v.reviewedAt.toISOString() : "",
+    ]);
+    zip.file("vacations.csv", toCsv(vacationHeaders, vacationRows));
+
     // Metadata
     const metadata = {
       exportDate: new Date().toISOString(),
@@ -73,6 +94,7 @@ export async function GET() {
       totalUsers: users.length,
       totalProjects: projects.length,
       totalTimeEntries: timeEntries.length,
+      totalVacationRequests: vacationRequests.length,
     };
     zip.file("metadata.json", JSON.stringify(metadata, null, 2));
 
@@ -87,6 +109,7 @@ export async function GET() {
       `- users.csv: All team members\n` +
       `- projects.csv: All projects\n` +
       `- time-entries.csv: All time entries\n` +
+      `- vacations.csv: All vacation requests\n` +
       `- metadata.json: Export metadata\n`
     );
 

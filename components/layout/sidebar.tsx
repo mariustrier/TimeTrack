@@ -6,12 +6,14 @@ import { UserButton } from "@clerk/nextjs";
 import {
   Clock,
   LayoutDashboard,
+  Palmtree,
   FolderKanban,
   Users,
   BarChart3,
   HardDrive,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface NavItem {
   label: string;
@@ -22,9 +24,16 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Vacations", href: "/vacations", icon: Palmtree },
   { label: "Projects", href: "/projects", icon: FolderKanban, adminOnly: true },
   { label: "Team", href: "/team", icon: Users, adminOnly: true },
   { label: "Admin", href: "/admin", icon: BarChart3, adminOnly: true },
+  {
+    label: "Vacation Management",
+    href: "/admin/vacations",
+    icon: Palmtree,
+    adminOnly: true,
+  },
   {
     label: "Backups",
     href: "/admin/backups",
@@ -46,10 +55,10 @@ export function Sidebar({ userRole }: SidebarProps) {
   );
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r border-slate-200 bg-white">
-      <div className="flex h-16 items-center gap-2 border-b border-slate-200 px-6">
+    <aside className="flex h-screen w-64 flex-col border-r border-border bg-card">
+      <div className="flex h-16 items-center gap-2 border-b border-border px-6">
         <Clock className="h-6 w-6 text-brand-500" />
-        <span className="text-lg font-bold text-slate-900">TimeTrack</span>
+        <span className="text-lg font-bold text-foreground">TimeTrack</span>
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-4">
@@ -64,8 +73,8 @@ export function Sidebar({ userRole }: SidebarProps) {
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive
-                  ? "bg-brand-50 text-brand-700"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  ? "bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-300"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
               )}
             >
               <item.icon className="h-5 w-5" />
@@ -75,10 +84,13 @@ export function Sidebar({ userRole }: SidebarProps) {
         })}
       </nav>
 
-      <div className="border-t border-slate-200 p-4">
-        <div className="flex items-center gap-3">
-          <UserButton afterSignOutUrl="/" />
-          <span className="text-sm text-slate-600">Account</span>
+      <div className="border-t border-border p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <UserButton afterSignOutUrl="/" />
+            <span className="text-sm text-muted-foreground">Account</span>
+          </div>
+          <ThemeToggle />
         </div>
       </div>
     </aside>

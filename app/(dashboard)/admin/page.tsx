@@ -17,12 +17,18 @@ import {
   ChevronLeft,
   ChevronRight,
   Users,
+  Download,
+  Save,
+  FileSpreadsheet,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatHours, formatPercentage } from "@/lib/calculations";
 
@@ -56,6 +62,18 @@ export default function AdminPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // e-conomic export state
+  const [ecoRevenueAccount, setEcoRevenueAccount] = useState("");
+  const [ecoCounterAccount, setEcoCounterAccount] = useState("");
+  const [ecoVatCode, setEcoVatCode] = useState("");
+  const [ecoCurrency, setEcoCurrency] = useState("DKK");
+  const [ecoSaving, setEcoSaving] = useState(false);
+  const [ecoSaved, setEcoSaved] = useState(false);
+  const [ecoExportStart, setEcoExportStart] = useState("");
+  const [ecoExportEnd, setEcoExportEnd] = useState("");
+  const [ecoExporting, setEcoExporting] = useState(false);
+  const [ecoError, setEcoError] = useState("");
+
   const weekStart = useMemo(() => startOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
   const weekEnd = useMemo(() => endOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
 
@@ -78,6 +96,72 @@ export default function AdminPage() {
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
+
+  // Load e-conomic settings on mount
+  useEffect(() => {
+    fetch("/api/admin/economic")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data) {
+          setEcoRevenueAccount(data.economicRevenueAccount || "");
+          setEcoCounterAccount(data.economicCounterAccount || "");
+          setEcoVatCode(data.economicVatCode || "");
+          setEcoCurrency(data.economicCurrency || "DKK");
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  async function handleEcoSave() {
+    setEcoSaving(true);
+    setEcoSaved(false);
+    try {
+      await fetch("/api/admin/economic", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          economicRevenueAccount: ecoRevenueAccount,
+          economicCounterAccount: ecoCounterAccount,
+          economicVatCode: ecoVatCode,
+          economicCurrency: ecoCurrency,
+        }),
+      });
+      setEcoSaved(true);
+      setTimeout(() => setEcoSaved(false), 2000);
+    } catch {
+      setEcoError("Failed to save settings");
+    } finally {
+      setEcoSaving(false);
+    }
+  }
+
+  async function handleEcoExport() {
+    setEcoExporting(true);
+    setEcoError("");
+    try {
+      const res = await fetch(
+        `/api/admin/economic/export?startDate=${ecoExportStart}&endDate=${ecoExportEnd}`
+      );
+      if (!res.ok) {
+        const data = await res.json();
+        setEcoError(data.error || "Export failed");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `e-conomic-export-${ecoExportStart}-to-${ecoExportEnd}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      setEcoError("Export failed");
+    } finally {
+      setEcoExporting(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -311,6 +395,115 @@ export default function AdminPage() {
           </div>
         )}
       </div>
+
+      {/* e-conomic Export */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <FileSpreadsheet className="h-5 w-5 text-brand-600" />
+            <CardTitle className="text-lg">e-conomic Export</CardTitle>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Export billable time entries as a CSV file formatted for e-conomic&apos;s journal import (Kassekladde).
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Settings */}
+          <div>
+            <h3 className="mb-3 text-sm font-semibold">Account Settings</h3>
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <div className="space-y-2">
+                <Label htmlFor="eco-revenue">Revenue Account (Konto)</Label>
+                <Input
+                  id="eco-revenue"
+                  value={ecoRevenueAccount}
+                  onChange={(e) => setEcoRevenueAccount(e.target.value)}
+                  placeholder="e.g. 1000"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="eco-counter">Counter Account (Modkonto)</Label>
+                <Input
+                  id="eco-counter"
+                  value={ecoCounterAccount}
+                  onChange={(e) => setEcoCounterAccount(e.target.value)}
+                  placeholder="e.g. 5800"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="eco-vat">VAT Code (Momskode)</Label>
+                <Input
+                  id="eco-vat"
+                  value={ecoVatCode}
+                  onChange={(e) => setEcoVatCode(e.target.value)}
+                  placeholder="e.g. U25"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="eco-currency">Currency</Label>
+                <Input
+                  id="eco-currency"
+                  value={ecoCurrency}
+                  onChange={(e) => setEcoCurrency(e.target.value)}
+                  placeholder="DKK"
+                />
+              </div>
+            </div>
+            <Button
+              className="mt-3"
+              variant="outline"
+              size="sm"
+              onClick={handleEcoSave}
+              disabled={ecoSaving}
+            >
+              <Save className="mr-2 h-4 w-4" />
+              {ecoSaved ? "Saved!" : ecoSaving ? "Saving..." : "Save Settings"}
+            </Button>
+          </div>
+
+          <Separator />
+
+          {/* Export */}
+          <div>
+            <h3 className="mb-3 text-sm font-semibold">Download Export</h3>
+            <div className="flex flex-wrap items-end gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="eco-start">Start Date</Label>
+                <Input
+                  id="eco-start"
+                  type="date"
+                  value={ecoExportStart}
+                  onChange={(e) => setEcoExportStart(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="eco-end">End Date</Label>
+                <Input
+                  id="eco-end"
+                  type="date"
+                  value={ecoExportEnd}
+                  onChange={(e) => setEcoExportEnd(e.target.value)}
+                />
+              </div>
+              <Button
+                onClick={handleEcoExport}
+                disabled={ecoExporting || !ecoExportStart || !ecoExportEnd || !ecoRevenueAccount}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                {ecoExporting ? "Exporting..." : "Download CSV"}
+              </Button>
+            </div>
+            {!ecoRevenueAccount && (
+              <p className="mt-2 text-sm text-amber-600">
+                Save a revenue account number before exporting.
+              </p>
+            )}
+            {ecoError && (
+              <p className="mt-2 text-sm text-red-600">{ecoError}</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
