@@ -16,6 +16,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -32,6 +39,7 @@ interface Project {
   budgetHours: number | null;
   billable: boolean;
   active: boolean;
+  currency: string | null;
   _count: { timeEntries: number };
 }
 
@@ -54,6 +62,8 @@ export default function ProjectsPage() {
   const [color, setColor] = useState("#3B82F6");
   const [budgetHours, setBudgetHours] = useState("");
   const [billable, setBillable] = useState(true);
+  const [currency, setCurrency] = useState("");
+  const [companyCurrency, setCompanyCurrency] = useState("USD");
 
   async function fetchProjects() {
     setLoading(true);
@@ -69,6 +79,12 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     fetchProjects();
+    fetch("/api/admin/economic")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data?.currency) setCompanyCurrency(data.currency);
+      })
+      .catch(() => {});
   }, []);
 
   function openCreateModal() {
@@ -78,6 +94,7 @@ export default function ProjectsPage() {
     setColor("#3B82F6");
     setBudgetHours("");
     setBillable(true);
+    setCurrency("");
     setModalOpen(true);
   }
 
@@ -88,6 +105,7 @@ export default function ProjectsPage() {
     setColor(project.color);
     setBudgetHours(project.budgetHours?.toString() || "");
     setBillable(project.billable);
+    setCurrency(project.currency || "");
     setModalOpen(true);
   }
 
@@ -95,7 +113,7 @@ export default function ProjectsPage() {
     if (!name.trim()) return;
     setSaving(true);
     try {
-      const body = { name, client, color, budgetHours, billable };
+      const body = { name, client, color, budgetHours, billable, currency: (currency && currency !== "default") ? currency : null };
       if (editingProject) {
         await fetch(`/api/projects/${editingProject.id}`, {
           method: "PUT",
@@ -148,7 +166,7 @@ export default function ProjectsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Projects</h1>
+        <h1 className="text-2xl font-bold text-foreground">Projects</h1>
         <Button onClick={openCreateModal}>
           <Plus className="mr-2 h-4 w-4" />
           New Project
@@ -162,9 +180,9 @@ export default function ProjectsPage() {
         <CardContent className="p-0">
           {projects.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16">
-              <FolderKanban className="h-12 w-12 text-slate-300" />
-              <h3 className="mt-4 text-lg font-semibold text-slate-900">No Projects</h3>
-              <p className="mt-1 text-sm text-slate-500">Create your first project to get started.</p>
+              <FolderKanban className="h-12 w-12 text-muted-foreground/50" />
+              <h3 className="mt-4 text-lg font-semibold text-foreground">No Projects</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Create your first project to get started.</p>
               <Button className="mt-4" onClick={openCreateModal}>
                 <Plus className="mr-2 h-4 w-4" />
                 New Project
@@ -208,6 +226,9 @@ export default function ProjectsPage() {
                         </Badge>
                         {project.billable && (
                           <Badge variant="outline">Billable</Badge>
+                        )}
+                        {project.currency && project.currency !== companyCurrency && (
+                          <Badge variant="outline">{project.currency}</Badge>
                         )}
                       </div>
                     </TableCell>
@@ -273,7 +294,7 @@ export default function ProjectsPage() {
                     key={c}
                     onClick={() => setColor(c)}
                     className={`h-8 w-8 rounded-full border-2 transition-all ${
-                      color === c ? "border-slate-900 scale-110" : "border-transparent"
+                      color === c ? "border-foreground scale-110" : "border-transparent"
                     }`}
                     style={{ backgroundColor: c }}
                   />
@@ -289,13 +310,27 @@ export default function ProjectsPage() {
                 placeholder="Optional"
               />
             </div>
+            <div className="space-y-2">
+              <Label>Currency</Label>
+              <Select value={currency} onValueChange={setCurrency}>
+                <SelectTrigger>
+                  <SelectValue placeholder={`Company default (${companyCurrency})`} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">Company default ({companyCurrency})</SelectItem>
+                  <SelectItem value="USD">USD</SelectItem>
+                  <SelectItem value="EUR">EUR</SelectItem>
+                  <SelectItem value="DKK">DKK</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
                 id="billable"
                 checked={billable}
                 onChange={(e) => setBillable(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300"
+                className="h-4 w-4 rounded border-border"
               />
               <Label htmlFor="billable">Billable project</Label>
             </div>

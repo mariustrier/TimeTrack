@@ -25,14 +25,66 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { hours, comment } = body;
+    const { hours, comment, billingStatus, nonBillableReason } = body;
+
+    // Approval status guards
+    if (entry.approvalStatus === "locked") {
+      return NextResponse.json(
+        { error: "Cannot edit a locked entry" },
+        { status: 403 }
+      );
+    }
+
+    if (entry.approvalStatus !== "draft") {
+      // Non-draft entries: only admin can edit billingStatus/nonBillableReason
+      if (user.role !== "admin") {
+        return NextResponse.json(
+          { error: "Cannot edit a submitted or approved entry" },
+          { status: 403 }
+        );
+      }
+      // Admin can only change billing fields on submitted/approved entries
+      if (hours !== undefined || comment !== undefined) {
+        return NextResponse.json(
+          { error: "Can only edit billing status on submitted/approved entries" },
+          { status: 403 }
+        );
+      }
+    }
+
+    // Build update data
+    const data: Record<string, unknown> = {};
+    if (hours !== undefined && entry.approvalStatus === "draft") {
+      data.hours = parseFloat(hours);
+    }
+    if (comment !== undefined && entry.approvalStatus === "draft") {
+      data.comment = comment;
+    }
+    if (billingStatus !== undefined) {
+      // Log billing status change in audit log
+      if (billingStatus !== entry.billingStatus) {
+        await db.auditLog.create({
+          data: {
+            companyId: user.companyId,
+            entityType: "TimeEntry",
+            entityId: entry.id,
+            action: "EDIT_BILLING",
+            fromStatus: entry.billingStatus,
+            toStatus: billingStatus,
+            actorId: user.id,
+            metadata: JSON.stringify({ entryDate: entry.date }),
+          },
+        });
+      }
+      data.billingStatus = billingStatus;
+    }
+    if (nonBillableReason !== undefined) {
+      data.nonBillableReason = nonBillableReason || null;
+    }
 
     const updated = await db.timeEntry.update({
       where: { id: params.id },
-      data: {
-        ...(hours !== undefined && { hours: parseFloat(hours) }),
-        ...(comment !== undefined && { comment }),
-      },
+      data,
       include: {
         project: { select: { id: true, name: true, color: true, billable: true } },
       },
@@ -65,6 +117,21 @@ export async function DELETE(
 
     if (user.role !== "admin" && entry.userId !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Approval status guards for delete
+    if (entry.approvalStatus === "approved" || entry.approvalStatus === "locked") {
+      return NextResponse.json(
+        { error: "Cannot delete an approved or locked entry" },
+        { status: 403 }
+      );
+    }
+
+    if (entry.approvalStatus === "submitted" && user.role !== "admin") {
+      return NextResponse.json(
+        { error: "Cannot delete a submitted entry" },
+        { status: 403 }
+      );
     }
 
     await db.timeEntry.delete({ where: { id: params.id } });

@@ -13,6 +13,7 @@ model Company {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  currency               String  @default("USD")
   economicRevenueAccount String?
   economicCounterAccount String?
   economicVatCode        String?
@@ -56,6 +57,7 @@ model Project {
   budgetHours Float?
   billable    Boolean  @default(true)
   active      Boolean  @default(true)
+  currency    String?
   companyId   String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -77,6 +79,21 @@ model TimeEntry {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Approval workflow
+  approvalStatus    String    @default("draft")     // "draft" | "submitted" | "approved" | "locked"
+  submittedAt       DateTime?
+  submittedBy       String?
+  approvedAt        DateTime?
+  approvedBy        String?
+  rejectedAt        DateTime?
+  rejectedBy        String?
+  lockedAt          DateTime?
+  lockedBy          String?
+
+  // Billing category
+  billingStatus     String    @default("billable")  // "billable" | "included" | "non_billable" | "internal" | "presales"
+  nonBillableReason String?
+
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -85,6 +102,8 @@ model TimeEntry {
   @@index([projectId])
   @@index([companyId])
   @@index([date])
+  @@index([approvalStatus])
+  @@index([companyId, approvalStatus, date])
 }
 
 model VacationRequest {
@@ -107,4 +126,21 @@ model VacationRequest {
   @@index([userId])
   @@index([companyId])
   @@index([status])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  companyId  String
+  entityType String   // "TimeEntry"
+  entityId   String   // entry ID or batch identifier
+  action     String   // "SUBMIT" | "APPROVE" | "REJECT" | "LOCK" | "REOPEN" | "EDIT_BILLING"
+  fromStatus String?
+  toStatus   String?
+  actorId    String
+  metadata   String?  // JSON string for extra context
+  createdAt  DateTime @default(now())
+
+  @@index([companyId])
+  @@index([entityId])
+  @@index([createdAt])
 }

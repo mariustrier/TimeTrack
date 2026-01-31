@@ -29,10 +29,17 @@ export function calculateTimeBalance(
   return actualHours - targetHours;
 }
 
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-US", {
+const CURRENCY_LOCALE: Record<string, string> = {
+  USD: "en-US",
+  EUR: "de-DE",
+  DKK: "da-DK",
+};
+
+export function formatCurrency(amount: number, currency = "USD"): string {
+  const locale = CURRENCY_LOCALE[currency] || "en-US";
+  return new Intl.NumberFormat(locale, {
     style: "currency",
-    currency: "USD",
+    currency,
   }).format(amount);
 }
 

@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { Sidebar } from "@/components/layout/sidebar";
+import { Toaster } from "sonner";
 
 export default async function DashboardLayout({
   children,
@@ -28,6 +29,7 @@ export default async function DashboardLayout({
       <main className="flex-1 overflow-y-auto">
         <div className="p-6 lg:p-8">{children}</div>
       </main>
+      <Toaster richColors />
     </div>
   );
 }

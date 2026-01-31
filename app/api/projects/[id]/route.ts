@@ -23,7 +23,7 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { name, client, color, budgetHours, billable, active } = body;
+    const { name, client, color, budgetHours, billable, active, currency } = body;
 
     const updated = await db.project.update({
       where: { id: params.id },
@@ -36,6 +36,7 @@ export async function PUT(
         }),
         ...(billable !== undefined && { billable }),
         ...(active !== undefined && { active }),
+        ...(currency !== undefined && { currency: currency || null }),
       },
     });
 

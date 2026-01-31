@@ -62,12 +62,13 @@ export async function GET() {
     zip.file("projects.csv", toCsv(projectHeaders, projectRows));
 
     // Time Entries CSV
-    const entryHeaders = ["ID", "Date", "Hours", "Comment", "User Email", "User Name", "Project", "Billable"];
+    const entryHeaders = ["ID", "Date", "Hours", "Comment", "User Email", "User Name", "Project", "Billable", "Approval Status", "Billing Status", "Non-Billable Reason"];
     const entryRows = timeEntries.map((e) => [
       e.id, e.date.toISOString().split("T")[0], e.hours.toString(),
       e.comment || "", e.user.email,
       `${e.user.firstName || ""} ${e.user.lastName || ""}`.trim(),
       e.project.name, e.project.billable.toString(),
+      e.approvalStatus, e.billingStatus, e.nonBillableReason || "",
     ]);
     zip.file("time-entries.csv", toCsv(entryHeaders, entryRows));
 

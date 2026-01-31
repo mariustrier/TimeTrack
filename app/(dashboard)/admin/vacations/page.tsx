@@ -117,7 +117,7 @@ export default function AdminVacationsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Vacation Requests</h1>
+        <h1 className="text-2xl font-bold text-foreground">Vacation Requests</h1>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-40">
             <SelectValue />
@@ -144,9 +144,9 @@ export default function AdminVacationsPage() {
         <CardContent>
           {filteredRequests.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Palmtree className="h-12 w-12 text-slate-300" />
-              <h3 className="mt-4 text-lg font-semibold text-slate-900">No Requests</h3>
-              <p className="mt-1 text-sm text-slate-500">
+              <Palmtree className="h-12 w-12 text-muted-foreground/50" />
+              <h3 className="mt-4 text-lg font-semibold text-foreground">No Requests</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
                 No {statusFilter !== "all" ? statusFilter : ""} vacation requests found.
               </p>
             </div>
@@ -154,37 +154,37 @@ export default function AdminVacationsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b bg-slate-50">
-                    <th className="px-4 py-3 text-left font-medium text-slate-600">Employee</th>
-                    <th className="px-4 py-3 text-left font-medium text-slate-600">Type</th>
-                    <th className="px-4 py-3 text-left font-medium text-slate-600">Period</th>
-                    <th className="px-4 py-3 text-left font-medium text-slate-600">Days</th>
-                    <th className="px-4 py-3 text-left font-medium text-slate-600">Status</th>
-                    <th className="px-4 py-3 text-left font-medium text-slate-600">Note</th>
-                    <th className="px-4 py-3 text-right font-medium text-slate-600">Actions</th>
+                  <tr className="border-b bg-muted/50">
+                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">Employee</th>
+                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">Type</th>
+                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">Period</th>
+                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">Days</th>
+                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
+                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">Note</th>
+                    <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredRequests.map((req) => (
-                    <tr key={req.id} className="border-b hover:bg-slate-50/50">
+                    <tr key={req.id} className="border-b hover:bg-muted/50/50">
                       <td className="px-4 py-3">
                         <div>
-                          <p className="font-medium text-slate-900">
+                          <p className="font-medium text-foreground">
                             {req.user.firstName} {req.user.lastName}
                           </p>
                           <p className="text-xs text-muted-foreground">{req.user.email}</p>
                         </div>
                       </td>
                       <td className="px-4 py-3">{getTypeBadge(req.type)}</td>
-                      <td className="px-4 py-3 text-slate-700">
+                      <td className="px-4 py-3 text-foreground">
                         {format(new Date(req.startDate), "MMM d")} —{" "}
                         {format(new Date(req.endDate), "MMM d, yyyy")}
                       </td>
-                      <td className="px-4 py-3 text-slate-700">
+                      <td className="px-4 py-3 text-foreground">
                         {countBusinessDays(req.startDate, req.endDate)}
                       </td>
                       <td className="px-4 py-3">{getStatusBadge(req.status)}</td>
-                      <td className="px-4 py-3 text-slate-500 max-w-[200px] truncate">
+                      <td className="px-4 py-3 text-muted-foreground max-w-[200px] truncate">
                         {req.note || "—"}
                       </td>
                       <td className="px-4 py-3 text-right">

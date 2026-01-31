@@ -33,22 +33,29 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
+    const approvalFilter = searchParams.get("approvalFilter") || "all";
 
     if (!startDate || !endDate) {
       return NextResponse.json({ error: "startDate and endDate are required" }, { status: 400 });
     }
 
+    const entryWhere: Record<string, unknown> = {
+      companyId: user.companyId,
+      date: {
+        gte: new Date(startDate),
+        lte: new Date(endDate),
+      },
+      billingStatus: "billable",
+    };
+
+    if (approvalFilter === "approved_and_locked") {
+      entryWhere.approvalStatus = { in: ["approved", "locked"] };
+    }
+
     const [company, timeEntries] = await Promise.all([
       db.company.findUnique({ where: { id: user.companyId } }),
       db.timeEntry.findMany({
-        where: {
-          companyId: user.companyId,
-          date: {
-            gte: new Date(startDate),
-            lte: new Date(endDate),
-          },
-          project: { billable: true },
-        },
+        where: entryWhere,
         include: {
           user: { select: { firstName: true, lastName: true, hourlyRate: true } },
           project: { select: { name: true } },

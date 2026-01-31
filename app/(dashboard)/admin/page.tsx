@@ -20,6 +20,7 @@ import {
   Download,
   Save,
   FileSpreadsheet,
+  Globe,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatHours, formatPercentage } from "@/lib/calculations";
 
@@ -55,6 +63,7 @@ interface Stats {
   billableHours: number;
   utilization: number;
   employeeStats: EmployeeStat[];
+  currency: string;
 }
 
 export default function AdminPage() {
@@ -73,6 +82,7 @@ export default function AdminPage() {
   const [ecoExportEnd, setEcoExportEnd] = useState("");
   const [ecoExporting, setEcoExporting] = useState(false);
   const [ecoError, setEcoError] = useState("");
+  const [companyCurrency, setCompanyCurrency] = useState("USD");
 
   const weekStart = useMemo(() => startOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
   const weekEnd = useMemo(() => endOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
@@ -97,12 +107,13 @@ export default function AdminPage() {
     fetchStats();
   }, [fetchStats]);
 
-  // Load e-conomic settings on mount
+  // Load e-conomic settings + company currency on mount
   useEffect(() => {
     fetch("/api/admin/economic")
       .then((res) => res.ok ? res.json() : null)
       .then((data) => {
         if (data) {
+          setCompanyCurrency(data.currency || "USD");
           setEcoRevenueAccount(data.economicRevenueAccount || "");
           setEcoCounterAccount(data.economicCounterAccount || "");
           setEcoVatCode(data.economicVatCode || "");
@@ -111,6 +122,25 @@ export default function AdminPage() {
       })
       .catch(() => {});
   }, []);
+
+  async function handleCurrencyChange(newCurrency: string) {
+    setCompanyCurrency(newCurrency);
+    try {
+      await fetch("/api/admin/economic", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currency: newCurrency,
+          economicRevenueAccount: ecoRevenueAccount,
+          economicCounterAccount: ecoCounterAccount,
+          economicVatCode: ecoVatCode,
+          economicCurrency: ecoCurrency,
+        }),
+      });
+    } catch {
+      // silently fail - next page load will reload from server
+    }
+  }
 
   async function handleEcoSave() {
     setEcoSaving(true);
@@ -184,9 +214,9 @@ export default function AdminPage() {
   if (!stats) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <BarChart3 className="h-12 w-12 text-slate-300" />
-        <h3 className="mt-4 text-lg font-semibold text-slate-900">No Data</h3>
-        <p className="mt-1 text-sm text-slate-500">Could not load admin statistics.</p>
+        <BarChart3 className="h-12 w-12 text-muted-foreground/50" />
+        <h3 className="mt-4 text-lg font-semibold text-foreground">No Data</h3>
+        <p className="mt-1 text-sm text-muted-foreground">Could not load admin statistics.</p>
       </div>
     );
   }
@@ -201,7 +231,20 @@ export default function AdminPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-foreground">Admin Dashboard</h1>
+          <Select value={companyCurrency} onValueChange={handleCurrencyChange}>
+            <SelectTrigger className="w-[100px]">
+              <Globe className="mr-1 h-3.5 w-3.5" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="USD">USD</SelectItem>
+              <SelectItem value="EUR">EUR</SelectItem>
+              <SelectItem value="DKK">DKK</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={() => setCurrentWeek(subWeeks(currentWeek, 1))}>
             <ChevronLeft className="h-4 w-4" />
@@ -212,7 +255,7 @@ export default function AdminPage() {
           <Button variant="outline" size="icon" onClick={() => setCurrentWeek(addWeeks(currentWeek, 1))}>
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <span className="ml-2 text-sm text-slate-600">
+          <span className="ml-2 text-sm text-muted-foreground">
             {format(weekStart, "MMM d")} - {format(weekEnd, "MMM d, yyyy")}
           </span>
         </div>
@@ -228,7 +271,7 @@ export default function AdminPage() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Revenue</p>
-                <p className="text-xl font-bold">{formatCurrency(stats.totalRevenue)}</p>
+                <p className="text-xl font-bold">{formatCurrency(stats.totalRevenue, companyCurrency)}</p>
               </div>
             </div>
           </CardContent>
@@ -241,7 +284,7 @@ export default function AdminPage() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Cost</p>
-                <p className="text-xl font-bold">{formatCurrency(stats.totalCost)}</p>
+                <p className="text-xl font-bold">{formatCurrency(stats.totalCost, companyCurrency)}</p>
               </div>
             </div>
           </CardContent>
@@ -261,7 +304,7 @@ export default function AdminPage() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Profit</p>
-                <p className="text-xl font-bold">{formatCurrency(stats.totalProfit)}</p>
+                <p className="text-xl font-bold">{formatCurrency(stats.totalProfit, companyCurrency)}</p>
               </div>
             </div>
           </CardContent>
@@ -303,16 +346,16 @@ export default function AdminPage() {
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
               <p className="text-sm text-muted-foreground">Revenue</p>
-              <p className="text-lg font-bold text-emerald-600">{formatCurrency(monthlyProjection.revenue)}</p>
+              <p className="text-lg font-bold text-emerald-600">{formatCurrency(monthlyProjection.revenue, companyCurrency)}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Cost</p>
-              <p className="text-lg font-bold text-red-600">{formatCurrency(monthlyProjection.cost)}</p>
+              <p className="text-lg font-bold text-red-600">{formatCurrency(monthlyProjection.cost, companyCurrency)}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Profit</p>
               <p className={cn("text-lg font-bold", monthlyProjection.profit >= 0 ? "text-emerald-600" : "text-red-600")}>
-                {formatCurrency(monthlyProjection.profit)}
+                {formatCurrency(monthlyProjection.profit, companyCurrency)}
               </p>
             </div>
           </div>
@@ -321,13 +364,13 @@ export default function AdminPage() {
 
       {/* Employee Profitability */}
       <div>
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">Employee Profitability</h2>
+        <h2 className="mb-4 text-lg font-semibold text-foreground">Employee Profitability</h2>
         {stats.employeeStats.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <Users className="h-12 w-12 text-slate-300" />
-              <h3 className="mt-4 text-lg font-semibold text-slate-900">No Team Members</h3>
-              <p className="mt-1 text-sm text-slate-500">Add team members to see profitability data.</p>
+              <Users className="h-12 w-12 text-muted-foreground/50" />
+              <h3 className="mt-4 text-lg font-semibold text-foreground">No Team Members</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Add team members to see profitability data.</p>
             </CardContent>
           </Card>
         ) : (
@@ -362,29 +405,29 @@ export default function AdminPage() {
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
                       <p className="text-muted-foreground">Bill Rate</p>
-                      <p className="font-medium">{formatCurrency(emp.hourlyRate)}/h</p>
+                      <p className="font-medium">{formatCurrency(emp.hourlyRate, companyCurrency)}/h</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Cost Rate</p>
-                      <p className="font-medium">{formatCurrency(emp.costRate)}/h</p>
+                      <p className="font-medium">{formatCurrency(emp.costRate, companyCurrency)}/h</p>
                     </div>
                   </div>
 
                   {/* Weekly P&L */}
-                  <div className="rounded-lg bg-slate-50 p-3">
+                  <div className="rounded-lg bg-muted/50 p-3">
                     <div className="space-y-1 text-sm">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Revenue</span>
-                        <span className="text-emerald-600">{formatCurrency(emp.revenue)}</span>
+                        <span className="text-emerald-600">{formatCurrency(emp.revenue, companyCurrency)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Cost</span>
-                        <span className="text-red-600">-{formatCurrency(emp.cost)}</span>
+                        <span className="text-red-600">-{formatCurrency(emp.cost, companyCurrency)}</span>
                       </div>
                       <div className="border-t pt-1 flex justify-between font-semibold">
                         <span>Profit</span>
                         <span className={emp.profit >= 0 ? "text-emerald-600" : "text-red-600"}>
-                          {formatCurrency(emp.profit)}
+                          {formatCurrency(emp.profit, companyCurrency)}
                         </span>
                       </div>
                     </div>

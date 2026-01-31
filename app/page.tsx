@@ -101,13 +101,13 @@ function ProblemSection() {
   ];
 
   return (
-    <section className="bg-slate-50 py-20 lg:py-28">
+    <section className="bg-muted/50 py-20 lg:py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+          <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
             Time Tracking Shouldn&apos;t Be This Hard
           </h2>
-          <p className="mt-4 text-lg text-slate-600">
+          <p className="mt-4 text-lg text-muted-foreground">
             Most teams struggle with these common challenges.
           </p>
         </div>
@@ -115,15 +115,15 @@ function ProblemSection() {
           {problems.map((problem) => (
             <div
               key={problem.title}
-              className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm"
+              className="rounded-xl border border-border bg-card p-8 shadow-sm"
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-red-50">
                 <problem.icon className="h-6 w-6 text-red-500" />
               </div>
-              <h3 className="mt-4 text-lg font-semibold text-slate-900">
+              <h3 className="mt-4 text-lg font-semibold text-foreground">
                 {problem.title}
               </h3>
-              <p className="mt-2 text-slate-600">{problem.description}</p>
+              <p className="mt-2 text-muted-foreground">{problem.description}</p>
             </div>
           ))}
         </div>
@@ -158,13 +158,13 @@ function FeaturesSection() {
   ];
 
   return (
-    <section id="features" className="bg-white py-20 lg:py-28">
+    <section id="features" className="bg-background py-20 lg:py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+          <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
             Everything You Need to Track Time
           </h2>
-          <p className="mt-4 text-lg text-slate-600">
+          <p className="mt-4 text-lg text-muted-foreground">
             Powerful features designed for modern teams.
           </p>
         </div>
@@ -172,17 +172,17 @@ function FeaturesSection() {
           {features.map((feature) => (
             <div
               key={feature.title}
-              className="group rounded-xl border border-slate-200 bg-white p-8 shadow-sm transition-all hover:shadow-md"
+              className="group rounded-xl border border-border bg-card p-8 shadow-sm transition-all hover:shadow-md"
             >
               <div
                 className={`flex h-12 w-12 items-center justify-center rounded-lg ${feature.color}`}
               >
                 <feature.icon className="h-6 w-6" />
               </div>
-              <h3 className="mt-4 text-lg font-semibold text-slate-900">
+              <h3 className="mt-4 text-lg font-semibold text-foreground">
                 {feature.title}
               </h3>
-              <p className="mt-2 text-slate-600">{feature.description}</p>
+              <p className="mt-2 text-muted-foreground">{feature.description}</p>
             </div>
           ))}
         </div>
@@ -226,13 +226,13 @@ function PricingSection() {
   ];
 
   return (
-    <section id="pricing" className="bg-slate-50 py-20 lg:py-28">
+    <section id="pricing" className="bg-muted/50 py-20 lg:py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+          <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
             Simple, Transparent Pricing
           </h2>
-          <p className="mt-4 text-lg text-slate-600">
+          <p className="mt-4 text-lg text-muted-foreground">
             Per user, per month. No hidden fees.
           </p>
         </div>
@@ -240,10 +240,10 @@ function PricingSection() {
           {plans.map((plan) => (
             <div
               key={plan.name}
-              className={`relative rounded-2xl border bg-white p-8 shadow-sm ${
+              className={`relative rounded-2xl border bg-card p-8 shadow-sm ${
                 plan.popular
                   ? "border-brand-500 ring-1 ring-brand-500"
-                  : "border-slate-200"
+                  : "border-border"
               }`}
             >
               {plan.popular && (
@@ -253,21 +253,21 @@ function PricingSection() {
                   </span>
                 </div>
               )}
-              <h3 className="text-lg font-semibold text-slate-900">
+              <h3 className="text-lg font-semibold text-foreground">
                 {plan.name}
               </h3>
-              <p className="mt-1 text-sm text-slate-500">{plan.description}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{plan.description}</p>
               <div className="mt-6">
-                <span className="text-4xl font-bold text-slate-900">
+                <span className="text-4xl font-bold text-foreground">
                   {plan.price}
                 </span>
-                <span className="text-slate-500">/user/mo</span>
+                <span className="text-muted-foreground">/user/mo</span>
               </div>
               <ul className="mt-8 space-y-3">
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex items-center gap-3">
                     <Check className="h-4 w-4 text-brand-500" />
-                    <span className="text-sm text-slate-600">{feature}</span>
+                    <span className="text-sm text-muted-foreground">{feature}</span>
                   </li>
                 ))}
               </ul>
@@ -276,7 +276,7 @@ function PricingSection() {
                 className={`mt-8 block rounded-lg py-3 text-center text-sm font-semibold transition-colors ${
                   plan.popular
                     ? "bg-brand-500 text-white hover:bg-brand-600"
-                    : "bg-slate-100 text-slate-900 hover:bg-slate-200"
+                    : "bg-muted text-foreground hover:bg-accent"
                 }`}
               >
                 {plan.cta}

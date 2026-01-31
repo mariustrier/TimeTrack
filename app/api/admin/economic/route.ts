@@ -15,6 +15,7 @@ export async function GET() {
     const company = await db.company.findUnique({
       where: { id: user.companyId },
       select: {
+        currency: true,
         economicRevenueAccount: true,
         economicCounterAccount: true,
         economicVatCode: true,
@@ -40,17 +41,24 @@ export async function PUT(req: Request) {
     }
 
     const body = await req.json();
-    const { economicRevenueAccount, economicCounterAccount, economicVatCode, economicCurrency } = body;
+    const { currency, economicRevenueAccount, economicCounterAccount, economicVatCode, economicCurrency } = body;
+
+    const data: Record<string, unknown> = {
+      economicRevenueAccount: economicRevenueAccount || null,
+      economicCounterAccount: economicCounterAccount || null,
+      economicVatCode: economicVatCode || null,
+      economicCurrency: economicCurrency || "DKK",
+    };
+
+    if (currency !== undefined) {
+      data.currency = currency || "USD";
+    }
 
     const company = await db.company.update({
       where: { id: user.companyId },
-      data: {
-        economicRevenueAccount: economicRevenueAccount || null,
-        economicCounterAccount: economicCounterAccount || null,
-        economicVatCode: economicVatCode || null,
-        economicCurrency: economicCurrency || "DKK",
-      },
+      data,
       select: {
+        currency: true,
         economicRevenueAccount: true,
         economicCounterAccount: true,
         economicVatCode: true,

@@ -156,7 +156,7 @@ export default function VacationsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Vacations</h1>
+        <h1 className="text-2xl font-bold text-foreground">Vacations</h1>
         <Button onClick={() => setModalOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Request Vacation
@@ -193,9 +193,9 @@ export default function VacationsPage() {
         <CardContent>
           {requests.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Palmtree className="h-12 w-12 text-slate-300" />
-              <h3 className="mt-4 text-lg font-semibold text-slate-900">No Vacation Requests</h3>
-              <p className="mt-1 text-sm text-slate-500">
+              <Palmtree className="h-12 w-12 text-muted-foreground/50" />
+              <h3 className="mt-4 text-lg font-semibold text-foreground">No Vacation Requests</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
                 Click &quot;Request Vacation&quot; to submit your first request.
               </p>
             </div>

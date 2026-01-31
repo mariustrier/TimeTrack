@@ -35,7 +35,7 @@ export default function BackupsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-slate-900">Backups & Export</h1>
+      <h1 className="text-2xl font-bold text-foreground">Backups & Export</h1>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
@@ -52,9 +52,9 @@ export default function BackupsPage() {
               Download a complete backup of your company data as a ZIP file
               containing CSV exports of all users, projects, and time entries.
             </p>
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-              <h4 className="text-sm font-medium text-slate-900">ZIP contains:</h4>
-              <ul className="mt-2 space-y-1 text-sm text-slate-600">
+            <div className="rounded-lg border border-border bg-muted/50 p-4">
+              <h4 className="text-sm font-medium text-foreground">ZIP contains:</h4>
+              <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
                 <li>- users.csv (team members & rates)</li>
                 <li>- projects.csv (all projects)</li>
                 <li>- time-entries.csv (all time entries)</li>
@@ -87,8 +87,8 @@ export default function BackupsPage() {
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100">
-                <HardDrive className="h-5 w-5 text-slate-600" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                <HardDrive className="h-5 w-5 text-muted-foreground" />
               </div>
               <CardTitle className="text-lg">Data Information</CardTitle>
             </div>
@@ -99,16 +99,16 @@ export default function BackupsPage() {
               exports give you a portable copy of all your company data.
             </p>
             <div className="space-y-3">
-              <div className="rounded-lg border border-slate-200 p-3">
-                <p className="text-sm font-medium text-slate-900">Format</p>
-                <p className="text-xs text-slate-500">
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-sm font-medium text-foreground">Format</p>
+                <p className="text-xs text-muted-foreground">
                   CSV files in a ZIP archive, compatible with Excel, Google
                   Sheets, and other tools.
                 </p>
               </div>
-              <div className="rounded-lg border border-slate-200 p-3">
-                <p className="text-sm font-medium text-slate-900">Scope</p>
-                <p className="text-xs text-slate-500">
+              <div className="rounded-lg border border-border p-3">
+                <p className="text-sm font-medium text-foreground">Scope</p>
+                <p className="text-xs text-muted-foreground">
                   Exports all data for your company. Personal data is limited to
                   company members only.
                 </p>

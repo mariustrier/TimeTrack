@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Users, Plus, Pencil, Trash2, UserPlus } from "lucide-react";
+import { formatCurrency } from "@/lib/calculations";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +52,7 @@ export default function TeamPage() {
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [deletingMember, setDeletingMember] = useState<TeamMember | null>(null);
   const [saving, setSaving] = useState(false);
+  const [companyCurrency, setCompanyCurrency] = useState("USD");
 
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -75,6 +77,12 @@ export default function TeamPage() {
 
   useEffect(() => {
     fetchTeam();
+    fetch("/api/admin/economic")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data?.currency) setCompanyCurrency(data.currency);
+      })
+      .catch(() => {});
   }, []);
 
   function openInviteModal() {
@@ -169,7 +177,7 @@ export default function TeamPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Team</h1>
+        <h1 className="text-2xl font-bold text-foreground">Team</h1>
         <Button onClick={openInviteModal}>
           <UserPlus className="mr-2 h-4 w-4" />
           Invite Member
@@ -183,9 +191,9 @@ export default function TeamPage() {
         <CardContent className="p-0">
           {members.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16">
-              <Users className="h-12 w-12 text-slate-300" />
-              <h3 className="mt-4 text-lg font-semibold text-slate-900">No Team Members</h3>
-              <p className="mt-1 text-sm text-slate-500">Invite your first team member.</p>
+              <Users className="h-12 w-12 text-muted-foreground/50" />
+              <h3 className="mt-4 text-lg font-semibold text-foreground">No Team Members</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Invite your first team member.</p>
               <Button className="mt-4" onClick={openInviteModal}>
                 <Plus className="mr-2 h-4 w-4" />
                 Invite Member
@@ -220,8 +228,8 @@ export default function TeamPage() {
                         {member.role}
                       </Badge>
                     </TableCell>
-                    <TableCell>${member.hourlyRate}/h</TableCell>
-                    <TableCell>${member.costRate}/h</TableCell>
+                    <TableCell>{formatCurrency(member.hourlyRate, companyCurrency)}/h</TableCell>
+                    <TableCell>{formatCurrency(member.costRate, companyCurrency)}/h</TableCell>
                     <TableCell>{member.weeklyTarget}h</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
@@ -303,7 +311,7 @@ export default function TeamPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Bill Rate ($/h)</Label>
+                <Label>Bill Rate ({companyCurrency}/h)</Label>
                 <Input
                   type="number"
                   value={hourlyRate}
@@ -312,7 +320,7 @@ export default function TeamPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Cost Rate ($/h)</Label>
+                <Label>Cost Rate ({companyCurrency}/h)</Label>
                 <Input
                   type="number"
                   value={costRate}

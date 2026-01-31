@@ -22,9 +22,15 @@ import {
   CalendarDays,
   Plus,
   MessageSquare,
+  Send,
+  Check,
+  Lock,
+  AlertCircle,
+  X,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
@@ -43,6 +49,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface Project {
@@ -59,6 +66,9 @@ interface TimeEntry {
   comment: string | null;
   projectId: string;
   project: Project;
+  approvalStatus: "draft" | "submitted" | "approved" | "locked";
+  billingStatus: "billable" | "included" | "non_billable" | "internal" | "presales";
+  nonBillableReason: string | null;
 }
 
 interface StatCardProps {
@@ -90,24 +100,50 @@ function StatCard({ title, value, icon: Icon, color, subtitle }: StatCardProps) 
   );
 }
 
+const BILLING_LABELS: Record<string, string> = {
+  billable: "Billable",
+  included: "Included",
+  non_billable: "Non-Billable",
+  internal: "Internal",
+  presales: "Pre-Sales",
+};
+
 export default function DashboardPage() {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [hours, setHours] = useState("");
   const [comment, setComment] = useState("");
+  const [billingStatus, setBillingStatus] = useState("billable");
+  const [nonBillableReason, setNonBillableReason] = useState("");
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const [saving, setSaving] = useState(false);
   const [vacationDaysUsed, setVacationDaysUsed] = useState(0);
   const [vacationDaysTotal, setVacationDaysTotal] = useState(25);
+  const [weekNote, setWeekNote] = useState<{ action: string; reason: string | null; createdAt: string } | null>(null);
+  const [weekNoteDismissed, setWeekNoteDismissed] = useState(false);
 
   const weekStart = useMemo(() => startOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
   const weekEnd = useMemo(() => endOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
   const weekDays = useMemo(() => eachDayOfInterval({ start: weekStart, end: weekEnd }), [weekStart, weekEnd]);
+
+  // Compute week approval status
+  const weekStatus = useMemo(() => {
+    if (entries.length === 0) return "empty";
+    const statuses = new Set(entries.map((e) => e.approvalStatus));
+    if (statuses.has("locked")) return "locked";
+    if (statuses.has("approved")) return "approved";
+    if (statuses.has("submitted")) return "submitted";
+    return "draft";
+  }, [entries]);
+
+  const isWeekEditable = weekStatus === "draft" || weekStatus === "empty";
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -149,6 +185,19 @@ export default function DashboardPage() {
     fetchData();
   }, [fetchData]);
 
+  // Fetch rejection/reopen notes for current week
+  useEffect(() => {
+    setWeekNote(null);
+    setWeekNoteDismissed(false);
+    const start = format(weekStart, "yyyy-MM-dd");
+    fetch(`/api/time-entries/week-notes?weekStart=${start}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.note) setWeekNote(data.note);
+      })
+      .catch(() => {});
+  }, [weekStart]);
+
   function getEntryForCell(projectId: string, date: Date): TimeEntry | undefined {
     const dateStr = format(date, "yyyy-MM-dd");
     return entries.find(
@@ -171,7 +220,7 @@ export default function DashboardPage() {
 
   const grandTotal = entries.reduce((sum, e) => sum + e.hours, 0);
   const billableTotal = entries
-    .filter((e) => e.project.billable)
+    .filter((e) => e.billingStatus === "billable")
     .reduce((sum, e) => sum + e.hours, 0);
   const weeklyTarget = 40;
   const timeBalance = grandTotal - weeklyTarget;
@@ -183,10 +232,16 @@ export default function DashboardPage() {
       setEditingEntry(entry);
       setHours(entry.hours.toString());
       setComment(entry.comment || "");
+      setBillingStatus(entry.billingStatus);
+      setNonBillableReason(entry.nonBillableReason || "");
     } else {
       setEditingEntry(null);
       setHours("");
       setComment("");
+      // Default billing status from project
+      const proj = projects.find((p) => p.id === projectId);
+      setBillingStatus(proj?.billable !== false ? "billable" : "non_billable");
+      setNonBillableReason("");
     }
     setModalOpen(true);
   }
@@ -200,7 +255,12 @@ export default function DashboardPage() {
         await fetch(`/api/time-entries/${editingEntry.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ hours, comment }),
+          body: JSON.stringify({
+            hours,
+            comment,
+            billingStatus,
+            nonBillableReason: billingStatus !== "billable" ? nonBillableReason : null,
+          }),
         });
       } else {
         await fetch("/api/time-entries", {
@@ -211,6 +271,7 @@ export default function DashboardPage() {
             date: selectedDate,
             projectId: selectedProjectId,
             comment,
+            billingStatus,
           }),
         });
       }
@@ -237,6 +298,62 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleSubmitWeek() {
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/time-entries/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weekStart: format(weekStart, "yyyy-MM-dd") }),
+      });
+      if (res.ok) {
+        setSubmitDialogOpen(false);
+        setWeekNoteDismissed(true);
+        toast.success("Week submitted for approval");
+        fetchData();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to submit week");
+      }
+    } catch (error) {
+      console.error("Failed to submit week:", error);
+      toast.error("Failed to submit week");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  // Check if entry is read-only
+  const isEntryReadOnly = (entry: TimeEntry) => entry.approvalStatus !== "draft";
+
+  // Cell style based on approval status
+  function getCellStyle(entry: TimeEntry) {
+    switch (entry.approvalStatus) {
+      case "submitted":
+        return "border-amber-300 bg-amber-50 font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-700";
+      case "approved":
+        return "border-emerald-300 bg-emerald-50 font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-700";
+      case "locked":
+        return "border-gray-300 bg-gray-100 font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600";
+      default:
+        return "border-brand-200 bg-brand-50 font-medium text-brand-700 hover:bg-brand-100";
+    }
+  }
+
+  // Status icon for cell
+  function getCellIcon(entry: TimeEntry) {
+    switch (entry.approvalStatus) {
+      case "submitted":
+        return <Clock className="absolute -right-1 -top-1 h-3 w-3 text-amber-500" />;
+      case "approved":
+        return <Check className="absolute -right-1 -top-1 h-3 w-3 text-emerald-500" />;
+      case "locked":
+        return <Lock className="absolute -right-1 -top-1 h-3 w-3 text-gray-400" />;
+      default:
+        return entry.comment ? <MessageSquare className="absolute -right-1 -top-1 h-3 w-3 text-brand-400" /> : null;
+    }
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -255,8 +372,14 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {/* Week Navigation */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Timesheet</h1>
+        <h1 className="text-2xl font-bold text-foreground">Timesheet</h1>
         <div className="flex items-center gap-2">
+          {weekStatus === "draft" && entries.length > 0 && (
+            <Button onClick={() => setSubmitDialogOpen(true)}>
+              <Send className="mr-2 h-4 w-4" />
+              Submit Week
+            </Button>
+          )}
           <Button
             variant="outline"
             size="icon"
@@ -274,11 +397,52 @@ export default function DashboardPage() {
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <span className="ml-2 text-sm text-slate-600">
+          <span className="ml-2 text-sm text-muted-foreground">
             {format(weekStart, "MMM d")} - {format(weekEnd, "MMM d, yyyy")}
           </span>
         </div>
       </div>
+
+      {/* Week Status Banner */}
+      {weekStatus === "submitted" && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+          <Clock className="h-4 w-4" />
+          Submitted for approval. Waiting for admin review.
+        </div>
+      )}
+      {weekStatus === "approved" && (
+        <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+          <Check className="h-4 w-4" />
+          Week approved.
+        </div>
+      )}
+      {weekStatus === "locked" && (
+        <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+          <Lock className="h-4 w-4" />
+          Week locked for invoicing. No changes allowed.
+        </div>
+      )}
+
+      {/* Rejection/Reopen Note Banner */}
+      {weekStatus === "draft" && weekNote && !weekNoteDismissed && (
+        <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+          <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <div className="flex-1">
+            <span className="font-medium">
+              {weekNote.action === "REJECT" ? "Week returned by admin" : "Week reopened by admin"}
+            </span>
+            {weekNote.reason && (
+              <span>: &quot;{weekNote.reason}&quot;</span>
+            )}
+          </div>
+          <button
+            onClick={() => setWeekNoteDismissed(true)}
+            className="ml-2 flex-shrink-0 rounded p-0.5 hover:bg-red-100 dark:hover:bg-red-900"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
@@ -286,38 +450,41 @@ export default function DashboardPage() {
           title="Target"
           value={`${weeklyTarget}h`}
           icon={Target}
-          color="bg-blue-50 text-blue-600"
+          color="bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
         />
         <StatCard
           title="Billable"
           value={`${billableTotal.toFixed(1)}h`}
           icon={DollarSign}
-          color="bg-emerald-50 text-emerald-600"
+          color="bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
         />
         <StatCard
           title="Vacation"
           value={`${vacationDaysUsed}d`}
           icon={Palmtree}
-          color="bg-amber-50 text-amber-600"
+          color="bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400"
           subtitle="days used"
         />
         <StatCard
           title="Total"
           value={`${grandTotal.toFixed(1)}h`}
           icon={Clock}
-          color="bg-purple-50 text-purple-600"
+          color="bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400"
         />
         <StatCard
           title="Time Balance"
           value={`${timeBalance >= 0 ? "+" : ""}${timeBalance.toFixed(1)}h`}
           icon={TrendingUp}
-          color={timeBalance >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}
+          color={timeBalance >= 0
+            ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
+            : "bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400"
+          }
         />
         <StatCard
           title="Vacation Days"
           value={`${vacationDaysTotal - vacationDaysUsed}`}
           icon={CalendarDays}
-          color="bg-sky-50 text-sky-600"
+          color="bg-sky-50 text-sky-600 dark:bg-sky-950 dark:text-sky-400"
           subtitle="remaining"
         />
       </div>
@@ -330,9 +497,9 @@ export default function DashboardPage() {
         <CardContent className="p-0">
           {projects.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Clock className="h-12 w-12 text-slate-300" />
-              <h3 className="mt-4 text-lg font-semibold text-slate-900">No Projects Yet</h3>
-              <p className="mt-1 text-sm text-slate-500">
+              <Clock className="h-12 w-12 text-muted-foreground/50" />
+              <h3 className="mt-4 text-lg font-semibold text-foreground">No Projects Yet</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
                 Ask your admin to create projects to start tracking time.
               </p>
             </div>
@@ -340,8 +507,8 @@ export default function DashboardPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b bg-slate-50">
-                    <th className="px-4 py-3 text-left font-medium text-slate-600 w-48">
+                  <tr className="border-b bg-muted/50">
+                    <th className="px-4 py-3 text-left font-medium text-muted-foreground w-48">
                       Project
                     </th>
                     {weekDays.map((day) => (
@@ -349,28 +516,28 @@ export default function DashboardPage() {
                         key={day.toISOString()}
                         className={cn(
                           "px-2 py-3 text-center font-medium w-20",
-                          isToday(day) ? "text-brand-600 bg-brand-50/50" : "text-slate-600"
+                          isToday(day) ? "text-brand-600 bg-brand-50/50" : "text-muted-foreground"
                         )}
                       >
                         <div>{format(day, "EEE")}</div>
                         <div className="text-xs">{format(day, "MMM d")}</div>
                       </th>
                     ))}
-                    <th className="px-4 py-3 text-center font-medium text-slate-600 w-20">
+                    <th className="px-4 py-3 text-center font-medium text-muted-foreground w-20">
                       Total
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {projects.map((project) => (
-                    <tr key={project.id} className="border-b hover:bg-slate-50/50">
+                    <tr key={project.id} className="border-b hover:bg-muted/30">
                       <td className="px-4 py-2">
                         <div className="flex items-center gap-2">
                           <div
                             className="h-3 w-3 rounded-full"
                             style={{ backgroundColor: project.color }}
                           />
-                          <span className="font-medium text-slate-900 truncate">
+                          <span className="font-medium text-foreground truncate">
                             {project.name}
                           </span>
                         </div>
@@ -385,43 +552,48 @@ export default function DashboardPage() {
                               isToday(day) && "bg-brand-50/30"
                             )}
                           >
-                            <button
-                              onClick={() => openModal(day, project.id, entry)}
-                              className={cn(
-                                "relative mx-auto flex h-10 w-16 items-center justify-center rounded-md border text-sm transition-colors",
-                                entry
-                                  ? "border-brand-200 bg-brand-50 font-medium text-brand-700 hover:bg-brand-100"
-                                  : "border-dashed border-slate-200 text-slate-400 hover:border-slate-300 hover:bg-slate-50"
-                              )}
-                            >
-                              {entry ? (
-                                <>
-                                  {entry.hours}
-                                  {entry.comment && (
-                                    <MessageSquare className="absolute -right-1 -top-1 h-3 w-3 text-brand-400" />
-                                  )}
-                                </>
-                              ) : (
+                            {entry ? (
+                              <button
+                                onClick={() => openModal(day, project.id, entry)}
+                                className={cn(
+                                  "relative mx-auto flex h-10 w-16 items-center justify-center rounded-md border text-sm transition-colors",
+                                  getCellStyle(entry)
+                                )}
+                              >
+                                {entry.hours}
+                                {getCellIcon(entry)}
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => isWeekEditable && openModal(day, project.id)}
+                                disabled={!isWeekEditable}
+                                className={cn(
+                                  "relative mx-auto flex h-10 w-16 items-center justify-center rounded-md border text-sm transition-colors",
+                                  isWeekEditable
+                                    ? "border-dashed border-border text-muted-foreground hover:border-muted-foreground hover:bg-muted/50"
+                                    : "border-dashed border-border/50 text-muted-foreground/30 cursor-not-allowed"
+                                )}
+                              >
                                 <Plus className="h-3 w-3" />
-                              )}
-                            </button>
+                              </button>
+                            )}
                           </td>
                         );
                       })}
-                      <td className="px-4 py-2 text-center font-semibold text-slate-900">
+                      <td className="px-4 py-2 text-center font-semibold text-foreground">
                         {getRowTotal(project.id).toFixed(1)}
                       </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="bg-slate-50">
-                    <td className="px-4 py-3 font-semibold text-slate-900">Daily Total</td>
+                  <tr className="bg-muted/50">
+                    <td className="px-4 py-3 font-semibold text-foreground">Daily Total</td>
                     {weekDays.map((day) => (
                       <td
                         key={day.toISOString()}
                         className={cn(
-                          "px-2 py-3 text-center font-semibold text-slate-900",
+                          "px-2 py-3 text-center font-semibold text-foreground",
                           isToday(day) && "bg-brand-50/50"
                         )}
                       >
@@ -444,13 +616,31 @@ export default function DashboardPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingEntry ? "Edit Time Entry" : "Log Time"}
+              {editingEntry
+                ? isEntryReadOnly(editingEntry)
+                  ? "View Time Entry"
+                  : "Edit Time Entry"
+                : "Log Time"
+              }
             </DialogTitle>
           </DialogHeader>
+
+          {/* Read-only notice */}
+          {editingEntry && isEntryReadOnly(editingEntry) && (
+            <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              This entry is {editingEntry.approvalStatus} and cannot be edited.
+            </div>
+          )}
+
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Project</Label>
-              <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+              <Select
+                value={selectedProjectId}
+                onValueChange={setSelectedProjectId}
+                disabled={!!editingEntry}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select project" />
                 </SelectTrigger>
@@ -475,6 +665,7 @@ export default function DashboardPage() {
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
+                disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
               />
             </div>
             <div className="space-y-2">
@@ -487,6 +678,7 @@ export default function DashboardPage() {
                 value={hours}
                 onChange={(e) => setHours(e.target.value)}
                 placeholder="e.g. 8"
+                disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
               />
             </div>
             <div className="space-y-2">
@@ -496,20 +688,108 @@ export default function DashboardPage() {
                 onChange={(e) => setComment(e.target.value)}
                 placeholder="What did you work on?"
                 rows={3}
+                disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
               />
             </div>
+
+            {/* Billing Status */}
+            <div className="space-y-2">
+              <Label>Billing</Label>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setBillingStatus(billingStatus === "billable" ? "non_billable" : "billable")}
+                  disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
+                  className={cn(
+                    "relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors",
+                    billingStatus === "billable" ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600",
+                    editingEntry && isEntryReadOnly(editingEntry) ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform",
+                      billingStatus === "billable" ? "translate-x-5" : "translate-x-0"
+                    )}
+                  />
+                </button>
+                <span className="text-sm text-muted-foreground">
+                  {billingStatus === "billable" ? "Billable" : "Not billable"}
+                </span>
+              </div>
+            </div>
+
+            {/* Category selector when not billable */}
+            {billingStatus !== "billable" && (
+              <div className="space-y-2">
+                <Label>Category</Label>
+                <Select
+                  value={billingStatus}
+                  onValueChange={setBillingStatus}
+                  disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="included">Included (contract/retainer)</SelectItem>
+                    <SelectItem value="non_billable">Non-Billable</SelectItem>
+                    <SelectItem value="internal">Internal</SelectItem>
+                    <SelectItem value="presales">Pre-Sales</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Billing status badge for existing entries */}
+            {editingEntry && editingEntry.billingStatus !== "billable" && (
+              <div className="flex items-center gap-2">
+                <Badge variant="outline">{BILLING_LABELS[editingEntry.billingStatus]}</Badge>
+                {editingEntry.nonBillableReason && (
+                  <span className="text-xs text-muted-foreground">{editingEntry.nonBillableReason}</span>
+                )}
+              </div>
+            )}
           </div>
+
           <DialogFooter className="gap-2">
-            {editingEntry && (
+            {editingEntry && !isEntryReadOnly(editingEntry) && (
               <Button variant="destructive" onClick={handleDelete} disabled={saving}>
                 Delete
               </Button>
             )}
             <Button variant="outline" onClick={() => setModalOpen(false)}>
+              {editingEntry && isEntryReadOnly(editingEntry) ? "Close" : "Cancel"}
+            </Button>
+            {!(editingEntry && isEntryReadOnly(editingEntry)) && (
+              <Button onClick={handleSave} disabled={saving || !hours || !selectedProjectId || !comment.trim()}>
+                {saving ? "Saving..." : editingEntry ? "Update" : "Log Time"}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Submit Week Confirmation */}
+      <Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Submit Week for Approval</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Submit all entries for <strong>{format(weekStart, "MMM d")} - {format(weekEnd, "MMM d, yyyy")}</strong> for
+            admin approval? You won&apos;t be able to edit them until an admin approves or rejects them.
+          </p>
+          <p className="text-sm font-medium">
+            {entries.length} entries, {grandTotal.toFixed(1)} total hours
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSubmitDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={saving || !hours || !selectedProjectId || !comment.trim()}>
-              {saving ? "Saving..." : editingEntry ? "Update" : "Log Time"}
+            <Button onClick={handleSubmitWeek} disabled={submitting}>
+              <Send className="mr-2 h-4 w-4" />
+              {submitting ? "Submitting..." : "Submit Week"}
             </Button>
           </DialogFooter>
         </DialogContent>

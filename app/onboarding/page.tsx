@@ -37,16 +37,16 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-md">
         <div className="text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-brand-500">
             <Clock className="h-7 w-7 text-white" />
           </div>
-          <h1 className="mt-6 text-2xl font-bold text-slate-900">
+          <h1 className="mt-6 text-2xl font-bold text-foreground">
             Welcome to TimeTrack
           </h1>
-          <p className="mt-2 text-slate-600">
+          <p className="mt-2 text-muted-foreground">
             Let&apos;s set up your company to get started.
           </p>
         </div>
@@ -55,7 +55,7 @@ export default function OnboardingPage() {
           <div>
             <label
               htmlFor="companyName"
-              className="block text-sm font-medium text-slate-700"
+              className="block text-sm font-medium text-foreground"
             >
               Company Name
             </label>
@@ -65,7 +65,7 @@ export default function OnboardingPage() {
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
               placeholder="e.g. Acme Agency"
-              className="mt-1 block w-full rounded-lg border border-slate-300 px-4 py-3 text-slate-900 placeholder-slate-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+              className="mt-1 block w-full rounded-lg border border-border px-4 py-3 text-foreground placeholder-muted-foreground bg-background focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
               required
             />
           </div>

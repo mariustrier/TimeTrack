@@ -15,6 +15,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
+    const approvalFilter = searchParams.get("approvalFilter") || "all";
 
     const dateFilter: Record<string, unknown> = {};
     if (startDate && endDate) {
@@ -23,6 +24,15 @@ export async function GET(req: Request) {
         lte: new Date(endDate),
       };
     }
+
+    if (approvalFilter === "approved_only") {
+      dateFilter.approvalStatus = { in: ["approved", "locked"] };
+    }
+
+    const company = await db.company.findUnique({
+      where: { id: user.companyId },
+      select: { currency: true },
+    });
 
     const members = await db.user.findMany({
       where: { companyId: user.companyId },
@@ -48,7 +58,7 @@ export async function GET(req: Request) {
       const memberEntries = entries.filter((e) => e.userId === member.id);
       const hours = memberEntries.reduce((sum, e) => sum + e.hours, 0);
       const memberBillableHours = memberEntries
-        .filter((e) => e.project.billable)
+        .filter((e) => e.billingStatus === "billable")
         .reduce((sum, e) => sum + e.hours, 0);
       const revenue = memberBillableHours * member.hourlyRate;
       const cost = hours * member.costRate;
@@ -84,6 +94,7 @@ export async function GET(req: Request) {
       billableHours,
       utilization: targetHours > 0 ? (totalHours / targetHours) * 100 : 0,
       employeeStats,
+      currency: company?.currency || "USD",
     });
   } catch (error) {
     console.error("[ADMIN_STATS]", error);

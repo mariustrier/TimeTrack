@@ -10,6 +10,7 @@ import {
   FolderKanban,
   Users,
   BarChart3,
+  CheckSquare,
   HardDrive,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,12 @@ const navItems: NavItem[] = [
   { label: "Projects", href: "/projects", icon: FolderKanban, adminOnly: true },
   { label: "Team", href: "/team", icon: Users, adminOnly: true },
   { label: "Admin", href: "/admin", icon: BarChart3, adminOnly: true },
+  {
+    label: "Approvals",
+    href: "/admin/approvals",
+    icon: CheckSquare,
+    adminOnly: true,
+  },
   {
     label: "Vacation Management",
     href: "/admin/vacations",

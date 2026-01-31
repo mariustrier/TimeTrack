@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { name, client, color, budgetHours, billable } = body;
+    const { name, client, color, budgetHours, billable, currency } = body;
 
     if (!name) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
@@ -49,6 +49,7 @@ export async function POST(req: Request) {
         color: color || "#3B82F6",
         budgetHours: budgetHours ? parseFloat(budgetHours) : null,
         billable: billable !== false,
+        currency: currency || null,
         companyId: user.companyId,
       },
     });

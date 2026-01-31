@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
+import { getWeekBounds } from "@/lib/week-helpers";
 
 export async function GET(req: Request) {
   try {
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { hours, date, comment, projectId } = body;
+    const { hours, date, comment, projectId, billingStatus } = body;
 
     if (!hours || !date || !projectId) {
       return NextResponse.json(
@@ -78,14 +79,37 @@ export async function POST(req: Request) {
       );
     }
 
+    // Block adding entries to weeks that have non-draft entries
+    const entryDate = new Date(date);
+    const { weekStart, weekEnd } = getWeekBounds(entryDate);
+    const existingNonDraft = await db.timeEntry.findFirst({
+      where: {
+        userId: user.id,
+        companyId: user.companyId,
+        date: { gte: weekStart, lte: weekEnd },
+        approvalStatus: { not: "draft" },
+      },
+    });
+
+    if (existingNonDraft) {
+      return NextResponse.json(
+        { error: "Cannot add entries to a submitted or approved week" },
+        { status: 400 }
+      );
+    }
+
+    // Default billing status from project's billable flag
+    const defaultBillingStatus = project.billable ? "billable" : "non_billable";
+
     const entry = await db.timeEntry.create({
       data: {
         hours: parseFloat(hours),
-        date: new Date(date),
+        date: entryDate,
         comment: comment || null,
         userId: user.id,
         projectId,
         companyId: user.companyId,
+        billingStatus: billingStatus || defaultBillingStatus,
       },
       include: {
         project: { select: { id: true, name: true, color: true, billable: true } },
