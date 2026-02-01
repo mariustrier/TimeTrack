@@ -12,6 +12,7 @@ import {
   BarChart3,
   CheckSquare,
   HardDrive,
+  TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -31,6 +32,7 @@ const navItems: NavItem[] = [
   { labelKey: "projects", href: "/projects", icon: FolderKanban, adminOnly: true },
   { labelKey: "team", href: "/team", icon: Users, adminOnly: true },
   { labelKey: "admin", href: "/admin", icon: BarChart3, adminOnly: true },
+  { labelKey: "analytics", href: "/analytics", icon: TrendingUp, adminOnly: true },
   {
     labelKey: "approvals",
     href: "/admin/approvals",
