@@ -33,6 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useTranslations, useDateLocale } from "@/lib/i18n";
 
 interface Entry {
   id: string;
@@ -56,21 +57,25 @@ interface WeekSubmission {
   entries: Entry[];
 }
 
-const STATUS_BADGE: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
-  submitted: { variant: "default", label: "Pending" },
-  approved: { variant: "secondary", label: "Approved" },
-  locked: { variant: "outline", label: "Locked" },
-};
-
-const BILLING_LABELS: Record<string, string> = {
-  billable: "Billable",
-  included: "Included",
-  non_billable: "Non-Billable",
-  internal: "Internal",
-  presales: "Pre-Sales",
-};
-
 export default function ApprovalsPage() {
+  const t = useTranslations("approvals");
+  const tc = useTranslations("common");
+  const dateLocale = useDateLocale();
+  const formatOpts = dateLocale ? { locale: dateLocale } : undefined;
+
+  const STATUS_BADGE: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
+    submitted: { variant: "default", label: tc("pending") },
+    approved: { variant: "secondary", label: tc("approved") },
+    locked: { variant: "outline", label: t("locked") },
+  };
+
+  const BILLING_LABELS: Record<string, string> = {
+    billable: tc("billable"),
+    included: tc("included"),
+    non_billable: tc("nonBillable"),
+    internal: tc("internal"),
+    presales: tc("preSales"),
+  };
   const [submissions, setSubmissions] = useState<WeekSubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("submitted");
@@ -112,15 +117,15 @@ export default function ApprovalsPage() {
         body: JSON.stringify({ userId, weekStart }),
       });
       if (res.ok) {
-        toast.success("Week approved");
+        toast.success(t("weekApproved"));
       } else {
         const data = await res.json();
-        toast.error(data.error || "Failed to approve");
+        toast.error(data.error || t("failedToApprove"));
       }
       fetchApprovals();
     } catch (error) {
       console.error("Failed to approve:", error);
-      toast.error("Failed to approve");
+      toast.error(t("failedToApprove"));
     } finally {
       setActing(false);
     }
@@ -135,15 +140,15 @@ export default function ApprovalsPage() {
         body: JSON.stringify({ userId, weekStart }),
       });
       if (res.ok) {
-        toast.success("Week locked");
+        toast.success(t("weekLocked"));
       } else {
         const data = await res.json();
-        toast.error(data.error || "Failed to lock");
+        toast.error(data.error || t("failedToLock"));
       }
       fetchApprovals();
     } catch (error) {
       console.error("Failed to lock:", error);
-      toast.error("Failed to lock");
+      toast.error(t("failedToLock"));
     } finally {
       setActing(false);
     }
@@ -178,8 +183,8 @@ export default function ApprovalsPage() {
       if (res.ok) {
         toast.success(
           pendingAction.action === "reject"
-            ? "Week rejected — returned to draft"
-            : "Week reopened — returned to draft"
+            ? t("weekRejected")
+            : t("weekReopened")
         );
       } else {
         const data = await res.json();
@@ -216,16 +221,16 @@ export default function ApprovalsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Time Approvals</h1>
+        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[160px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="submitted">Pending</SelectItem>
-            <SelectItem value="approved">Approved</SelectItem>
-            <SelectItem value="locked">Locked</SelectItem>
-            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="submitted">{tc("pending")}</SelectItem>
+            <SelectItem value="approved">{tc("approved")}</SelectItem>
+            <SelectItem value="locked">{t("locked")}</SelectItem>
+            <SelectItem value="all">{tc("all")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -233,9 +238,9 @@ export default function ApprovalsPage() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">
-            {statusFilter === "submitted" ? "Pending Approvals" :
-             statusFilter === "approved" ? "Approved Weeks" :
-             statusFilter === "locked" ? "Locked Weeks" : "All Submissions"}
+            {statusFilter === "submitted" ? t("pendingApprovals") :
+             statusFilter === "approved" ? t("approvedWeeks") :
+             statusFilter === "locked" ? t("lockedWeeks") : t("allSubmissions")}
             {" "}({submissions.length})
           </CardTitle>
         </CardHeader>
@@ -243,9 +248,9 @@ export default function ApprovalsPage() {
           {submissions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16">
               <CheckSquare className="h-12 w-12 text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-semibold text-foreground">No Submissions</h3>
+              <h3 className="mt-4 text-lg font-semibold text-foreground">{t("noSubmissionsTitle")}</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                {statusFilter === "submitted" ? "No weeks waiting for approval." : "No submissions found."}
+                {statusFilter === "submitted" ? t("noSubmissionsPending") : t("noSubmissionsFound")}
               </p>
             </div>
           ) : (
@@ -273,11 +278,11 @@ export default function ApprovalsPage() {
                         <p className="text-xs text-muted-foreground">{sub.userEmail}</p>
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        {format(new Date(sub.weekStart), "MMM d")} - {format(weekEnd, "MMM d, yyyy")}
+                        {format(new Date(sub.weekStart), "MMM d", formatOpts)} - {format(weekEnd, "MMM d, yyyy", formatOpts)}
                       </div>
                       <div className="text-sm font-medium w-16 text-right">{sub.totalHours.toFixed(1)}h</div>
                       <div className="text-sm text-muted-foreground w-20 text-right">
-                        {sub.billableHours.toFixed(1)}h bill
+                        {sub.billableHours.toFixed(1)}h {t("bill")}
                       </div>
                       <Badge variant={STATUS_BADGE[sub.approvalStatus]?.variant || "outline"}>
                         {STATUS_BADGE[sub.approvalStatus]?.label || sub.approvalStatus}
@@ -291,7 +296,7 @@ export default function ApprovalsPage() {
                               disabled={acting}
                             >
                               <Check className="mr-1 h-3.5 w-3.5" />
-                              Approve
+                              {tc("approve")}
                             </Button>
                             <Button
                               size="sm"
@@ -300,7 +305,7 @@ export default function ApprovalsPage() {
                               disabled={acting}
                             >
                               <X className="mr-1 h-3.5 w-3.5" />
-                              Reject
+                              {tc("reject")}
                             </Button>
                           </>
                         )}
@@ -313,7 +318,7 @@ export default function ApprovalsPage() {
                               disabled={acting}
                             >
                               <Lock className="mr-1 h-3.5 w-3.5" />
-                              Lock
+                              {t("lock")}
                             </Button>
                             <Button
                               size="sm"
@@ -322,7 +327,7 @@ export default function ApprovalsPage() {
                               disabled={acting}
                             >
                               <RotateCcw className="mr-1 h-3.5 w-3.5" />
-                              Reopen
+                              {t("reopen")}
                             </Button>
                           </>
                         )}
@@ -334,7 +339,7 @@ export default function ApprovalsPage() {
                             disabled={acting}
                           >
                             <RotateCcw className="mr-1 h-3.5 w-3.5" />
-                            Reopen
+                            {t("reopen")}
                           </Button>
                         )}
                       </div>
@@ -346,18 +351,18 @@ export default function ApprovalsPage() {
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="text-muted-foreground">
-                              <th className="text-left py-1.5 font-medium">Date</th>
-                              <th className="text-left py-1.5 font-medium">Project</th>
-                              <th className="text-right py-1.5 font-medium">Hours</th>
-                              <th className="text-left py-1.5 font-medium pl-4">Billing</th>
-                              <th className="text-left py-1.5 font-medium pl-4">Comment</th>
+                              <th className="text-left py-1.5 font-medium">{tc("date")}</th>
+                              <th className="text-left py-1.5 font-medium">{tc("project")}</th>
+                              <th className="text-right py-1.5 font-medium">{tc("hours")}</th>
+                              <th className="text-left py-1.5 font-medium pl-4">{tc("billable")}</th>
+                              <th className="text-left py-1.5 font-medium pl-4">{tc("comment")}</th>
                             </tr>
                           </thead>
                           <tbody>
                             {sub.entries.map((entry) => (
                               <tr key={entry.id} className="border-t border-border/50">
                                 <td className="py-1.5 text-foreground">
-                                  {format(new Date(entry.date), "EEE, MMM d")}
+                                  {format(new Date(entry.date), "EEE, MMM d", formatOpts)}
                                 </td>
                                 <td className="py-1.5">
                                   <div className="flex items-center gap-2">
@@ -398,21 +403,21 @@ export default function ApprovalsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {pendingAction?.action === "reject" ? "Reject Submission" : "Reopen Entries"}
+              {pendingAction?.action === "reject" ? t("rejectSubmission") : t("reopenEntries")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>
-                Reason {pendingAction?.action === "reopen" ? "(required)" : "(optional)"}
+                {pendingAction?.action === "reopen" ? t("reasonRequired") : t("reasonOptional")}
               </Label>
               <Textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 placeholder={
                   pendingAction?.action === "reject"
-                    ? "Let the employee know what needs to be changed..."
-                    : "Explain why these entries are being reopened..."
+                    ? t("rejectPlaceholder")
+                    : t("reopenPlaceholder")
                 }
                 rows={3}
               />
@@ -420,7 +425,7 @@ export default function ApprovalsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setReasonDialogOpen(false)}>
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button
               variant={pendingAction?.action === "reject" ? "destructive" : "default"}
@@ -428,10 +433,10 @@ export default function ApprovalsPage() {
               disabled={acting || (pendingAction?.action === "reopen" && !reason.trim())}
             >
               {acting
-                ? "Processing..."
+                ? tc("processing")
                 : pendingAction?.action === "reject"
-                ? "Reject"
-                : "Reopen"
+                ? tc("reject")
+                : t("reopen")
               }
             </Button>
           </DialogFooter>

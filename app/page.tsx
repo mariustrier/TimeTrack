@@ -11,8 +11,11 @@ import {
   ArrowRight,
   Check,
 } from "lucide-react";
+import { LocaleProvider, useTranslations } from "@/lib/i18n";
+import { LocaleToggle } from "@/components/ui/locale-toggle";
 
 function Navbar() {
+  const t = useTranslations("landing");
   return (
     <nav className="fixed top-0 z-50 w-full border-b border-white/10 bg-brand-950/80 backdrop-blur-lg">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -21,21 +24,22 @@ function Navbar() {
           <span className="text-xl font-bold text-white">TimeTrack</span>
         </Link>
         <div className="hidden items-center gap-8 md:flex">
-          <a href="#features" className="text-sm text-slate-300 hover:text-white transition-colors">Features</a>
-          <a href="#pricing" className="text-sm text-slate-300 hover:text-white transition-colors">Pricing</a>
+          <a href="#features" className="text-sm text-slate-300 hover:text-white transition-colors">{t("features")}</a>
+          <a href="#pricing" className="text-sm text-slate-300 hover:text-white transition-colors">{t("pricing")}</a>
         </div>
         <div className="flex items-center gap-3">
+          <LocaleToggle />
           <Link
             href="/sign-in"
             className="text-sm text-slate-300 hover:text-white transition-colors"
           >
-            Sign In
+            {t("signIn")}
           </Link>
           <Link
             href="/sign-up"
             className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition-colors"
           >
-            Get Started
+            {t("getStarted")}
           </Link>
         </div>
       </div>
@@ -44,32 +48,32 @@ function Navbar() {
 }
 
 function Hero() {
+  const t = useTranslations("landing");
   return (
     <section className="gradient-bg relative overflow-hidden pt-32 pb-20 lg:pt-40 lg:pb-32">
       <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMS41Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-50" />
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl text-center">
           <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
-            Track Time.{" "}
-            <span className="text-brand-200">Boost Profit.</span>
+            {t("heroTitle1")}{" "}
+            <span className="text-brand-200">{t("heroTitle2")}</span>
           </h1>
           <p className="mt-6 text-lg text-brand-100/80 sm:text-xl">
-            The modern time tracking platform built for agencies and consultancies.
-            Know exactly where your time goes and how profitable each project is.
+            {t("heroSubtitle")}
           </p>
           <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Link
               href="/sign-up"
               className="inline-flex items-center gap-2 rounded-lg bg-white px-8 py-3.5 text-sm font-semibold text-brand-700 shadow-lg hover:bg-brand-50 transition-all"
             >
-              Start Free Trial
+              {t("startFreeTrial")}
               <ArrowRight className="h-4 w-4" />
             </Link>
             <a
               href="#features"
               className="inline-flex items-center gap-2 rounded-lg border border-white/20 px-8 py-3.5 text-sm font-semibold text-white hover:bg-white/10 transition-all"
             >
-              See Features
+              {t("seeFeatures")}
             </a>
           </div>
         </div>
@@ -79,24 +83,22 @@ function Hero() {
 }
 
 function ProblemSection() {
+  const t = useTranslations("landing");
   const problems = [
     {
       icon: Clock,
-      title: "Lost Hours",
-      description:
-        "Teams waste hours every week on manual time tracking with spreadsheets and outdated tools.",
+      title: t("lostHours"),
+      description: t("lostHoursDesc"),
     },
     {
       icon: TrendingUp,
-      title: "Invisible Costs",
-      description:
-        "Without real-time profitability data, unprofitable projects drain your bottom line silently.",
+      title: t("invisibleCosts"),
+      description: t("invisibleCostsDesc"),
     },
     {
       icon: Users,
-      title: "Team Blind Spots",
-      description:
-        "Managers can't see who's overloaded and who has capacity, leading to burnout and missed deadlines.",
+      title: t("teamBlindSpots"),
+      description: t("teamBlindSpotsDesc"),
     },
   ];
 
@@ -105,10 +107,10 @@ function ProblemSection() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            Time Tracking Shouldn&apos;t Be This Hard
+            {t("problemTitle")}
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            Most teams struggle with these common challenges.
+            {t("problemSubtitle")}
           </p>
         </div>
         <div className="mt-16 grid gap-8 sm:grid-cols-3">
@@ -117,8 +119,8 @@ function ProblemSection() {
               key={problem.title}
               className="rounded-xl border border-border bg-card p-8 shadow-sm"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-red-50">
-                <problem.icon className="h-6 w-6 text-red-500" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-red-50 dark:bg-red-950">
+                <problem.icon className="h-6 w-6 text-red-500 dark:text-red-400" />
               </div>
               <h3 className="mt-4 text-lg font-semibold text-foreground">
                 {problem.title}
@@ -133,27 +135,25 @@ function ProblemSection() {
 }
 
 function FeaturesSection() {
+  const t = useTranslations("landing");
   const features = [
     {
       icon: Zap,
-      title: "One-Click Time Entry",
-      description:
-        "Log hours in seconds with our intuitive weekly timesheet grid. No more forgetting to track time.",
-      color: "bg-brand-50 text-brand-600",
+      title: t("oneClickEntry"),
+      description: t("oneClickEntryDesc"),
+      color: "bg-brand-50 text-brand-600 dark:bg-brand-950 dark:text-brand-400",
     },
     {
       icon: BarChart3,
-      title: "Real-Time Profitability",
-      description:
-        "See revenue, costs, and profit per employee and project instantly. Make data-driven decisions.",
-      color: "bg-emerald-50 text-emerald-600",
+      title: t("realTimeProfitability"),
+      description: t("realTimeProfitabilityDesc"),
+      color: "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400",
     },
     {
       icon: Shield,
-      title: "Team Management",
-      description:
-        "Manage your team, set rates, track utilization, and export data backups with ease.",
-      color: "bg-amber-50 text-amber-600",
+      title: t("teamManagement"),
+      description: t("teamManagementDesc"),
+      color: "bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400",
     },
   ];
 
@@ -162,10 +162,10 @@ function FeaturesSection() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            Everything You Need to Track Time
+            {t("featuresTitle")}
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            Powerful features designed for modern teams.
+            {t("featuresSubtitle")}
           </p>
         </div>
         <div className="mt-16 grid gap-8 sm:grid-cols-3">
@@ -192,35 +192,36 @@ function FeaturesSection() {
 }
 
 function PricingSection() {
+  const t = useTranslations("landing");
   const plans = [
     {
-      name: "Starter",
+      name: t("starter"),
       price: "$15",
-      description: "Perfect for small teams getting started.",
+      description: t("starterDesc"),
       features: [
-        "Up to 10 team members",
-        "Unlimited projects",
-        "Weekly timesheet",
-        "Basic reporting",
-        "CSV exports",
+        t("starterF1"),
+        t("starterF2"),
+        t("starterF3"),
+        t("starterF4"),
+        t("starterF5"),
       ],
-      cta: "Start Free Trial",
+      cta: t("startFreeTrial"),
       popular: false,
     },
     {
-      name: "Pro",
+      name: t("pro"),
       price: "$25",
-      description: "For growing teams that need advanced features.",
+      description: t("proDesc"),
       features: [
-        "Unlimited team members",
-        "Unlimited projects",
-        "Advanced timesheet",
-        "Profitability analytics",
-        "ZIP data backups",
-        "Admin dashboard",
-        "Priority support",
+        t("proF1"),
+        t("proF2"),
+        t("proF3"),
+        t("proF4"),
+        t("proF5"),
+        t("proF6"),
+        t("proF7"),
       ],
-      cta: "Start Free Trial",
+      cta: t("startFreeTrial"),
       popular: true,
     },
   ];
@@ -230,10 +231,10 @@ function PricingSection() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            Simple, Transparent Pricing
+            {t("pricingTitle")}
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            Per user, per month. No hidden fees.
+            {t("pricingSubtitle")}
           </p>
         </div>
         <div className="mx-auto mt-16 grid max-w-4xl gap-8 lg:grid-cols-2">
@@ -249,7 +250,7 @@ function PricingSection() {
               {plan.popular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                   <span className="rounded-full bg-brand-500 px-4 py-1 text-xs font-semibold text-white">
-                    Most Popular
+                    {t("mostPopular")}
                   </span>
                 </div>
               )}
@@ -261,7 +262,7 @@ function PricingSection() {
                 <span className="text-4xl font-bold text-foreground">
                   {plan.price}
                 </span>
-                <span className="text-muted-foreground">/user/mo</span>
+                <span className="text-muted-foreground">{t("perUserMonth")}</span>
               </div>
               <ul className="mt-8 space-y-3">
                 {plan.features.map((feature) => (
@@ -290,22 +291,23 @@ function PricingSection() {
 }
 
 function CTASection() {
+  const t = useTranslations("landing");
   return (
     <section className="gradient-bg py-20 lg:py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-            Ready to Take Control of Your Time?
+            {t("ctaTitle")}
           </h2>
           <p className="mt-4 text-lg text-brand-100/80">
-            Join teams who track smarter, not harder. Start your free trial today.
+            {t("ctaSubtitle")}
           </p>
           <div className="mt-10">
             <Link
               href="/sign-up"
               className="inline-flex items-center gap-2 rounded-lg bg-white px-8 py-3.5 text-sm font-semibold text-brand-700 shadow-lg hover:bg-brand-50 transition-all"
             >
-              Get Started for Free
+              {t("getStartedFree")}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -316,6 +318,7 @@ function CTASection() {
 }
 
 function Footer() {
+  const t = useTranslations("landing");
   return (
     <footer className="bg-brand-950 py-12">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -325,7 +328,7 @@ function Footer() {
             <span className="text-lg font-bold text-white">TimeTrack</span>
           </div>
           <p className="text-sm text-slate-400">
-            &copy; {new Date().getFullYear()} TimeTrack. All rights reserved.
+            &copy; {new Date().getFullYear()} TimeTrack. {t("allRightsReserved")}
           </p>
         </div>
       </div>
@@ -335,14 +338,16 @@ function Footer() {
 
 export default function LandingPage() {
   return (
-    <main>
-      <Navbar />
-      <Hero />
-      <ProblemSection />
-      <FeaturesSection />
-      <PricingSection />
-      <CTASection />
-      <Footer />
-    </main>
+    <LocaleProvider>
+      <main>
+        <Navbar />
+        <Hero />
+        <ProblemSection />
+        <FeaturesSection />
+        <PricingSection />
+        <CTASection />
+        <Footer />
+      </main>
+    </LocaleProvider>
   );
 }

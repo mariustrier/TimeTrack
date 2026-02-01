@@ -15,34 +15,36 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { LocaleToggle } from "@/components/ui/locale-toggle";
+import { useTranslations } from "@/lib/i18n";
 
 interface NavItem {
-  label: string;
+  labelKey: string;
   href: string;
   icon: React.ElementType;
   adminOnly?: boolean;
 }
 
 const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Vacations", href: "/vacations", icon: Palmtree },
-  { label: "Projects", href: "/projects", icon: FolderKanban, adminOnly: true },
-  { label: "Team", href: "/team", icon: Users, adminOnly: true },
-  { label: "Admin", href: "/admin", icon: BarChart3, adminOnly: true },
+  { labelKey: "dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { labelKey: "vacations", href: "/vacations", icon: Palmtree },
+  { labelKey: "projects", href: "/projects", icon: FolderKanban, adminOnly: true },
+  { labelKey: "team", href: "/team", icon: Users, adminOnly: true },
+  { labelKey: "admin", href: "/admin", icon: BarChart3, adminOnly: true },
   {
-    label: "Approvals",
+    labelKey: "approvals",
     href: "/admin/approvals",
     icon: CheckSquare,
     adminOnly: true,
   },
   {
-    label: "Vacation Management",
+    labelKey: "vacationManagement",
     href: "/admin/vacations",
     icon: Palmtree,
     adminOnly: true,
   },
   {
-    label: "Backups",
+    labelKey: "backups",
     href: "/admin/backups",
     icon: HardDrive,
     adminOnly: true,
@@ -56,6 +58,7 @@ interface SidebarProps {
 export function Sidebar({ userRole }: SidebarProps) {
   const pathname = usePathname();
   const isAdmin = userRole === "admin";
+  const t = useTranslations("nav");
 
   const visibleItems = navItems.filter(
     (item) => !item.adminOnly || isAdmin
@@ -65,7 +68,7 @@ export function Sidebar({ userRole }: SidebarProps) {
     <aside className="flex h-screen w-64 flex-col border-r border-border bg-card">
       <div className="flex h-16 items-center gap-2 border-b border-border px-6">
         <Clock className="h-6 w-6 text-brand-500" />
-        <span className="text-lg font-bold text-foreground">TimeTrack</span>
+        <span className="text-lg font-bold text-foreground">{t("timetrack")}</span>
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-4">
@@ -85,7 +88,7 @@ export function Sidebar({ userRole }: SidebarProps) {
               )}
             >
               <item.icon className="h-5 w-5" />
-              {item.label}
+              {t(item.labelKey)}
             </Link>
           );
         })}
@@ -95,9 +98,12 @@ export function Sidebar({ userRole }: SidebarProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <UserButton afterSignOutUrl="/" />
-            <span className="text-sm text-muted-foreground">Account</span>
+            <span className="text-sm text-muted-foreground">{t("account")}</span>
           </div>
-          <ThemeToggle />
+          <div className="flex items-center gap-1">
+            <LocaleToggle />
+            <ThemeToggle />
+          </div>
         </div>
       </div>
     </aside>

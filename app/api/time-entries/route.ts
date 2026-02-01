@@ -41,7 +41,12 @@ export async function GET(req: Request) {
       orderBy: { date: "asc" },
     });
 
-    return NextResponse.json(entries);
+    return NextResponse.json({
+      entries,
+      meta: {
+        weeklyTarget: user.weeklyTarget,
+      },
+    });
   } catch (error) {
     console.error("[TIME_ENTRIES_GET]", error);
     return NextResponse.json(

@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useTranslations, useDateLocale } from "@/lib/i18n";
 
 interface VacationRequest {
   id: string;
@@ -35,34 +36,39 @@ interface VacationRequest {
   createdAt: string;
 }
 
-function getStatusBadge(status: string) {
-  switch (status) {
-    case "approved":
-      return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Approved</Badge>;
-    case "rejected":
-      return <Badge className="bg-red-100 text-red-700 hover:bg-red-100">Rejected</Badge>;
-    default:
-      return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">Pending</Badge>;
-  }
-}
-
-function getTypeBadge(type: string) {
-  switch (type) {
-    case "sick":
-      return <Badge variant="outline">Sick</Badge>;
-    case "personal":
-      return <Badge variant="outline">Personal</Badge>;
-    default:
-      return <Badge variant="outline">Vacation</Badge>;
-  }
-}
-
 function countBusinessDays(startDate: string, endDate: string): number {
   const days = differenceInBusinessDays(new Date(endDate), new Date(startDate)) + 1;
   return Math.max(days, 1);
 }
 
 export default function VacationsPage() {
+  const t = useTranslations("vacations");
+  const tc = useTranslations("common");
+  const dateLocale = useDateLocale();
+  const formatOpts = dateLocale ? { locale: dateLocale } : undefined;
+
+  function getStatusBadge(status: string) {
+    switch (status) {
+      case "approved":
+        return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900 dark:text-emerald-300 dark:hover:bg-emerald-900">{tc("approved")}</Badge>;
+      case "rejected":
+        return <Badge className="bg-red-100 text-red-700 hover:bg-red-100 dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-900">{tc("rejected")}</Badge>;
+      default:
+        return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 dark:bg-amber-900 dark:text-amber-300 dark:hover:bg-amber-900">{tc("pending")}</Badge>;
+    }
+  }
+
+  function getTypeBadge(type: string) {
+    switch (type) {
+      case "sick":
+        return <Badge variant="outline">{t("sick")}</Badge>;
+      case "personal":
+        return <Badge variant="outline">{t("personal")}</Badge>;
+      default:
+        return <Badge variant="outline">{t("vacationType")}</Badge>;
+    }
+  }
+
   const [requests, setRequests] = useState<VacationRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -156,10 +162,10 @@ export default function VacationsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Vacations</h1>
+        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
         <Button onClick={() => setModalOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          Request Vacation
+          {t("requestVacation")}
         </Button>
       </div>
 
@@ -167,20 +173,20 @@ export default function VacationsPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Total Allowance</p>
-            <p className="mt-1 text-2xl font-bold">{totalAllowance} days</p>
+            <p className="text-sm text-muted-foreground">{t("totalAllowance")}</p>
+            <p className="mt-1 text-2xl font-bold">{totalAllowance} {t("days")}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Used (Approved)</p>
-            <p className="mt-1 text-2xl font-bold">{approvedDays} days</p>
+            <p className="text-sm text-muted-foreground">{t("usedApproved")}</p>
+            <p className="mt-1 text-2xl font-bold">{approvedDays} {t("days")}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">Remaining</p>
-            <p className="mt-1 text-2xl font-bold">{remainingDays} days</p>
+            <p className="text-sm text-muted-foreground">{t("remainingDays")}</p>
+            <p className="mt-1 text-2xl font-bold">{remainingDays} {t("days")}</p>
           </CardContent>
         </Card>
       </div>
@@ -188,15 +194,15 @@ export default function VacationsPage() {
       {/* Requests List */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg">My Requests</CardTitle>
+          <CardTitle className="text-lg">{t("myRequests")}</CardTitle>
         </CardHeader>
         <CardContent>
           {requests.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Palmtree className="h-12 w-12 text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-semibold text-foreground">No Vacation Requests</h3>
+              <h3 className="mt-4 text-lg font-semibold text-foreground">{t("noRequestsTitle")}</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Click &quot;Request Vacation&quot; to submit your first request.
+                {t("noRequestsDescription")}
               </p>
             </div>
           ) : (
@@ -211,12 +217,12 @@ export default function VacationsPage() {
                       {getTypeBadge(req.type)}
                       {getStatusBadge(req.status)}
                       <span className="text-sm text-muted-foreground">
-                        {countBusinessDays(req.startDate, req.endDate)} day(s)
+                        {countBusinessDays(req.startDate, req.endDate)} {t("dayCount")}
                       </span>
                     </div>
                     <p className="text-sm font-medium">
-                      {format(new Date(req.startDate), "MMM d, yyyy")} —{" "}
-                      {format(new Date(req.endDate), "MMM d, yyyy")}
+                      {format(new Date(req.startDate), "MMM d, yyyy", formatOpts)} —{" "}
+                      {format(new Date(req.endDate), "MMM d, yyyy", formatOpts)}
                     </p>
                     {req.note && (
                       <p className="text-sm text-muted-foreground">{req.note}</p>
@@ -227,7 +233,7 @@ export default function VacationsPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => handleCancel(req.id)}
-                      title="Cancel request"
+                      title={t("cancelRequest")}
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -243,25 +249,25 @@ export default function VacationsPage() {
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Request Vacation</DialogTitle>
+            <DialogTitle>{t("requestVacation")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Type</Label>
+              <Label>{tc("type")}</Label>
               <Select value={type} onValueChange={setType}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="vacation">Vacation</SelectItem>
-                  <SelectItem value="sick">Sick Leave</SelectItem>
-                  <SelectItem value="personal">Personal</SelectItem>
+                  <SelectItem value="vacation">{t("vacationType")}</SelectItem>
+                  <SelectItem value="sick">{t("sickLeave")}</SelectItem>
+                  <SelectItem value="personal">{t("personal")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Start Date</Label>
+                <Label>{tc("startDate")}</Label>
                 <Input
                   type="date"
                   value={startDate}
@@ -269,7 +275,7 @@ export default function VacationsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>End Date</Label>
+                <Label>{tc("endDate")}</Label>
                 <Input
                   type="date"
                   value={endDate}
@@ -279,28 +285,28 @@ export default function VacationsPage() {
             </div>
             {startDate && endDate && new Date(endDate) >= new Date(startDate) && (
               <p className="text-sm text-muted-foreground">
-                {countBusinessDays(startDate, endDate)} business day(s)
+                {countBusinessDays(startDate, endDate)} {t("businessDays")}
               </p>
             )}
             <div className="space-y-2">
-              <Label>Note (optional)</Label>
+              <Label>{t("noteOptional")}</Label>
               <Textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="Reason for request..."
+                placeholder={t("notePlaceholder")}
                 rows={3}
               />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setModalOpen(false)}>
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button
               onClick={handleSubmit}
               disabled={saving || !startDate || !endDate}
             >
-              {saving ? "Submitting..." : "Submit Request"}
+              {saving ? tc("saving") : t("submitRequest")}
             </Button>
           </DialogFooter>
         </DialogContent>

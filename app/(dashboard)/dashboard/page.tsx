@@ -51,6 +51,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useTranslations, useDateLocale } from "@/lib/i18n";
 
 interface Project {
   id: string;
@@ -100,15 +101,19 @@ function StatCard({ title, value, icon: Icon, color, subtitle }: StatCardProps) 
   );
 }
 
-const BILLING_LABELS: Record<string, string> = {
-  billable: "Billable",
-  included: "Included",
-  non_billable: "Non-Billable",
-  internal: "Internal",
-  presales: "Pre-Sales",
-};
-
 export default function DashboardPage() {
+  const t = useTranslations("dashboard");
+  const tc = useTranslations("common");
+  const dateLocale = useDateLocale();
+
+  const BILLING_LABELS: Record<string, string> = {
+    billable: tc("billable"),
+    included: tc("included"),
+    non_billable: tc("nonBillable"),
+    internal: tc("internal"),
+    presales: tc("preSales"),
+  };
+
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -126,6 +131,7 @@ export default function DashboardPage() {
   const [saving, setSaving] = useState(false);
   const [vacationDaysUsed, setVacationDaysUsed] = useState(0);
   const [vacationDaysTotal, setVacationDaysTotal] = useState(25);
+  const [weeklyTarget, setWeeklyTarget] = useState(40);
   const [weekNote, setWeekNote] = useState<{ action: string; reason: string | null; createdAt: string } | null>(null);
   const [weekNoteDismissed, setWeekNoteDismissed] = useState(false);
 
@@ -159,7 +165,10 @@ export default function DashboardPage() {
 
       if (entriesRes.ok) {
         const data = await entriesRes.json();
-        setEntries(data);
+        setEntries(data.entries);
+        if (data.meta?.weeklyTarget !== undefined) {
+          setWeeklyTarget(data.meta.weeklyTarget);
+        }
       }
       if (projectsRes.ok) {
         const data = await projectsRes.json();
@@ -222,7 +231,6 @@ export default function DashboardPage() {
   const billableTotal = entries
     .filter((e) => e.billingStatus === "billable")
     .reduce((sum, e) => sum + e.hours, 0);
-  const weeklyTarget = 40;
   const timeBalance = grandTotal - weeklyTarget;
 
   function openModal(date: Date, projectId?: string, entry?: TimeEntry) {
@@ -309,15 +317,15 @@ export default function DashboardPage() {
       if (res.ok) {
         setSubmitDialogOpen(false);
         setWeekNoteDismissed(true);
-        toast.success("Week submitted for approval");
+        toast.success(t("weekSubmitted"));
         fetchData();
       } else {
         const data = await res.json();
-        toast.error(data.error || "Failed to submit week");
+        toast.error(data.error || t("failedToSubmit"));
       }
     } catch (error) {
       console.error("Failed to submit week:", error);
-      toast.error("Failed to submit week");
+      toast.error(t("failedToSubmit"));
     } finally {
       setSubmitting(false);
     }
@@ -354,6 +362,8 @@ export default function DashboardPage() {
     }
   }
 
+  const formatOpts = dateLocale ? { locale: dateLocale } : undefined;
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -372,12 +382,12 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {/* Week Navigation */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Timesheet</h1>
+        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
         <div className="flex items-center gap-2">
           {weekStatus === "draft" && entries.length > 0 && (
             <Button onClick={() => setSubmitDialogOpen(true)}>
               <Send className="mr-2 h-4 w-4" />
-              Submit Week
+              {t("submitWeek")}
             </Button>
           )}
           <Button
@@ -388,7 +398,7 @@ export default function DashboardPage() {
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <Button variant="outline" onClick={() => setCurrentWeek(new Date())}>
-            Today
+            {tc("today")}
           </Button>
           <Button
             variant="outline"
@@ -398,7 +408,7 @@ export default function DashboardPage() {
             <ChevronRight className="h-4 w-4" />
           </Button>
           <span className="ml-2 text-sm text-muted-foreground">
-            {format(weekStart, "MMM d")} - {format(weekEnd, "MMM d, yyyy")}
+            {format(weekStart, "MMM d", formatOpts)} - {format(weekEnd, "MMM d, yyyy", formatOpts)}
           </span>
         </div>
       </div>
@@ -407,19 +417,19 @@ export default function DashboardPage() {
       {weekStatus === "submitted" && (
         <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
           <Clock className="h-4 w-4" />
-          Submitted for approval. Waiting for admin review.
+          {t("submittedBanner")}
         </div>
       )}
       {weekStatus === "approved" && (
         <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
           <Check className="h-4 w-4" />
-          Week approved.
+          {t("approvedBanner")}
         </div>
       )}
       {weekStatus === "locked" && (
         <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
           <Lock className="h-4 w-4" />
-          Week locked for invoicing. No changes allowed.
+          {t("lockedBanner")}
         </div>
       )}
 
@@ -429,7 +439,7 @@ export default function DashboardPage() {
           <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
           <div className="flex-1">
             <span className="font-medium">
-              {weekNote.action === "REJECT" ? "Week returned by admin" : "Week reopened by admin"}
+              {weekNote.action === "REJECT" ? t("weekReturnedByAdmin") : t("weekReopenedByAdmin")}
             </span>
             {weekNote.reason && (
               <span>: &quot;{weekNote.reason}&quot;</span>
@@ -447,32 +457,32 @@ export default function DashboardPage() {
       {/* Stat Cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
         <StatCard
-          title="Target"
+          title={t("target")}
           value={`${weeklyTarget}h`}
           icon={Target}
           color="bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
         />
         <StatCard
-          title="Billable"
+          title={t("billableHours")}
           value={`${billableTotal.toFixed(1)}h`}
           icon={DollarSign}
           color="bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
         />
         <StatCard
-          title="Vacation"
+          title={t("vacation")}
           value={`${vacationDaysUsed}d`}
           icon={Palmtree}
           color="bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400"
-          subtitle="days used"
+          subtitle={t("daysUsed")}
         />
         <StatCard
-          title="Total"
+          title={t("totalHours")}
           value={`${grandTotal.toFixed(1)}h`}
           icon={Clock}
           color="bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400"
         />
         <StatCard
-          title="Time Balance"
+          title={t("timeBalance")}
           value={`${timeBalance >= 0 ? "+" : ""}${timeBalance.toFixed(1)}h`}
           icon={TrendingUp}
           color={timeBalance >= 0
@@ -481,26 +491,26 @@ export default function DashboardPage() {
           }
         />
         <StatCard
-          title="Vacation Days"
+          title={t("vacationDays")}
           value={`${vacationDaysTotal - vacationDaysUsed}`}
           icon={CalendarDays}
           color="bg-sky-50 text-sky-600 dark:bg-sky-950 dark:text-sky-400"
-          subtitle="remaining"
+          subtitle={t("remaining")}
         />
       </div>
 
       {/* Timesheet Grid */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Weekly Timesheet</CardTitle>
+          <CardTitle className="text-lg">{t("weeklyTimesheet")}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {projects.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <Clock className="h-12 w-12 text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-semibold text-foreground">No Projects Yet</h3>
+              <h3 className="mt-4 text-lg font-semibold text-foreground">{t("noProjectsTitle")}</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Ask your admin to create projects to start tracking time.
+                {t("noProjectsDescription")}
               </p>
             </div>
           ) : (
@@ -509,7 +519,7 @@ export default function DashboardPage() {
                 <thead>
                   <tr className="border-b bg-muted/50">
                     <th className="px-4 py-3 text-left font-medium text-muted-foreground w-48">
-                      Project
+                      {tc("project")}
                     </th>
                     {weekDays.map((day) => (
                       <th
@@ -519,12 +529,12 @@ export default function DashboardPage() {
                           isToday(day) ? "text-brand-600 bg-brand-50/50" : "text-muted-foreground"
                         )}
                       >
-                        <div>{format(day, "EEE")}</div>
-                        <div className="text-xs">{format(day, "MMM d")}</div>
+                        <div>{format(day, "EEE", formatOpts)}</div>
+                        <div className="text-xs">{format(day, "MMM d", formatOpts)}</div>
                       </th>
                     ))}
                     <th className="px-4 py-3 text-center font-medium text-muted-foreground w-20">
-                      Total
+                      {t("total")}
                     </th>
                   </tr>
                 </thead>
@@ -588,7 +598,7 @@ export default function DashboardPage() {
                 </tbody>
                 <tfoot>
                   <tr className="bg-muted/50">
-                    <td className="px-4 py-3 font-semibold text-foreground">Daily Total</td>
+                    <td className="px-4 py-3 font-semibold text-foreground">{t("dailyTotal")}</td>
                     {weekDays.map((day) => (
                       <td
                         key={day.toISOString()}
@@ -618,9 +628,9 @@ export default function DashboardPage() {
             <DialogTitle>
               {editingEntry
                 ? isEntryReadOnly(editingEntry)
-                  ? "View Time Entry"
-                  : "Edit Time Entry"
-                : "Log Time"
+                  ? t("viewEntry")
+                  : t("editEntry")
+                : t("logTime")
               }
             </DialogTitle>
           </DialogHeader>
@@ -629,20 +639,20 @@ export default function DashboardPage() {
           {editingEntry && isEntryReadOnly(editingEntry) && (
             <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
-              This entry is {editingEntry.approvalStatus} and cannot be edited.
+              {t("entryReadOnly", { status: editingEntry.approvalStatus })}
             </div>
           )}
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Project</Label>
+              <Label>{tc("project")}</Label>
               <Select
                 value={selectedProjectId}
                 onValueChange={setSelectedProjectId}
                 disabled={!!editingEntry}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select project" />
+                  <SelectValue placeholder={t("selectProject")} />
                 </SelectTrigger>
                 <SelectContent>
                   {projects.map((p) => (
@@ -660,7 +670,7 @@ export default function DashboardPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Date</Label>
+              <Label>{tc("date")}</Label>
               <Input
                 type="date"
                 value={selectedDate}
@@ -669,7 +679,7 @@ export default function DashboardPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Hours</Label>
+              <Label>{tc("hours")}</Label>
               <Input
                 type="number"
                 step="0.5"
@@ -677,16 +687,16 @@ export default function DashboardPage() {
                 max="24"
                 value={hours}
                 onChange={(e) => setHours(e.target.value)}
-                placeholder="e.g. 8"
+                placeholder={t("hoursPlaceholder")}
                 disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
               />
             </div>
             <div className="space-y-2">
-              <Label>Comment</Label>
+              <Label>{tc("comment")}</Label>
               <Textarea
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                placeholder="What did you work on?"
+                placeholder={t("commentPlaceholder")}
                 rows={3}
                 disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
               />
@@ -694,7 +704,7 @@ export default function DashboardPage() {
 
             {/* Billing Status */}
             <div className="space-y-2">
-              <Label>Billing</Label>
+              <Label>{t("billing")}</Label>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
@@ -714,7 +724,7 @@ export default function DashboardPage() {
                   />
                 </button>
                 <span className="text-sm text-muted-foreground">
-                  {billingStatus === "billable" ? "Billable" : "Not billable"}
+                  {billingStatus === "billable" ? tc("billable") : t("notBillable")}
                 </span>
               </div>
             </div>
@@ -722,7 +732,7 @@ export default function DashboardPage() {
             {/* Category selector when not billable */}
             {billingStatus !== "billable" && (
               <div className="space-y-2">
-                <Label>Category</Label>
+                <Label>{t("category")}</Label>
                 <Select
                   value={billingStatus}
                   onValueChange={setBillingStatus}
@@ -732,10 +742,10 @@ export default function DashboardPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="included">Included (contract/retainer)</SelectItem>
-                    <SelectItem value="non_billable">Non-Billable</SelectItem>
-                    <SelectItem value="internal">Internal</SelectItem>
-                    <SelectItem value="presales">Pre-Sales</SelectItem>
+                    <SelectItem value="included">{t("includedContract")}</SelectItem>
+                    <SelectItem value="non_billable">{tc("nonBillable")}</SelectItem>
+                    <SelectItem value="internal">{tc("internal")}</SelectItem>
+                    <SelectItem value="presales">{tc("preSales")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -755,15 +765,15 @@ export default function DashboardPage() {
           <DialogFooter className="gap-2">
             {editingEntry && !isEntryReadOnly(editingEntry) && (
               <Button variant="destructive" onClick={handleDelete} disabled={saving}>
-                Delete
+                {tc("delete")}
               </Button>
             )}
             <Button variant="outline" onClick={() => setModalOpen(false)}>
-              {editingEntry && isEntryReadOnly(editingEntry) ? "Close" : "Cancel"}
+              {editingEntry && isEntryReadOnly(editingEntry) ? tc("close") : tc("cancel")}
             </Button>
             {!(editingEntry && isEntryReadOnly(editingEntry)) && (
               <Button onClick={handleSave} disabled={saving || !hours || !selectedProjectId || !comment.trim()}>
-                {saving ? "Saving..." : editingEntry ? "Update" : "Log Time"}
+                {saving ? tc("saving") : editingEntry ? tc("update") : t("logTime")}
               </Button>
             )}
           </DialogFooter>
@@ -774,22 +784,23 @@ export default function DashboardPage() {
       <Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Submit Week for Approval</DialogTitle>
+            <DialogTitle>{t("submitWeekTitle")}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Submit all entries for <strong>{format(weekStart, "MMM d")} - {format(weekEnd, "MMM d, yyyy")}</strong> for
-            admin approval? You won&apos;t be able to edit them until an admin approves or rejects them.
+            {t("submitWeekDescription", {
+              dates: `${format(weekStart, "MMM d", formatOpts)} - ${format(weekEnd, "MMM d, yyyy", formatOpts)}`,
+            })}
           </p>
           <p className="text-sm font-medium">
-            {entries.length} entries, {grandTotal.toFixed(1)} total hours
+            {t("submitWeekSummary", { count: entries.length.toString(), hours: grandTotal.toFixed(1) })}
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSubmitDialogOpen(false)}>
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button onClick={handleSubmitWeek} disabled={submitting}>
               <Send className="mr-2 h-4 w-4" />
-              {submitting ? "Submitting..." : "Submit Week"}
+              {submitting ? t("submitting") : t("submitWeek")}
             </Button>
           </DialogFooter>
         </DialogContent>

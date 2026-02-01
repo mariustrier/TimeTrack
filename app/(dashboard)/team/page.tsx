@@ -31,6 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useTranslations } from "@/lib/i18n";
 
 interface TeamMember {
   id: string;
@@ -45,6 +46,8 @@ interface TeamMember {
 }
 
 export default function TeamPage() {
+  const t = useTranslations("team");
+  const tc = useTranslations("common");
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -177,39 +180,39 @@ export default function TeamPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Team</h1>
+        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
         <Button onClick={openInviteModal}>
           <UserPlus className="mr-2 h-4 w-4" />
-          Invite Member
+          {t("inviteMember")}
         </Button>
       </div>
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Team Members ({members.length})</CardTitle>
+          <CardTitle className="text-lg">{t("teamMembers", { count: members.length.toString() })}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {members.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16">
               <Users className="h-12 w-12 text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-semibold text-foreground">No Team Members</h3>
-              <p className="mt-1 text-sm text-muted-foreground">Invite your first team member.</p>
+              <h3 className="mt-4 text-lg font-semibold text-foreground">{t("noMembersTitle")}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{t("noMembersDescription")}</p>
               <Button className="mt-4" onClick={openInviteModal}>
                 <Plus className="mr-2 h-4 w-4" />
-                Invite Member
+                {t("inviteMember")}
               </Button>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Bill Rate</TableHead>
-                  <TableHead>Cost Rate</TableHead>
-                  <TableHead>Weekly Target</TableHead>
-                  <TableHead className="w-20">Actions</TableHead>
+                  <TableHead>{tc("name")}</TableHead>
+                  <TableHead>{tc("email")}</TableHead>
+                  <TableHead>{t("role")}</TableHead>
+                  <TableHead>{t("billRate")}</TableHead>
+                  <TableHead>{t("costRate")}</TableHead>
+                  <TableHead>{t("weeklyTarget")}</TableHead>
+                  <TableHead className="w-20">{tc("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -265,13 +268,13 @@ export default function TeamPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingMember ? "Edit Team Member" : "Invite Team Member"}
+              {editingMember ? t("editMember") : t("inviteMemberTitle")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>First Name</Label>
+                <Label>{t("firstName")}</Label>
                 <Input
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
@@ -279,7 +282,7 @@ export default function TeamPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Last Name</Label>
+                <Label>{t("lastName")}</Label>
                 <Input
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
@@ -288,7 +291,7 @@ export default function TeamPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Email</Label>
+              <Label>{tc("email")}</Label>
               <Input
                 type="email"
                 value={email}
@@ -298,20 +301,20 @@ export default function TeamPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Role</Label>
+              <Label>{t("role")}</Label>
               <Select value={role} onValueChange={setRole}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="employee">Employee</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="employee">{t("employee")}</SelectItem>
+                  <SelectItem value="admin">{t("adminRole")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Bill Rate ({companyCurrency}/h)</Label>
+                <Label>{t("billRateLabel", { currency: companyCurrency })}</Label>
                 <Input
                   type="number"
                   value={hourlyRate}
@@ -320,7 +323,7 @@ export default function TeamPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Cost Rate ({companyCurrency}/h)</Label>
+                <Label>{t("costRateLabel", { currency: companyCurrency })}</Label>
                 <Input
                   type="number"
                   value={costRate}
@@ -331,7 +334,7 @@ export default function TeamPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Weekly Target (h)</Label>
+                <Label>{t("weeklyTargetLabel")}</Label>
                 <Input
                   type="number"
                   value={weeklyTarget}
@@ -340,7 +343,7 @@ export default function TeamPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Vacation Days</Label>
+                <Label>{t("vacationDays")}</Label>
                 <Input
                   type="number"
                   value={vacationDays}
@@ -352,10 +355,10 @@ export default function TeamPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setModalOpen(false)}>
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button onClick={handleSave} disabled={saving || (!editingMember && !email.trim())}>
-              {saving ? "Saving..." : editingMember ? "Update" : "Invite"}
+              {saving ? tc("saving") : editingMember ? tc("update") : t("invite")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -365,21 +368,17 @@ export default function TeamPage() {
       <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Remove Team Member</DialogTitle>
+            <DialogTitle>{t("removeMember")}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Are you sure you want to remove{" "}
-            <strong>
-              {deletingMember?.firstName || deletingMember?.email}
-            </strong>
-            ? This will also delete all their time entries.
+            {t("removeMemberConfirm", { name: deletingMember?.firstName || deletingMember?.email || "" })}
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteModalOpen(false)}>
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button variant="destructive" onClick={handleDelete} disabled={saving}>
-              {saving ? "Removing..." : "Remove"}
+              {saving ? tc("removing") : tc("delete")}
             </Button>
           </DialogFooter>
         </DialogContent>

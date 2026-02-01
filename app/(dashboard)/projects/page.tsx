@@ -30,6 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useTranslations } from "@/lib/i18n";
 
 interface Project {
   id: string;
@@ -49,6 +50,9 @@ const COLORS = [
 ];
 
 export default function ProjectsPage() {
+  const t = useTranslations("projects");
+  const tc = useTranslations("common");
+
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -166,38 +170,38 @@ export default function ProjectsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Projects</h1>
+        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
         <Button onClick={openCreateModal}>
           <Plus className="mr-2 h-4 w-4" />
-          New Project
+          {t("newProject")}
         </Button>
       </div>
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg">All Projects</CardTitle>
+          <CardTitle className="text-lg">{t("allProjects")}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {projects.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16">
               <FolderKanban className="h-12 w-12 text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-semibold text-foreground">No Projects</h3>
-              <p className="mt-1 text-sm text-muted-foreground">Create your first project to get started.</p>
+              <h3 className="mt-4 text-lg font-semibold text-foreground">{t("noProjectsTitle")}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{t("noProjectsDescription")}</p>
               <Button className="mt-4" onClick={openCreateModal}>
                 <Plus className="mr-2 h-4 w-4" />
-                New Project
+                {t("newProject")}
               </Button>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Project</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Budget</TableHead>
-                  <TableHead>Entries</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-20">Actions</TableHead>
+                  <TableHead>{tc("project")}</TableHead>
+                  <TableHead>{t("client")}</TableHead>
+                  <TableHead>{t("budget")}</TableHead>
+                  <TableHead>{t("entries")}</TableHead>
+                  <TableHead>{tc("status")}</TableHead>
+                  <TableHead className="w-20">{tc("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -222,10 +226,10 @@ export default function ProjectsPage() {
                     <TableCell>
                       <div className="flex gap-1.5">
                         <Badge variant={project.active ? "default" : "secondary"}>
-                          {project.active ? "Active" : "Inactive"}
+                          {project.active ? tc("active") : tc("inactive")}
                         </Badge>
                         {project.billable && (
-                          <Badge variant="outline">Billable</Badge>
+                          <Badge variant="outline">{tc("billable")}</Badge>
                         )}
                         {project.currency && project.currency !== companyCurrency && (
                           <Badge variant="outline">{project.currency}</Badge>
@@ -266,28 +270,28 @@ export default function ProjectsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingProject ? "Edit Project" : "New Project"}
+              {editingProject ? t("editProject") : t("newProject")}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Name</Label>
+              <Label>{tc("name")}</Label>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Project name"
+                placeholder={t("projectName")}
               />
             </div>
             <div className="space-y-2">
-              <Label>Client</Label>
+              <Label>{t("client")}</Label>
               <Input
                 value={client}
                 onChange={(e) => setClient(e.target.value)}
-                placeholder="Client name (optional)"
+                placeholder={t("clientName")}
               />
             </div>
             <div className="space-y-2">
-              <Label>Color</Label>
+              <Label>{t("color")}</Label>
               <div className="flex flex-wrap gap-2">
                 {COLORS.map((c) => (
                   <button
@@ -302,22 +306,22 @@ export default function ProjectsPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Budget Hours</Label>
+              <Label>{t("budgetHours")}</Label>
               <Input
                 type="number"
                 value={budgetHours}
                 onChange={(e) => setBudgetHours(e.target.value)}
-                placeholder="Optional"
+                placeholder={t("optional")}
               />
             </div>
             <div className="space-y-2">
-              <Label>Currency</Label>
+              <Label>{tc("currency")}</Label>
               <Select value={currency} onValueChange={setCurrency}>
                 <SelectTrigger>
-                  <SelectValue placeholder={`Company default (${companyCurrency})`} />
+                  <SelectValue placeholder={t("companyDefault", { currency: companyCurrency })} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="default">Company default ({companyCurrency})</SelectItem>
+                  <SelectItem value="default">{t("companyDefault", { currency: companyCurrency })}</SelectItem>
                   <SelectItem value="USD">USD</SelectItem>
                   <SelectItem value="EUR">EUR</SelectItem>
                   <SelectItem value="DKK">DKK</SelectItem>
@@ -332,15 +336,15 @@ export default function ProjectsPage() {
                 onChange={(e) => setBillable(e.target.checked)}
                 className="h-4 w-4 rounded border-border"
               />
-              <Label htmlFor="billable">Billable project</Label>
+              <Label htmlFor="billable">{t("billableProject")}</Label>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setModalOpen(false)}>
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button onClick={handleSave} disabled={saving || !name.trim()}>
-              {saving ? "Saving..." : editingProject ? "Update" : "Create"}
+              {saving ? tc("saving") : editingProject ? tc("update") : tc("create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -350,18 +354,17 @@ export default function ProjectsPage() {
       <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Project</DialogTitle>
+            <DialogTitle>{t("deleteProject")}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Are you sure you want to delete <strong>{deletingProject?.name}</strong>?
-            This will also delete all associated time entries. This action cannot be undone.
+            {t("deleteProjectConfirm", { name: deletingProject?.name || "" })}
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteModalOpen(false)}>
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button variant="destructive" onClick={handleDelete} disabled={saving}>
-              {saving ? "Deleting..." : "Delete"}
+              {saving ? tc("deleting") : tc("delete")}
             </Button>
           </DialogFooter>
         </DialogContent>

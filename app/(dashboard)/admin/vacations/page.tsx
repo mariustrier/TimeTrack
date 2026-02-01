@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useTranslations, useDateLocale } from "@/lib/i18n";
 
 interface VacationRequest {
   id: string;
@@ -31,38 +32,44 @@ interface VacationRequest {
   };
 }
 
-function getStatusBadge(status: string) {
-  switch (status) {
-    case "approved":
-      return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Approved</Badge>;
-    case "rejected":
-      return <Badge className="bg-red-100 text-red-700 hover:bg-red-100">Rejected</Badge>;
-    default:
-      return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">Pending</Badge>;
-  }
-}
-
-function getTypeBadge(type: string) {
-  switch (type) {
-    case "sick":
-      return <Badge variant="outline">Sick</Badge>;
-    case "personal":
-      return <Badge variant="outline">Personal</Badge>;
-    default:
-      return <Badge variant="outline">Vacation</Badge>;
-  }
-}
-
 function countBusinessDays(startDate: string, endDate: string): number {
   const days = differenceInBusinessDays(new Date(endDate), new Date(startDate)) + 1;
   return Math.max(days, 1);
 }
 
 export default function AdminVacationsPage() {
+  const t = useTranslations("adminVacations");
+  const tc = useTranslations("common");
+  const tv = useTranslations("vacations");
+  const dateLocale = useDateLocale();
+  const formatOpts = dateLocale ? { locale: dateLocale } : undefined;
+
   const [requests, setRequests] = useState<VacationRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("pending");
   const [updating, setUpdating] = useState<string | null>(null);
+
+  function getStatusBadge(status: string) {
+    switch (status) {
+      case "approved":
+        return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900 dark:text-emerald-300 dark:hover:bg-emerald-900">{tc("approved")}</Badge>;
+      case "rejected":
+        return <Badge className="bg-red-100 text-red-700 hover:bg-red-100 dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-900">{tc("rejected")}</Badge>;
+      default:
+        return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 dark:bg-amber-900 dark:text-amber-300 dark:hover:bg-amber-900">{tc("pending")}</Badge>;
+    }
+  }
+
+  function getTypeBadge(type: string) {
+    switch (type) {
+      case "sick":
+        return <Badge variant="outline">{tv("sick")}</Badge>;
+      case "personal":
+        return <Badge variant="outline">{tv("personal")}</Badge>;
+      default:
+        return <Badge variant="outline">{tv("vacationType")}</Badge>;
+    }
+  }
 
   const fetchRequests = useCallback(async () => {
     setLoading(true);
@@ -117,16 +124,16 @@ export default function AdminVacationsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Vacation Requests</h1>
+        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-40">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="approved">Approved</SelectItem>
-            <SelectItem value="rejected">Rejected</SelectItem>
+            <SelectItem value="all">{tc("all")}</SelectItem>
+            <SelectItem value="pending">{tc("pending")}</SelectItem>
+            <SelectItem value="approved">{tc("approved")}</SelectItem>
+            <SelectItem value="rejected">{tc("rejected")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -135,7 +142,7 @@ export default function AdminVacationsPage() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">
-            {statusFilter === "all" ? "All Requests" : `${statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)} Requests`}
+            {statusFilter === "all" ? t("allRequests") : statusFilter === "pending" ? t("pendingRequests") : statusFilter === "approved" ? t("approvedRequests") : t("rejectedRequests")}
             <span className="ml-2 text-sm font-normal text-muted-foreground">
               ({filteredRequests.length})
             </span>
@@ -145,9 +152,9 @@ export default function AdminVacationsPage() {
           {filteredRequests.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Palmtree className="h-12 w-12 text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-semibold text-foreground">No Requests</h3>
+              <h3 className="mt-4 text-lg font-semibold text-foreground">{t("noRequestsTitle")}</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                No {statusFilter !== "all" ? statusFilter : ""} vacation requests found.
+                {t("noRequestsDescription", { status: statusFilter !== "all" ? statusFilter : "" })}
               </p>
             </div>
           ) : (
@@ -155,13 +162,13 @@ export default function AdminVacationsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">Employee</th>
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">Type</th>
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">Period</th>
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">Days</th>
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">Note</th>
-                    <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
+                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("employee")}</th>
+                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">{tc("type")}</th>
+                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("period")}</th>
+                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("daysColumn")}</th>
+                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">{tc("status")}</th>
+                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">{tc("note")}</th>
+                    <th className="px-4 py-3 text-right font-medium text-muted-foreground">{tc("actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -177,8 +184,8 @@ export default function AdminVacationsPage() {
                       </td>
                       <td className="px-4 py-3">{getTypeBadge(req.type)}</td>
                       <td className="px-4 py-3 text-foreground">
-                        {format(new Date(req.startDate), "MMM d")} —{" "}
-                        {format(new Date(req.endDate), "MMM d, yyyy")}
+                        {format(new Date(req.startDate), "MMM d", formatOpts)} —{" "}
+                        {format(new Date(req.endDate), "MMM d, yyyy", formatOpts)}
                       </td>
                       <td className="px-4 py-3 text-foreground">
                         {countBusinessDays(req.startDate, req.endDate)}
@@ -193,22 +200,22 @@ export default function AdminVacationsPage() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                              className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:text-emerald-300 dark:hover:bg-emerald-950"
                               onClick={() => handleAction(req.id, "approved")}
                               disabled={updating === req.id}
                             >
                               <Check className="mr-1 h-4 w-4" />
-                              Approve
+                              {tc("approve")}
                             </Button>
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950"
                               onClick={() => handleAction(req.id, "rejected")}
                               disabled={updating === req.id}
                             >
                               <X className="mr-1 h-4 w-4" />
-                              Reject
+                              {tc("reject")}
                             </Button>
                           </div>
                         )}
