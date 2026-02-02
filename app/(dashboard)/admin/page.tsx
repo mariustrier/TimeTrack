@@ -911,7 +911,7 @@ export default function AdminPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="eco-currency">{tc("currency")}</Label>
+                <Label htmlFor="eco-currency" className="flex items-center">{tc("currency")}</Label>
                 <Input
                   id="eco-currency"
                   value={ecoCurrency}
