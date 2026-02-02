@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Download, Trash2, AlertTriangle, Clock, RotateCcw } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
 import { PageGuide } from "@/components/ui/page-guide";
 import { toast } from "sonner";
 
 export default function SettingsPage() {
-  const router = useRouter();
   const t = useTranslations("settings");
   const tl = useTranslations("legal");
   const tc = useTranslations("common");
@@ -73,8 +71,7 @@ export default function SettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reset: true }),
       });
-      router.push("/dashboard");
-      router.refresh();
+      window.location.href = "/dashboard";
     } catch {
       setReplaying(false);
     }
