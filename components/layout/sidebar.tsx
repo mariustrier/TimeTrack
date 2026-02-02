@@ -106,8 +106,8 @@ export function Sidebar({ userRole, isSuperAdmin: superAdmin }: SidebarProps) {
 
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-border bg-card">
-      <div className="flex h-16 items-center gap-2 border-b border-border px-6">
-        <LogoIcon className="h-7 w-7 text-brand-500" />
+      <div className="flex h-16 items-center gap-2 border-b border-border px-3">
+        <LogoIcon className="h-[5.5rem] w-[5.5rem] text-brand-500" />
         <span className="text-lg font-bold text-foreground">{t("timetrack")}</span>
       </div>
 

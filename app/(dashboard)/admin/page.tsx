@@ -25,6 +25,9 @@ import {
   AlertTriangle,
   Wallet,
   Building2,
+  Upload,
+  ImageIcon,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -142,6 +145,9 @@ export default function AdminPage() {
   const [receiptExportStart, setReceiptExportStart] = useState("");
   const [receiptExportEnd, setReceiptExportEnd] = useState("");
   const [receiptExporting, setReceiptExporting] = useState(false);
+  const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   // Allocation dialog state
   const [allocDialogOpen, setAllocDialogOpen] = useState(false);
@@ -201,6 +207,7 @@ export default function AdminPage() {
           setUseUniversalRate(data.useUniversalRate || false);
           setUniversalRateInput(data.defaultHourlyRate?.toString() || "");
           setExpenseThresholdInput(data.expenseAutoApproveThreshold?.toString() || "");
+          setCompanyLogoUrl(data.logoUrl || null);
         }
       })
       .catch(() => {});
@@ -805,6 +812,102 @@ export default function AdminPage() {
                 {t("manageCompanyExpenses")}
               </Button>
             </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Company Logo */}
+      <Card>
+        <CardContent className="p-6">
+          <h3 className="text-lg font-semibold text-foreground">{t("companyLogo")}</h3>
+          <p className="mt-1 text-sm text-muted-foreground">{t("companyLogoDesc")}</p>
+          <div className="mt-4 flex items-center gap-4">
+            {companyLogoUrl ? (
+              <div className="flex items-center gap-4">
+                <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-border bg-muted p-1">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={companyLogoUrl}
+                    alt="Company logo"
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => logoInputRef.current?.click()}
+                    disabled={logoUploading}
+                  >
+                    <Upload className="mr-1 h-3 w-3" />
+                    {t("uploadLogo")}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      setLogoUploading(true);
+                      try {
+                        const res = await fetch("/api/upload/logo", { method: "DELETE" });
+                        if (res.ok) {
+                          setCompanyLogoUrl(null);
+                          toast.success(t("logoRemoved"));
+                        }
+                      } catch {
+                        toast.error(t("logoUploadError"));
+                      } finally {
+                        setLogoUploading(false);
+                      }
+                    }}
+                    disabled={logoUploading}
+                  >
+                    <Trash2 className="mr-1 h-3 w-3" />
+                    {t("removeLogo")}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                onClick={() => logoInputRef.current?.click()}
+                disabled={logoUploading}
+              >
+                <ImageIcon className="mr-2 h-4 w-4" />
+                {logoUploading ? tc("saving") : t("uploadLogo")}
+              </Button>
+            )}
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept=".svg,.png,.jpg,.jpeg,.webp"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setLogoUploading(true);
+                try {
+                  const formData = new FormData();
+                  formData.append("file", file);
+                  const res = await fetch("/api/upload/logo", {
+                    method: "POST",
+                    body: formData,
+                  });
+                  if (res.ok) {
+                    const data = await res.json();
+                    setCompanyLogoUrl(data.url);
+                    toast.success(t("logoUploaded"));
+                  } else {
+                    const data = await res.json();
+                    toast.error(data.error || t("logoUploadError"));
+                  }
+                } catch {
+                  toast.error(t("logoUploadError"));
+                } finally {
+                  setLogoUploading(false);
+                  e.target.value = "";
+                }
+              }}
+            />
           </div>
         </CardContent>
       </Card>

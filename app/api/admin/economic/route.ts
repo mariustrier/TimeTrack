@@ -23,6 +23,7 @@ export async function GET() {
         economicVatCode: true,
         economicCurrency: true,
         expenseAutoApproveThreshold: true,
+        logoUrl: true,
       },
     });
 

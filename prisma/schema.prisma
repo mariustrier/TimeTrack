@@ -21,6 +21,7 @@ model Company {
   defaultHourlyRate      Float?
   useUniversalRate       Boolean @default(false)
   expenseAutoApproveThreshold Float?
+  logoUrl                     String?
 
   users              User[]
   projects           Project[]

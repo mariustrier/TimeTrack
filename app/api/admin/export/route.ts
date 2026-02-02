@@ -127,10 +127,26 @@ export async function GET() {
     ]);
     zip.file("company-expenses.csv", toCsv(compExpenseHeaders, compExpenseRows));
 
+    // Include company logo if available
+    if (company?.logoUrl) {
+      try {
+        const logoRes = await fetch(company.logoUrl);
+        if (logoRes.ok) {
+          const logoBuffer = await logoRes.arrayBuffer();
+          const logoPathname = new URL(company.logoUrl).pathname;
+          const logoExt = logoPathname.split(".").pop() || "png";
+          zip.file(`company-logo.${logoExt}`, logoBuffer);
+        }
+      } catch {
+        // Skip if logo download fails
+      }
+    }
+
     // Metadata
     const metadata = {
       exportDate: new Date().toISOString(),
       company: company?.name || "",
+      logoUrl: company?.logoUrl || null,
       totalUsers: users.length,
       totalProjects: projects.length,
       totalTimeEntries: timeEntries.length,
@@ -154,7 +170,8 @@ export async function GET() {
       `- vacations.csv: All vacation requests\n` +
       `- expenses.csv: All employee expenses\n` +
       `- company-expenses.csv: All company expenses\n` +
-      `- metadata.json: Export metadata\n`
+      `- metadata.json: Export metadata\n` +
+      (company?.logoUrl ? `- company-logo.*: Company logo\n` : ``)
     );
 
     const zipArrayBuffer = await zip.generateAsync({ type: "arraybuffer" });

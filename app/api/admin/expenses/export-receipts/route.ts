@@ -66,6 +66,25 @@ export async function GET(req: Request) {
     }
 
     const zip = new JSZip();
+
+    // Include company logo if available
+    const company = await db.company.findUnique({
+      where: { id: user.companyId },
+      select: { logoUrl: true },
+    });
+    if (company?.logoUrl) {
+      try {
+        const logoRes = await fetch(company.logoUrl);
+        if (logoRes.ok) {
+          const logoBuffer = await logoRes.arrayBuffer();
+          const logoExt = getExtension(company.logoUrl, "png");
+          zip.file(`company-logo.${logoExt}`, logoBuffer);
+        }
+      } catch {
+        // Skip if logo download fails
+      }
+    }
+
     const empFolder = zip.folder("employee-expenses")!;
     const compFolder = zip.folder("company-expenses")!;
 

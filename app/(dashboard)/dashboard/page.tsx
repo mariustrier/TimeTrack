@@ -55,6 +55,7 @@ import { cn } from "@/lib/utils";
 import { convertAndFormatBudget } from "@/lib/currency";
 import { useTranslations, useDateLocale } from "@/lib/i18n";
 import { PageGuide } from "@/components/ui/page-guide";
+import { useCompanyLogo } from "@/lib/company-context";
 
 interface Project {
   id: string;
@@ -95,7 +96,7 @@ function StatCard({ title, value, icon: Icon, color, subtitle }: StatCardProps) 
   return (
     <Card>
       <CardContent className="p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between">
           <div>
             <p className="text-sm text-muted-foreground">{title}</p>
             <p className="mt-1 text-2xl font-bold">{value}</p>
@@ -103,7 +104,7 @@ function StatCard({ title, value, icon: Icon, color, subtitle }: StatCardProps) 
               <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
             )}
           </div>
-          <div className={cn("flex h-10 w-10 items-center justify-center rounded-lg", color)}>
+          <div className={cn("mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg", color)}>
             <Icon className="h-5 w-5" />
           </div>
         </div>
@@ -116,6 +117,7 @@ export default function DashboardPage() {
   const t = useTranslations("dashboard");
   const tc = useTranslations("common");
   const dateLocale = useDateLocale();
+  const companyLogoUrl = useCompanyLogo();
 
   const BILLING_LABELS: Record<string, string> = {
     billable: tc("billable"),
@@ -709,6 +711,18 @@ export default function DashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Company Logo Footer */}
+      {companyLogoUrl && (
+        <div className="mt-8 flex justify-center pb-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={companyLogoUrl}
+            alt="Company logo"
+            className="h-10 object-contain opacity-40"
+          />
+        </div>
+      )}
 
       {/* Time Entry Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
