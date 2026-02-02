@@ -35,7 +35,7 @@ export function InfoTooltip({
           <Info className="shrink-0" style={{ width: size, height: size }} />
         </span>
       </TooltipTrigger>
-      <TooltipContent side={side} className="max-w-xs text-sm">
+      <TooltipContent side={side} className="max-w-sm text-sm whitespace-normal overflow-visible">
         {t(textKey)}
       </TooltipContent>
     </Tooltip>
