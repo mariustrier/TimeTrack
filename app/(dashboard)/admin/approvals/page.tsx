@@ -16,8 +16,10 @@ export default function ApprovalsPage() {
       <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
       <Tabs defaultValue="time-entries">
         <TabsList>
-          <TabsTrigger value="time-entries" className="flex items-center gap-1">{t("timeEntriesTab")} <InfoTooltip textKey="timeEntriesTab" size={12} /></TabsTrigger>
-          <TabsTrigger value="expenses" className="flex items-center gap-1">{t("expensesTab")} <InfoTooltip textKey="expensesTab" size={12} /></TabsTrigger>
+          <TabsTrigger value="time-entries">{t("timeEntriesTab")}</TabsTrigger>
+          <TabsTrigger value="expenses">{t("expensesTab")}</TabsTrigger>
+          <InfoTooltip textKey="timeEntriesTab" size={12} />
+          <InfoTooltip textKey="expensesTab" size={12} />
         </TabsList>
         <TabsContent value="time-entries">
           <TimeEntryApprovals />

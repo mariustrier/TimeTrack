@@ -68,8 +68,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ url: blob.url });
   } catch (error) {
     console.error("[LOGO_UPLOAD]", error);
+    const message = error instanceof Error ? error.message : "Internal server error";
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: message },
       { status: 500 }
     );
   }
