@@ -118,18 +118,26 @@ function TourOverlay({ steps, namespace, tourId, onComplete }: TourOverlayProps)
   const spotlightPadding = 8;
   const spotlightRadius = 8;
 
+  const sr = targetRect && !actuallyCenter ? {
+    top: targetRect.top - spotlightPadding,
+    left: targetRect.left - spotlightPadding,
+    right: targetRect.right + spotlightPadding,
+    bottom: targetRect.bottom + spotlightPadding,
+    width: targetRect.width + spotlightPadding * 2,
+    height: targetRect.height + spotlightPadding * 2,
+  } : null;
+
   return (
     <div className="fixed inset-0 z-[9999]" style={{ pointerEvents: "none" }}>
-      <svg className="fixed inset-0 w-full h-full">
+      {/* Visual overlay with SVG mask for rounded spotlight */}
+      <svg className="fixed inset-0 w-full h-full" style={{ pointerEvents: "none" }}>
         <defs>
           <mask id={`tour-mask-${tourId}`}>
             <rect x="0" y="0" width="100%" height="100%" fill="white" />
-            {targetRect && !actuallyCenter && (
+            {sr && (
               <rect
-                x={targetRect.left - spotlightPadding}
-                y={targetRect.top - spotlightPadding}
-                width={targetRect.width + spotlightPadding * 2}
-                height={targetRect.height + spotlightPadding * 2}
+                x={sr.left} y={sr.top}
+                width={sr.width} height={sr.height}
                 rx={spotlightRadius}
                 fill="black"
               />
@@ -140,18 +148,29 @@ function TourOverlay({ steps, namespace, tourId, onComplete }: TourOverlayProps)
           x="0" y="0" width="100%" height="100%"
           fill="rgba(0, 0, 0, 0.6)"
           mask={`url(#tour-mask-${tourId})`}
-          style={{ pointerEvents: "auto" }}
         />
       </svg>
 
-      {targetRect && !actuallyCenter && (
+      {/* Click-blocking: four divs around spotlight so the hole is truly interactive */}
+      {sr ? (
+        <>
+          <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: sr.top, pointerEvents: "auto" }} />
+          <div style={{ position: "fixed", top: sr.bottom, left: 0, right: 0, bottom: 0, pointerEvents: "auto" }} />
+          <div style={{ position: "fixed", top: sr.top, left: 0, width: sr.left, height: sr.height, pointerEvents: "auto" }} />
+          <div style={{ position: "fixed", top: sr.top, left: sr.right, right: 0, height: sr.height, pointerEvents: "auto" }} />
+        </>
+      ) : (
+        <div style={{ position: "fixed", inset: 0, pointerEvents: "auto" }} />
+      )}
+
+      {sr && (
         <div
           className="fixed border-2 border-brand-400 rounded-lg pointer-events-none transition-all duration-300"
           style={{
-            top: targetRect.top - spotlightPadding,
-            left: targetRect.left - spotlightPadding,
-            width: targetRect.width + spotlightPadding * 2,
-            height: targetRect.height + spotlightPadding * 2,
+            top: sr.top,
+            left: sr.left,
+            width: sr.width,
+            height: sr.height,
             boxShadow: "0 0 0 2px rgba(99, 102, 241, 0.3), 0 0 20px rgba(99, 102, 241, 0.15)",
           }}
         />
