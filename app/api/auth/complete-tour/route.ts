@@ -13,7 +13,11 @@ export async function POST(request: Request) {
     if (body.reset) {
       await db.user.update({
         where: { id: user.id },
-        data: { [field]: null },
+        data: {
+          tourCompletedAt: null,
+          setupTourCompletedAt: null,
+          dismissedGuides: [],
+        },
       });
       return NextResponse.json({ success: true, reset: true });
     }
