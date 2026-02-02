@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Download, Trash2, AlertTriangle, Clock } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Download, Trash2, AlertTriangle, Clock, RotateCcw } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
 import { toast } from "sonner";
 
 export default function SettingsPage() {
+  const router = useRouter();
   const t = useTranslations("settings");
   const tl = useTranslations("legal");
   const tc = useTranslations("common");
@@ -14,6 +16,7 @@ export default function SettingsPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteReason, setDeleteReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [replaying, setReplaying] = useState(false);
 
   useEffect(() => {
     fetch("/api/user/deletion-status")
@@ -61,9 +64,42 @@ export default function SettingsPage() {
     }
   };
 
+  const handleReplayTour = async () => {
+    setReplaying(true);
+    try {
+      await fetch("/api/auth/complete-tour", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reset: true }),
+      });
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setReplaying(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
+
+      {/* Replay Tour Section */}
+      <div className="rounded-xl border border-border bg-card p-6">
+        <div className="flex items-start gap-4">
+          <RotateCcw className="h-6 w-6 text-brand-500 mt-0.5" />
+          <div className="flex-1">
+            <h2 className="text-lg font-semibold text-foreground">{t("replayTour")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("replayTourDesc")}</p>
+            <button
+              onClick={handleReplayTour}
+              disabled={replaying}
+              className="mt-4 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition-colors disabled:opacity-50"
+            >
+              {replaying ? t("replaying") : t("replayTour")}
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Data Export Section */}
       <div className="rounded-xl border border-border bg-card p-6">

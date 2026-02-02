@@ -19,7 +19,7 @@ function LegalLayout({ children }: { children: React.ReactNode }) {
             <span className="text-xl font-bold text-white">Cloud Timer</span>
           </Link>
           <div className="flex items-center gap-3">
-            <LocaleToggle />
+            <LocaleToggle className="h-9 w-9 text-xs font-bold text-slate-300 hover:text-white hover:bg-white/10" />
             <Link
               href="/sign-in"
               className="text-sm text-slate-300 hover:text-white transition-colors"

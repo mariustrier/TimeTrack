@@ -6,6 +6,7 @@ import { isSuperAdmin } from "@/lib/auth";
 import { Toaster } from "sonner";
 import { LocaleProvider } from "@/lib/i18n";
 import { CookieConsent } from "@/components/ui/cookie-consent";
+import { GuidedTour } from "@/components/ui/guided-tour";
 
 export default async function DashboardLayout({
   children,
@@ -43,6 +44,7 @@ export default async function DashboardLayout({
         </main>
         <Toaster richColors />
         <CookieConsent />
+        <GuidedTour showTour={!user.tourCompletedAt} userRole={user.role} />
       </div>
     </LocaleProvider>
   );

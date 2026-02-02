@@ -497,7 +497,7 @@ export default function DashboardPage() {
       )}
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+      <div data-tour="stat-cards" className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
         <StatCard
           title={t("target")}
           value={`${weeklyTarget}h`}
@@ -542,7 +542,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Timesheet Grid */}
-      <Card>
+      <Card data-tour="timesheet">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">{t("weeklyTimesheet")}</CardTitle>
         </CardHeader>

@@ -764,6 +764,31 @@
     "deletionDenied": "Deletion Request Denied",
     "deletionDeniedDesc": "Your admin denied your deletion request. Reason: {reason}",
     "financialDataNotice": "Financial data (expenses, receipts) will be anonymized but retained for 5 years per Danish law (Bogføringsloven).",
-    "submitting": "Submitting..."
+    "submitting": "Submitting...",
+    "replayTour": "Replay Guided Tour",
+    "replayTourDesc": "Take the guided tour again to discover features.",
+    "replaying": "Starting tour..."
+  },
+  "tour": {
+    "welcome": "Welcome!",
+    "welcomeDesc": "Welcome to Cloud Timer! Let's take a quick tour to help you get started.",
+    "projects": "Create your projects",
+    "projectsDesc": "Start by setting up your projects with hourly rates. This is how you'll track time and profitability.",
+    "team": "Invite your team",
+    "teamDesc": "Add team members and assign them to projects. Set their hourly and cost rates.",
+    "admin": "Company settings",
+    "adminDesc": "Configure company-wide settings, manage expenses, and oversee operations.",
+    "timesheet": "Track your time",
+    "timesheetDesc": "This is your weekly timesheet. Click any cell to log hours against a project.",
+    "stats": "Weekly overview",
+    "statsDesc": "These cards show your weekly target, billable hours, time balance, and vacation days at a glance.",
+    "analytics": "Insights & reports",
+    "analyticsDesc": "View AI-powered analytics on team performance, project profitability, and trends.",
+    "done": "You're all set!",
+    "doneDesc": "Start by creating your first project. You can replay this tour anytime from Settings.",
+    "next": "Next",
+    "skip": "Skip tour",
+    "finish": "Get started",
+    "stepOf": "{current} of {total}"
   }
 }

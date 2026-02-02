@@ -764,6 +764,31 @@
     "deletionDenied": "Sletningsanmodning afvist",
     "deletionDeniedDesc": "Din admin afviste din sletningsanmodning. Årsag: {reason}",
     "financialDataNotice": "Finansielle data (udgifter, kvitteringer) anonymiseres men opbevares i 5 år iht. dansk lov (Bogføringsloven).",
-    "submitting": "Indsender..."
+    "submitting": "Indsender...",
+    "replayTour": "Genafspil rundtur",
+    "replayTourDesc": "Tag rundturen igen for at opdage funktioner.",
+    "replaying": "Starter rundtur..."
+  },
+  "tour": {
+    "welcome": "Velkommen!",
+    "welcomeDesc": "Velkommen til Cloud Timer! Lad os tage en hurtig rundtur for at hjælpe dig i gang.",
+    "projects": "Opret dine projekter",
+    "projectsDesc": "Start med at oprette projekter med timepriser. Sådan sporer du tid og rentabilitet.",
+    "team": "Invitér dit team",
+    "teamDesc": "Tilføj teammedlemmer og tildel dem projekter. Angiv deres time- og omkostningssatser.",
+    "admin": "Virksomhedsindstillinger",
+    "adminDesc": "Konfigurer virksomhedsindstillinger, administrer udgifter og overvåg drift.",
+    "timesheet": "Registrér din tid",
+    "timesheetDesc": "Dette er dit ugentlige timeseddel. Klik på en celle for at logge timer på et projekt.",
+    "stats": "Ugentligt overblik",
+    "statsDesc": "Disse kort viser dit ugentlige mål, fakturerbare timer, tidssaldo og feriedage.",
+    "analytics": "Indsigt & rapporter",
+    "analyticsDesc": "Se AI-drevet analyse af teampræstation, projektrentabilitet og tendenser.",
+    "done": "Du er klar!",
+    "doneDesc": "Start med at oprette dit første projekt. Du kan genafspille rundturen fra Indstillinger.",
+    "next": "Næste",
+    "skip": "Spring over",
+    "finish": "Kom i gang",
+    "stepOf": "{current} af {total}"
   }
 }

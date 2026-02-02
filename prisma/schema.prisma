@@ -43,13 +43,14 @@ model User {
   employmentType String   @default("employee") // "employee" | "freelancer"
   hourlyRate     Float    @default(0)
   costRate      Float    @default(0)
-  weeklyTarget  Float    @default(40)
+  weeklyTarget  Float    @default(37)
   vacationDays  Int      @default(25)
   companyId     String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   acceptedTermsAt      DateTime?
+  tourCompletedAt      DateTime?
   deletionRequestedAt  DateTime?
   deletionReason       String?
   deletedAt            DateTime?
