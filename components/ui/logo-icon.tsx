@@ -8,7 +8,7 @@ export function LogoIcon({ className }: LogoIconProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="340 380 340 240"
+      viewBox="0 0 1000 1000"
       fill="currentColor"
       className={cn("shrink-0", className)}
     >
