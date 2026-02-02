@@ -7,9 +7,36 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "TimeTrack - Modern Time Tracking for Teams",
+  metadataBase: new URL("https://cloudtimer.dk"),
+  title: {
+    default: "Cloud Timer - Modern Time Tracking for Teams",
+    template: "%s | Cloud Timer",
+  },
   description:
-    "Track time, manage projects, and boost team productivity with TimeTrack.",
+    "Track time, manage projects, and boost team profitability with Cloud Timer. Built for agencies and consultancies.",
+  keywords: [
+    "time tracking",
+    "project management",
+    "team productivity",
+    "timesheet",
+    "billing",
+    "agency",
+  ],
+  openGraph: {
+    type: "website",
+    siteName: "Cloud Timer",
+    title: "Cloud Timer - Modern Time Tracking for Teams",
+    description:
+      "Track time, manage projects, and boost team profitability.",
+    url: "https://cloudtimer.dk",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Cloud Timer - Modern Time Tracking for Teams",
+    description:
+      "Track time, manage projects, and boost team profitability.",
+  },
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({

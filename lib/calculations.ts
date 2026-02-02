@@ -33,6 +33,9 @@ const CURRENCY_LOCALE: Record<string, string> = {
   USD: "en-US",
   EUR: "de-DE",
   DKK: "da-DK",
+  GBP: "en-GB",
+  SEK: "sv-SE",
+  NOK: "nb-NO",
 };
 
 export function formatCurrency(amount: number, currency = "USD"): string {
@@ -49,4 +52,14 @@ export function formatHours(hours: number): string {
 
 export function formatPercentage(value: number): string {
   return `${value.toFixed(1)}%`;
+}
+
+export function formatFixedBudget(amount: number, currency = "USD"): string {
+  const locale = CURRENCY_LOCALE[currency] || "en-US";
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  }).format(amount);
 }

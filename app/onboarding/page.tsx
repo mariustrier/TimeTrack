@@ -5,11 +5,20 @@ import { useRouter } from "next/navigation";
 import { Clock } from "lucide-react";
 import { LocaleProvider, useTranslations } from "@/lib/i18n";
 import { LocaleToggle } from "@/components/ui/locale-toggle";
+import { SUPPORTED_CURRENCIES } from "@/lib/currency";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 function OnboardingForm() {
   const router = useRouter();
   const t = useTranslations("onboarding");
   const [companyName, setCompanyName] = useState("");
+  const [currency, setCurrency] = useState("USD");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -23,7 +32,7 @@ function OnboardingForm() {
       const res = await fetch("/api/auth/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyName: companyName.trim() }),
+        body: JSON.stringify({ companyName: companyName.trim(), currency }),
       });
 
       if (!res.ok) {
@@ -74,6 +83,25 @@ function OnboardingForm() {
               className="mt-1 block w-full rounded-lg border border-border px-4 py-3 text-foreground placeholder-muted-foreground bg-background focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
               required
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground">
+              {t("masterCurrency")}
+            </label>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {t("masterCurrencyDescription")}
+            </p>
+            <Select value={currency} onValueChange={setCurrency}>
+              <SelectTrigger className="mt-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SUPPORTED_CURRENCIES.map((c) => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {error && (

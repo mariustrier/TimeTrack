@@ -21,7 +21,7 @@ function Navbar() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2">
           <Clock className="h-7 w-7 text-brand-400" />
-          <span className="text-xl font-bold text-white">TimeTrack</span>
+          <span className="text-xl font-bold text-white">Cloud Timer</span>
         </Link>
         <div className="hidden items-center gap-8 md:flex">
           <a href="#features" className="text-sm text-slate-300 hover:text-white transition-colors">{t("features")}</a>
@@ -325,10 +325,10 @@ function Footer() {
         <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
           <div className="flex items-center gap-2">
             <Clock className="h-6 w-6 text-brand-400" />
-            <span className="text-lg font-bold text-white">TimeTrack</span>
+            <span className="text-lg font-bold text-white">Cloud Timer</span>
           </div>
           <p className="text-sm text-slate-400">
-            &copy; {new Date().getFullYear()} TimeTrack. {t("allRightsReserved")}
+            &copy; {new Date().getFullYear()} Cloud Timer. {t("allRightsReserved")}
           </p>
         </div>
       </div>
@@ -337,8 +337,33 @@ function Footer() {
 }
 
 export default function LandingPage() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "Cloud Timer",
+    url: "https://cloudtimer.dk",
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web",
+    description:
+      "Track time, manage projects, and boost team profitability with Cloud Timer. Built for agencies and consultancies.",
+    offers: {
+      "@type": "Offer",
+      price: "15",
+      priceCurrency: "USD",
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "Cloud Timer",
+      url: "https://cloudtimer.dk",
+    },
+  };
+
   return (
     <LocaleProvider>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <main>
         <Navbar />
         <Hero />

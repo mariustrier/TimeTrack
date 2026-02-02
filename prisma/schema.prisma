@@ -18,11 +18,18 @@ model Company {
   economicCounterAccount String?
   economicVatCode        String?
   economicCurrency       String  @default("DKK")
+  defaultHourlyRate      Float?
+  useUniversalRate       Boolean @default(false)
+  expenseAutoApproveThreshold Float?
 
-  users            User[]
-  projects         Project[]
-  timeEntries      TimeEntry[]
-  vacationRequests VacationRequest[]
+  users              User[]
+  projects           Project[]
+  timeEntries        TimeEntry[]
+  vacationRequests   VacationRequest[]
+  projectAllocations ProjectAllocation[]
+  insights           ContractInsight[]
+  expenses           Expense[]
+  companyExpenses    CompanyExpense[]
 }
 
 model User {
@@ -32,8 +39,9 @@ model User {
   firstName     String?
   lastName      String?
   imageUrl      String?
-  role          String   @default("employee") // "admin" | "employee"
-  hourlyRate    Float    @default(0)
+  role           String   @default("employee") // "admin" | "manager" | "employee"
+  employmentType String   @default("employee") // "employee" | "freelancer"
+  hourlyRate     Float    @default(0)
   costRate      Float    @default(0)
   weeklyTarget  Float    @default(40)
   vacationDays  Int      @default(25)
@@ -41,9 +49,13 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  company          Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  timeEntries      TimeEntry[]
-  vacationRequests VacationRequest[]
+  company            Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  timeEntries        TimeEntry[]
+  vacationRequests   VacationRequest[]
+  allocations        ProjectAllocation[]
+  uploadedContracts  Contract[]
+  dismissedInsights  ContractInsight[]    @relation("DismissedInsights")
+  expenses           Expense[]
 
   @@index([companyId])
   @@index([clerkId])
@@ -55,6 +67,10 @@ model Project {
   client      String?
   color       String   @default("#3B82F6")
   budgetHours Float?
+  pricingType String   @default("hourly") // "hourly" | "fixed_price"
+  fixedPrice  Float?
+  rateMode    String   @default("COMPANY_RATE") // "COMPANY_RATE" | "EMPLOYEE_RATES" | "PROJECT_RATE"
+  projectRate Float?
   billable    Boolean  @default(true)
   active      Boolean  @default(true)
   currency    String?
@@ -62,8 +78,11 @@ model Project {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company     Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
   timeEntries TimeEntry[]
+  allocations ProjectAllocation[]
+  contracts   Contract[]
+  expenses    Expense[]
 
   @@index([companyId])
 }
@@ -143,4 +162,151 @@ model AuditLog {
   @@index([companyId])
   @@index([entityId])
   @@index([createdAt])
+}
+
+model ProjectAllocation {
+  id        String   @id @default(cuid())
+  hours     Float
+  projectId String
+  userId    String
+  companyId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([companyId])
+  @@index([userId])
+}
+
+enum InsightCategory {
+  OPPORTUNITY
+  INSIGHT
+  SUGGESTION
+  HEADS_UP
+  CELEBRATION
+}
+
+model Contract {
+  id               String    @id @default(cuid())
+  projectId        String
+  fileName         String
+  fileUrl          String
+  fileType         String
+  fileSize         Int
+  extractedTerms   Json?
+  extractedAt      DateTime?
+  maxHours         Float?
+  maxBudget        Float?
+  budgetCurrency   String?
+  deadline         DateTime?
+  scopeDescription String?
+  scopeKeywords    String[]
+  exclusions       String[]
+  uploadedById     String
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  project    Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  uploadedBy User              @relation(fields: [uploadedById], references: [id])
+  insights   ContractInsight[]
+
+  @@index([projectId])
+}
+
+model ContractInsight {
+  id              String          @id @default(cuid())
+  contractId      String?
+  companyId       String
+  category        InsightCategory
+  title           String
+  description     String
+  suggestion      String?
+  relatedHours    Float?
+  relatedAmount   Float?
+  relatedEntryIds String[]
+  dismissed       Boolean         @default(false)
+  dismissedById   String?
+  dismissedAt     DateTime?
+  actionTaken     String?
+  createdAt       DateTime        @default(now())
+  expiresAt       DateTime?
+
+  contract    Contract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  dismissedBy User?     @relation("DismissedInsights", fields: [dismissedById], references: [id])
+
+  @@index([companyId, dismissed])
+}
+
+model AIApiUsage {
+  id           String   @id @default(cuid())
+  companyId    String
+  endpoint     String
+  model        String
+  inputTokens  Int
+  outputTokens Int
+  costCents    Float
+  createdAt    DateTime @default(now())
+
+  @@index([companyId, createdAt])
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  amount      Float
+  description String
+  category    String   @default("other")
+  date        DateTime
+  userId      String
+  projectId   String
+  companyId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  approvalStatus  String    @default("draft")
+  submittedAt     DateTime?
+  approvedAt      DateTime?
+  approvedBy      String?
+  rejectedAt      DateTime?
+  rejectedBy      String?
+  rejectionReason String?
+
+  receiptUrl      String?
+  receiptFileName String?
+  receiptFileSize Int?
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, approvalStatus, date])
+  @@index([userId])
+  @@index([projectId])
+}
+
+model CompanyExpense {
+  id          String   @id @default(cuid())
+  amount      Float
+  description String
+  category    String
+  date        DateTime
+  recurring   Boolean  @default(false)
+  frequency   String?
+  companyId   String
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  receiptUrl      String?
+  receiptFileName String?
+  receiptFileSize Int?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, date])
 }

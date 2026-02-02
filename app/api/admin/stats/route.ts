@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUser, isAdminOrManager } from "@/lib/auth";
+import { expandRecurringExpenses } from "@/lib/expense-utils";
 
 export async function GET(req: Request) {
   try {
@@ -8,7 +9,7 @@ export async function GET(req: Request) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    if (user.role !== "admin") {
+    if (!isAdminOrManager(user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -31,7 +32,7 @@ export async function GET(req: Request) {
 
     const company = await db.company.findUnique({
       where: { id: user.companyId },
-      select: { currency: true },
+      select: { currency: true, defaultHourlyRate: true, useUniversalRate: true },
     });
 
     const members = await db.user.findMany({
@@ -60,7 +61,11 @@ export async function GET(req: Request) {
       const memberBillableHours = memberEntries
         .filter((e) => e.billingStatus === "billable")
         .reduce((sum, e) => sum + e.hours, 0);
-      const revenue = memberBillableHours * member.hourlyRate;
+      const isFreelancer = member.employmentType === "freelancer";
+      const effectiveRate = (company?.useUniversalRate && !isFreelancer && company.defaultHourlyRate)
+        ? company.defaultHourlyRate
+        : member.hourlyRate;
+      const revenue = memberBillableHours * effectiveRate;
       const cost = hours * member.costRate;
 
       totalRevenue += revenue;
@@ -77,14 +82,130 @@ export async function GET(req: Request) {
         revenue,
         cost,
         profit: revenue - cost,
-        hourlyRate: member.hourlyRate,
+        hourlyRate: effectiveRate,
+        employmentType: member.employmentType,
         costRate: member.costRate,
         weeklyTarget: member.weeklyTarget,
         utilization: member.weeklyTarget > 0 ? (hours / member.weeklyTarget) * 100 : 0,
       };
     });
 
+    // Fetch projects with budgets for the company
+    const projects = await db.project.findMany({
+      where: { companyId: user.companyId, OR: [{ budgetHours: { not: null } }, { fixedPrice: { not: null } }] },
+      include: {
+        allocations: {
+          include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } },
+        },
+      },
+      orderBy: { name: "asc" },
+    });
+
+    // Fetch ALL time entries for project budgets (no date filter - budgets are cumulative)
+    const allProjectEntries = await db.timeEntry.findMany({
+      where: {
+        companyId: user.companyId,
+        billingStatus: { in: ["billable", "included"] },
+      },
+      select: {
+        projectId: true,
+        userId: true,
+        hours: true,
+      },
+    });
+
+    // Compute ALL-TIME hours used per project (for budget tracking)
+    const projectHoursMap: Record<string, number> = {};
+    const projectUserHoursMap: Record<string, Record<string, number>> = {};
+    for (const entry of allProjectEntries) {
+      projectHoursMap[entry.projectId] = (projectHoursMap[entry.projectId] || 0) + entry.hours;
+      if (!projectUserHoursMap[entry.projectId]) projectUserHoursMap[entry.projectId] = {};
+      projectUserHoursMap[entry.projectId][entry.userId] = (projectUserHoursMap[entry.projectId][entry.userId] || 0) + entry.hours;
+    }
+
+    // Build member rate map
+    const memberRateMap: Record<string, number> = {};
+    for (const m of members) {
+      const isFreelancer = m.employmentType === "freelancer";
+      memberRateMap[m.id] = (company?.useUniversalRate && !isFreelancer && company.defaultHourlyRate)
+        ? company.defaultHourlyRate
+        : m.hourlyRate;
+    }
+
+    // Build project budget stats
+    const projectStats = projects.map((p) => {
+      const hoursUsed = Math.round((projectHoursMap[p.id] || 0) * 10) / 10;
+
+      // Calculate effective rate and budget in hours for fixed-price projects
+      let effectiveRate = 0;
+      let budgetTotalHours: number | null = null;
+
+      if (p.pricingType === "fixed_price" && p.fixedPrice) {
+        const rm = p.rateMode || "COMPANY_RATE";
+        if (rm === "PROJECT_RATE") {
+          effectiveRate = p.projectRate || company?.defaultHourlyRate || 0;
+        } else if (rm === "EMPLOYEE_RATES") {
+          // Average of allocated member rates (fall back to company rate)
+          const allocUserIds = p.allocations.map((a) => a.userId);
+          const rates = allocUserIds.length > 0
+            ? allocUserIds.map((uid) => memberRateMap[uid] || company?.defaultHourlyRate || 0)
+            : Object.values(memberRateMap);
+          effectiveRate = rates.length > 0 ? rates.reduce((s, r) => s + r, 0) / rates.length : 0;
+        } else {
+          effectiveRate = company?.defaultHourlyRate || 0;
+        }
+        budgetTotalHours = effectiveRate > 0 ? Math.floor(p.fixedPrice / effectiveRate) : null;
+      } else {
+        budgetTotalHours = p.budgetHours;
+      }
+
+      return {
+        id: p.id,
+        name: p.name,
+        client: p.client,
+        color: p.color,
+        budgetHours: p.budgetHours,
+        pricingType: p.pricingType,
+        fixedPrice: p.fixedPrice,
+        rateMode: p.rateMode,
+        projectRate: p.projectRate,
+        effectiveRate,
+        budgetTotalHours,
+        hoursUsed,
+        allocations: p.allocations.map((a) => ({
+          userId: a.userId,
+          userName: `${a.user.firstName || ""} ${a.user.lastName || ""}`.trim() || a.user.email,
+          hours: a.hours,
+          hoursUsed: Math.round((projectUserHoursMap[p.id]?.[a.userId] || 0) * 10) / 10,
+        })),
+      };
+    });
+
     const targetHours = members.reduce((sum, m) => sum + m.weeklyTarget, 0);
+
+    // Fetch approved project expenses for the date range
+    const expenseDateFilter: Record<string, unknown> = {};
+    if (startDate && endDate) {
+      expenseDateFilter.date = { gte: new Date(startDate), lte: new Date(endDate) };
+    }
+    const projectExpenses = await db.expense.findMany({
+      where: {
+        companyId: user.companyId,
+        approvalStatus: "approved",
+        ...expenseDateFilter,
+      },
+    });
+    const totalProjectExpenses = Math.round(projectExpenses.reduce((s, e) => s + e.amount, 0) * 100) / 100;
+
+    // Fetch company overhead expenses and expand recurring ones into the date range
+    const rawCompanyExpenses = await db.companyExpense.findMany({
+      where: { companyId: user.companyId },
+    });
+    const totalOverhead = startDate && endDate
+      ? Math.round(expandRecurringExpenses(rawCompanyExpenses, startDate, endDate).reduce((s, e) => s + e.amount, 0) * 100) / 100
+      : 0;
+
+    const totalExpenses = totalProjectExpenses + totalOverhead;
 
     return NextResponse.json({
       totalRevenue,
@@ -94,7 +215,13 @@ export async function GET(req: Request) {
       billableHours,
       utilization: targetHours > 0 ? (totalHours / targetHours) * 100 : 0,
       employeeStats,
+      projectStats,
+      totalProjectExpenses,
+      totalOverhead,
+      totalExpenses,
       currency: company?.currency || "USD",
+      defaultHourlyRate: company?.defaultHourlyRate || null,
+      useUniversalRate: company?.useUniversalRate || false,
     });
   } catch (error) {
     console.error("[ADMIN_STATS]", error);

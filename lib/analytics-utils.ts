@@ -342,13 +342,24 @@ export function aggregateProjectBillableMix(entries: Entry[], projects: Project[
   }).filter((p) => p.billable + p.included + p.non_billable + p.internal + p.presales > 0);
 }
 
+// --- Expense types for analytics ---
+
+interface ExpenseEntry {
+  amount: number;
+  date: string | Date;
+  category: string;
+  description: string;
+}
+
 // --- Company Insights ---
 
 export function aggregateCompanyRevenueOverhead(
   entries: Entry[],
   from: Date,
   to: Date,
-  granularity: "monthly" | "weekly"
+  granularity: "monthly" | "weekly",
+  projectExpenses: ExpenseEntry[] = [],
+  companyExpenses: ExpenseEntry[] = []
 ) {
   const periods = getPeriodKeys(from, to, granularity);
   const grouped: Record<string, Entry[]> = {};
@@ -358,18 +369,36 @@ export function aggregateCompanyRevenueOverhead(
     grouped[key].push(e);
   }
 
+  // Group expenses by period
+  const projExpByPeriod: Record<string, number> = {};
+  for (const e of projectExpenses) {
+    const key = periodKey(e.date, granularity);
+    projExpByPeriod[key] = (projExpByPeriod[key] || 0) + e.amount;
+  }
+  const compExpByPeriod: Record<string, number> = {};
+  for (const e of companyExpenses) {
+    const key = periodKey(e.date, granularity);
+    compExpByPeriod[key] = (compExpByPeriod[key] || 0) + e.amount;
+  }
+
   return periods.map((key) => {
     const periodEntries = grouped[key] || [];
     const revenue = periodEntries
       .filter((e) => e.billingStatus === "billable")
       .reduce((s, e) => s + Math.round(e.hours * e.user.hourlyRate), 0);
-    const totalCost = periodEntries.reduce(
+    const laborCost = periodEntries.reduce(
       (s, e) => s + Math.round(e.hours * e.user.costRate),
       0
     );
-    const overhead = periodEntries
+    const laborOverhead = periodEntries
       .filter((e) => e.billingStatus !== "billable")
       .reduce((s, e) => s + Math.round(e.hours * e.user.costRate), 0);
+
+    const periodProjExp = Math.round((projExpByPeriod[key] || 0) * 100) / 100;
+    const periodCompExp = Math.round((compExpByPeriod[key] || 0) * 100) / 100;
+    const totalExpenses = periodProjExp + periodCompExp;
+    const totalCost = laborCost + totalExpenses;
+    const overhead = laborOverhead + totalExpenses;
 
     return {
       period: periodLabel(key, granularity),
@@ -377,7 +406,64 @@ export function aggregateCompanyRevenueOverhead(
       overhead,
       totalCost,
       contributionMargin: revenue - totalCost,
+      projectExpenses: periodProjExp,
+      companyExpenses: periodCompExp,
     };
+  });
+}
+
+export function aggregateExpenseBreakdown(
+  projectExpenses: ExpenseEntry[],
+  companyExpenses: ExpenseEntry[],
+  from: Date,
+  to: Date,
+  granularity: "monthly" | "weekly"
+) {
+  const periods = getPeriodKeys(from, to, granularity);
+
+  const categories = [
+    "travel",
+    "materials",
+    "software",
+    "meals",
+    "rent",
+    "insurance",
+    "utilities",
+    "salaries",
+    "other",
+  ];
+
+  const grouped: Record<string, Record<string, number>> = {};
+  for (const key of periods) {
+    grouped[key] = {};
+    for (const cat of categories) {
+      grouped[key][cat] = 0;
+    }
+  }
+
+  for (const e of projectExpenses) {
+    const key = periodKey(e.date, granularity);
+    if (grouped[key]) {
+      const cat = categories.includes(e.category) ? e.category : "other";
+      grouped[key][cat] += e.amount;
+    }
+  }
+
+  for (const e of companyExpenses) {
+    const key = periodKey(e.date, granularity);
+    if (grouped[key]) {
+      const cat = categories.includes(e.category) ? e.category : "other";
+      grouped[key][cat] += e.amount;
+    }
+  }
+
+  return periods.map((key) => {
+    const cats = grouped[key];
+    const result: Record<string, any> = { period: periodLabel(key, granularity) };
+    for (const cat of categories) {
+      result[cat] = Math.round((cats[cat] || 0) * 100) / 100;
+    }
+    return result;
   });
 }
 

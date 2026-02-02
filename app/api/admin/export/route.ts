@@ -27,7 +27,7 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const [company, users, projects, timeEntries, vacationRequests] = await Promise.all([
+    const [company, users, projects, timeEntries, vacationRequests, expenses, companyExpenses] = await Promise.all([
       db.company.findUnique({ where: { id: user.companyId } }),
       db.user.findMany({ where: { companyId: user.companyId } }),
       db.project.findMany({ where: { companyId: user.companyId } }),
@@ -40,6 +40,15 @@ export async function GET() {
         where: { companyId: user.companyId },
         include: { user: true },
         orderBy: { startDate: "asc" },
+      }),
+      db.expense.findMany({
+        where: { companyId: user.companyId },
+        include: { user: true, project: true },
+        orderBy: { date: "asc" },
+      }),
+      db.companyExpense.findMany({
+        where: { companyId: user.companyId },
+        orderBy: { date: "asc" },
       }),
     ]);
 
@@ -88,6 +97,36 @@ export async function GET() {
     ]);
     zip.file("vacations.csv", toCsv(vacationHeaders, vacationRows));
 
+    // Expenses CSV
+    const expenseHeaders = ["ID", "Date", "User Email", "User Name", "Project", "Category", "Amount", "Description", "Status", "Receipt URL"];
+    const expenseRows = expenses.map((e) => [
+      e.id,
+      e.date.toISOString().split("T")[0],
+      e.user.email,
+      `${e.user.firstName || ""} ${e.user.lastName || ""}`.trim(),
+      e.project.name,
+      e.category,
+      e.amount.toString(),
+      e.description,
+      e.approvalStatus,
+      e.receiptUrl || "",
+    ]);
+    zip.file("expenses.csv", toCsv(expenseHeaders, expenseRows));
+
+    // Company Expenses CSV
+    const compExpenseHeaders = ["ID", "Date", "Category", "Amount", "Description", "Recurring", "Frequency", "Receipt URL"];
+    const compExpenseRows = companyExpenses.map((e) => [
+      e.id,
+      e.date.toISOString().split("T")[0],
+      e.category,
+      e.amount.toString(),
+      e.description,
+      e.recurring.toString(),
+      e.frequency || "",
+      e.receiptUrl || "",
+    ]);
+    zip.file("company-expenses.csv", toCsv(compExpenseHeaders, compExpenseRows));
+
     // Metadata
     const metadata = {
       exportDate: new Date().toISOString(),
@@ -96,13 +135,15 @@ export async function GET() {
       totalProjects: projects.length,
       totalTimeEntries: timeEntries.length,
       totalVacationRequests: vacationRequests.length,
+      totalExpenses: expenses.length,
+      totalCompanyExpenses: companyExpenses.length,
     };
     zip.file("metadata.json", JSON.stringify(metadata, null, 2));
 
     // README
     zip.file(
       "README.txt",
-      `TimeTrack Data Export\n` +
+      `Cloud Timer Data Export\n` +
       `====================\n\n` +
       `Company: ${company?.name || ""}\n` +
       `Export Date: ${new Date().toISOString()}\n\n` +
@@ -111,6 +152,8 @@ export async function GET() {
       `- projects.csv: All projects\n` +
       `- time-entries.csv: All time entries\n` +
       `- vacations.csv: All vacation requests\n` +
+      `- expenses.csv: All employee expenses\n` +
+      `- company-expenses.csv: All company expenses\n` +
       `- metadata.json: Export metadata\n`
     );
 
@@ -119,7 +162,7 @@ export async function GET() {
     return new NextResponse(zipArrayBuffer, {
       headers: {
         "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="timetrack-backup-${new Date().toISOString().split("T")[0]}.zip"`,
+        "Content-Disposition": `attachment; filename="cloudtimer-backup-${new Date().toISOString().split("T")[0]}.zip"`,
       },
     });
   } catch (error) {

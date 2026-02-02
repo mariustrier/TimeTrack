@@ -18,7 +18,7 @@ import {
 } from "recharts";
 import { useTranslations } from "@/lib/i18n";
 import { useChartTheme } from "@/lib/chart-theme";
-import { METRIC_COLORS, BILLING_COLORS } from "@/lib/chart-colors";
+import { METRIC_COLORS, BILLING_COLORS, SERIES_COLORS } from "@/lib/chart-colors";
 import { ChartCard } from "@/components/analytics/chart-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/calculations";
@@ -34,6 +34,21 @@ interface RevenueOverheadEntry {
   revenue: number;
   overhead: number;
   contributionMargin: number;
+  projectExpenses?: number;
+  companyExpenses?: number;
+}
+
+interface ExpenseBreakdownEntry {
+  period: string;
+  travel: number;
+  materials: number;
+  software: number;
+  meals: number;
+  rent: number;
+  insurance: number;
+  utilities: number;
+  salaries: number;
+  other: number;
 }
 
 interface NonBillableTrendEntry {
@@ -70,6 +85,7 @@ export function CompanyInsights({
     NonBillableTrendEntry[]
   >([]);
   const [unbilledWork, setUnbilledWork] = useState<UnbilledWorkEntry[]>([]);
+  const [expenseBreakdown, setExpenseBreakdown] = useState<ExpenseBreakdownEntry[]>([]);
   const [currency, setCurrency] = useState("USD");
 
   useEffect(() => {
@@ -91,12 +107,14 @@ export function CompanyInsights({
         setRevenueOverhead(data.revenueOverhead ?? []);
         setNonBillableTrend(data.nonBillableTrend ?? []);
         setUnbilledWork(data.unbilledWork ?? []);
+        setExpenseBreakdown(data.expenseBreakdown ?? []);
         setCurrency(data.currency ?? "USD");
       } catch (err) {
         console.error("[CompanyInsights]", err);
         setRevenueOverhead([]);
         setNonBillableTrend([]);
         setUnbilledWork([]);
+        setExpenseBreakdown([]);
       } finally {
         setLoading(false);
       }
@@ -232,6 +250,54 @@ export function CompanyInsights({
             </>
           )}
         </ComposedChart>
+      </ChartCard>
+
+      {/* Expense Breakdown */}
+      <ChartCard
+        title={t("expenseBreakdown")}
+        description={t("expenseBreakdownDesc")}
+        loading={loading}
+        isEmpty={expenseBreakdown.every(
+          (d) =>
+            d.travel + d.materials + d.software + d.meals + d.rent + d.insurance + d.utilities + d.salaries + d.other ===
+            0
+        )}
+        chartHeight={350}
+        exportData={expenseBreakdown}
+        exportFilename="expense-breakdown"
+      >
+        <BarChart data={expenseBreakdown}>
+          <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
+          <XAxis
+            dataKey="period"
+            tick={{ fill: theme.textMuted, fontSize: 12 }}
+            tickLine={false}
+            axisLine={{ stroke: theme.grid }}
+          />
+          <YAxis
+            tick={{ fill: theme.textMuted, fontSize: 12 }}
+            tickLine={false}
+            axisLine={{ stroke: theme.grid }}
+            tickFormatter={(v: number) => formatCurrency(v, currency)}
+          />
+          <Tooltip
+            {...tooltipStyle}
+            formatter={(value: any, name: any) => [
+              formatCurrency(value, currency),
+              name,
+            ]}
+          />
+          <Legend />
+          <Bar dataKey="rent" name={t("catRent")} stackId="a" fill={SERIES_COLORS[0]} />
+          <Bar dataKey="salaries" name={t("catSalaries")} stackId="a" fill={SERIES_COLORS[1]} />
+          <Bar dataKey="insurance" name={t("catInsurance")} stackId="a" fill={SERIES_COLORS[2]} />
+          <Bar dataKey="utilities" name={t("catUtilities")} stackId="a" fill={SERIES_COLORS[3]} />
+          <Bar dataKey="software" name={t("catSoftware")} stackId="a" fill={SERIES_COLORS[4]} />
+          <Bar dataKey="travel" name={t("catTravel")} stackId="a" fill={SERIES_COLORS[5]} />
+          <Bar dataKey="materials" name={t("catMaterials")} stackId="a" fill={SERIES_COLORS[6]} />
+          <Bar dataKey="meals" name={t("catMeals")} stackId="a" fill={SERIES_COLORS[7]} />
+          <Bar dataKey="other" name={t("catOther")} stackId="a" fill={SERIES_COLORS[8]} radius={[4, 4, 0, 0]} />
+        </BarChart>
       </ChartCard>
 
       {/* Non-Billable Trend */}

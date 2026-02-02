@@ -23,7 +23,7 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { name, client, color, budgetHours, billable, active, currency } = body;
+    const { name, client, color, budgetHours, billable, active, currency, pricingType, fixedPrice, rateMode, projectRate } = body;
 
     const updated = await db.project.update({
       where: { id: params.id },
@@ -37,6 +37,10 @@ export async function PUT(
         ...(billable !== undefined && { billable }),
         ...(active !== undefined && { active }),
         ...(currency !== undefined && { currency: currency || null }),
+        ...(pricingType !== undefined && { pricingType }),
+        ...(fixedPrice !== undefined && { fixedPrice: fixedPrice ? parseFloat(fixedPrice) : null }),
+        ...(rateMode !== undefined && { rateMode }),
+        ...(projectRate !== undefined && { projectRate: projectRate ? parseFloat(projectRate) : null }),
       },
     });
 

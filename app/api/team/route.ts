@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUser, isAdminOrManager } from "@/lib/auth";
 
 export async function GET() {
   try {
@@ -8,7 +8,7 @@ export async function GET() {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    if (user.role !== "admin") {
+    if (!isAdminOrManager(user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { email, firstName, lastName, role, hourlyRate, costRate, weeklyTarget } = body;
+    const { email, firstName, lastName, role, employmentType, hourlyRate, costRate, weeklyTarget } = body;
 
     if (!email) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
@@ -55,6 +55,7 @@ export async function POST(req: Request) {
         firstName: firstName || null,
         lastName: lastName || null,
         role: role || "employee",
+        employmentType: employmentType || "employee",
         hourlyRate: hourlyRate ? parseFloat(hourlyRate) : 0,
         costRate: costRate ? parseFloat(costRate) : 0,
         weeklyTarget: weeklyTarget ? parseFloat(weeklyTarget) : 40,

@@ -23,7 +23,7 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { firstName, lastName, role, hourlyRate, costRate, weeklyTarget, vacationDays } = body;
+    const { firstName, lastName, role, employmentType, hourlyRate, costRate, weeklyTarget, vacationDays } = body;
 
     const updated = await db.user.update({
       where: { id: params.id },
@@ -31,6 +31,7 @@ export async function PUT(
         ...(firstName !== undefined && { firstName }),
         ...(lastName !== undefined && { lastName }),
         ...(role !== undefined && { role }),
+        ...(employmentType !== undefined && { employmentType }),
         ...(hourlyRate !== undefined && { hourlyRate: parseFloat(hourlyRate) }),
         ...(costRate !== undefined && { costRate: parseFloat(costRate) }),
         ...(weeklyTarget !== undefined && { weeklyTarget: parseFloat(weeklyTarget) }),

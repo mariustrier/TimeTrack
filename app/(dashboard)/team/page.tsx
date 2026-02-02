@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Users, Plus, Pencil, Trash2, UserPlus } from "lucide-react";
-import { formatCurrency } from "@/lib/calculations";
+import { convertAndFormat, SUPPORTED_CURRENCIES } from "@/lib/currency";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +39,7 @@ interface TeamMember {
   firstName: string | null;
   lastName: string | null;
   role: string;
+  employmentType: string;
   hourlyRate: number;
   costRate: number;
   weeklyTarget: number;
@@ -55,12 +56,14 @@ export default function TeamPage() {
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [deletingMember, setDeletingMember] = useState<TeamMember | null>(null);
   const [saving, setSaving] = useState(false);
-  const [companyCurrency, setCompanyCurrency] = useState("USD");
+  const [masterCurrency, setMasterCurrency] = useState("USD");
+  const [displayCurrency, setDisplayCurrency] = useState("USD");
 
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [role, setRole] = useState("employee");
+  const [employmentType, setEmploymentType] = useState("employee");
   const [hourlyRate, setHourlyRate] = useState("");
   const [costRate, setCostRate] = useState("");
   const [weeklyTarget, setWeeklyTarget] = useState("40");
@@ -83,7 +86,10 @@ export default function TeamPage() {
     fetch("/api/admin/economic")
       .then((res) => res.ok ? res.json() : null)
       .then((data) => {
-        if (data?.currency) setCompanyCurrency(data.currency);
+        if (data?.currency) {
+          setMasterCurrency(data.currency || "USD");
+          setDisplayCurrency(data.currency || "USD");
+        }
       })
       .catch(() => {});
   }, []);
@@ -94,6 +100,7 @@ export default function TeamPage() {
     setFirstName("");
     setLastName("");
     setRole("employee");
+    setEmploymentType("employee");
     setHourlyRate("");
     setCostRate("");
     setWeeklyTarget("40");
@@ -107,6 +114,7 @@ export default function TeamPage() {
     setFirstName(member.firstName || "");
     setLastName(member.lastName || "");
     setRole(member.role);
+    setEmploymentType(member.employmentType || "employee");
     setHourlyRate(member.hourlyRate.toString());
     setCostRate(member.costRate.toString());
     setWeeklyTarget(member.weeklyTarget.toString());
@@ -122,6 +130,7 @@ export default function TeamPage() {
         firstName,
         lastName,
         role,
+        employmentType,
         hourlyRate,
         costRate,
         weeklyTarget,
@@ -181,10 +190,22 @@ export default function TeamPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-        <Button onClick={openInviteModal}>
-          <UserPlus className="mr-2 h-4 w-4" />
-          {t("inviteMember")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Select value={displayCurrency} onValueChange={setDisplayCurrency}>
+            <SelectTrigger className="w-[100px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SUPPORTED_CURRENCIES.map((c) => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={openInviteModal}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            {t("inviteMember")}
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -227,12 +248,19 @@ export default function TeamPage() {
                       {member.email}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={member.role === "admin" ? "default" : "secondary"}>
-                        {member.role}
-                      </Badge>
+                      <div className="flex gap-1.5">
+                        <Badge variant={member.role === "admin" ? "default" : member.role === "manager" ? "outline" : "secondary"}>
+                          {member.role === "admin" ? t("adminRole") : member.role === "manager" ? t("managerRole") : t("employee")}
+                        </Badge>
+                        {member.employmentType === "freelancer" && (
+                          <Badge variant="outline" className="border-amber-500 text-amber-600">
+                            {t("freelancer")}
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
-                    <TableCell>{formatCurrency(member.hourlyRate, companyCurrency)}/h</TableCell>
-                    <TableCell>{formatCurrency(member.costRate, companyCurrency)}/h</TableCell>
+                    <TableCell>{convertAndFormat(member.hourlyRate, masterCurrency, displayCurrency)}/h</TableCell>
+                    <TableCell>{convertAndFormat(member.costRate, masterCurrency, displayCurrency)}/h</TableCell>
                     <TableCell>{member.weeklyTarget}h</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
@@ -300,21 +328,36 @@ export default function TeamPage() {
                 disabled={!!editingMember}
               />
             </div>
-            <div className="space-y-2">
-              <Label>{t("role")}</Label>
-              <Select value={role} onValueChange={setRole}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="employee">{t("employee")}</SelectItem>
-                  <SelectItem value="admin">{t("adminRole")}</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{t("role")}</Label>
+                <Select value={role} onValueChange={setRole}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="employee">{t("employee")}</SelectItem>
+                    <SelectItem value="manager">{t("managerRole")}</SelectItem>
+                    <SelectItem value="admin">{t("adminRole")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>{t("employmentType")}</Label>
+                <Select value={employmentType} onValueChange={setEmploymentType}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="employee">{t("employeeType")}</SelectItem>
+                    <SelectItem value="freelancer">{t("freelancerType")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>{t("billRateLabel", { currency: companyCurrency })}</Label>
+                <Label>{t("billRateLabel", { currency: masterCurrency })}</Label>
                 <Input
                   type="number"
                   value={hourlyRate}
@@ -323,7 +366,7 @@ export default function TeamPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>{t("costRateLabel", { currency: companyCurrency })}</Label>
+                <Label>{t("costRateLabel", { currency: masterCurrency })}</Label>
                 <Input
                   type="number"
                   value={costRate}

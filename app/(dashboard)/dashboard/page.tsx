@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   startOfWeek,
   endOfWeek,
@@ -27,6 +27,7 @@ import {
   Lock,
   AlertCircle,
   X,
+  RefreshCw,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { convertAndFormatBudget } from "@/lib/currency";
 import { useTranslations, useDateLocale } from "@/lib/i18n";
 
 interface Project {
@@ -58,6 +60,14 @@ interface Project {
   name: string;
   color: string;
   billable: boolean;
+  budgetHours: number | null;
+  budgetTotalHours: number | null;
+  hoursUsed: number;
+  myAllocation: number | null;
+  myHoursUsed: number;
+  pricingType: string;
+  fixedPrice: number | null;
+  moneyUsed: number;
 }
 
 interface TimeEntry {
@@ -134,6 +144,8 @@ export default function DashboardPage() {
   const [weeklyTarget, setWeeklyTarget] = useState(40);
   const [weekNote, setWeekNote] = useState<{ action: string; reason: string | null; createdAt: string } | null>(null);
   const [weekNoteDismissed, setWeekNoteDismissed] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [masterCurrency, setMasterCurrency] = useState("USD");
 
   const weekStart = useMemo(() => startOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
   const weekEnd = useMemo(() => endOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
@@ -151,8 +163,8 @@ export default function DashboardPage() {
 
   const isWeekEditable = weekStatus === "draft" || weekStatus === "empty";
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const fetchData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const start = format(weekStart, "yyyy-MM-dd");
       const end = format(weekEnd, "yyyy-MM-dd");
@@ -183,6 +195,7 @@ export default function DashboardPage() {
         }, 0);
         setVacationDaysUsed(usedDays);
       }
+      setLastUpdated(new Date());
     } catch (error) {
       console.error("Failed to fetch data:", error);
     } finally {
@@ -193,6 +206,27 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Auto-refresh: 30s polling + refetch on window focus
+  useEffect(() => {
+    const onFocus = () => fetchData(true);
+    window.addEventListener("focus", onFocus);
+    const interval = setInterval(() => fetchData(true), 30000);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      clearInterval(interval);
+    };
+  }, [fetchData]);
+
+  // Fetch company currency
+  useEffect(() => {
+    fetch("/api/admin/economic")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data?.currency) setMasterCurrency(data.currency || "USD");
+      })
+      .catch(() => {});
+  }, []);
 
   // Fetch rejection/reopen notes for current week
   useEffect(() => {
@@ -410,6 +444,14 @@ export default function DashboardPage() {
           <span className="ml-2 text-sm text-muted-foreground">
             {format(weekStart, "MMM d", formatOpts)} - {format(weekEnd, "MMM d, yyyy", formatOpts)}
           </span>
+          <Button variant="ghost" size="icon" onClick={() => fetchData(true)} className="ml-1">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          {lastUpdated && (
+            <span className="text-xs text-muted-foreground">
+              {tc("lastUpdated").replace("{time}", format(lastUpdated, "HH:mm:ss"))}
+            </span>
+          )}
         </div>
       </div>
 
@@ -533,6 +575,11 @@ export default function DashboardPage() {
                         <div className="text-xs">{format(day, "MMM d", formatOpts)}</div>
                       </th>
                     ))}
+                    {projects.some((p) => p.myAllocation != null || p.budgetTotalHours != null) && (
+                      <th className="px-2 py-3 text-center font-medium text-muted-foreground w-24">
+                        {t("budget")}
+                      </th>
+                    )}
                     <th className="px-4 py-3 text-center font-medium text-muted-foreground w-20">
                       {t("total")}
                     </th>
@@ -590,6 +637,43 @@ export default function DashboardPage() {
                           </td>
                         );
                       })}
+                      {projects.some((p) => p.myAllocation != null || p.budgetTotalHours != null) && (
+                        <td className="px-2 py-1">
+                          {(() => {
+                            // Use budgetTotalHours for all project types (hours for hourly, converted hours for fixed-price)
+                            const budget = project.myAllocation ?? project.budgetTotalHours;
+                            if (budget == null) return <div className="text-center text-muted-foreground">—</div>;
+                            const used = project.myAllocation != null ? project.myHoursUsed : project.hoursUsed;
+                            const remaining = budget - used;
+                            const percentUsed = (used / budget) * 100;
+                            const percentRemaining = 100 - percentUsed;
+                            let barColor = "bg-emerald-500";
+                            let textColor = "text-emerald-600 dark:text-emerald-400";
+                            if (percentRemaining < 20) {
+                              barColor = "bg-red-500";
+                              textColor = "text-red-600 dark:text-red-400";
+                            } else if (percentRemaining < 50) {
+                              barColor = "bg-orange-500";
+                              textColor = "text-orange-600 dark:text-orange-400";
+                            }
+                            return (
+                              <div className="w-20 mx-auto">
+                                <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                                  <div
+                                    className={cn("h-full rounded-full transition-all", barColor)}
+                                    style={{ width: `${Math.min(percentUsed, 100)}%` }}
+                                  />
+                                </div>
+                                <div className={cn("text-xs mt-0.5 text-center whitespace-nowrap", textColor)}>
+                                  {remaining >= 0
+                                    ? t("hoursLeft").replace("{remaining}", remaining.toFixed(0))
+                                    : t("hoursOver").replace("{hours}", Math.abs(remaining).toFixed(0))}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </td>
+                      )}
                       <td className="px-4 py-2 text-center font-semibold text-foreground">
                         {getRowTotal(project.id).toFixed(1)}
                       </td>
@@ -610,6 +694,9 @@ export default function DashboardPage() {
                         {getColumnTotal(day).toFixed(1)}
                       </td>
                     ))}
+                    {projects.some((p) => p.myAllocation != null || p.budgetTotalHours != null) && (
+                      <td className="px-2 py-3" />
+                    )}
                     <td className="px-4 py-3 text-center font-bold text-brand-600">
                       {grandTotal.toFixed(1)}
                     </td>

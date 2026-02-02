@@ -16,10 +16,13 @@ export async function GET() {
       where: { id: user.companyId },
       select: {
         currency: true,
+        defaultHourlyRate: true,
+        useUniversalRate: true,
         economicRevenueAccount: true,
         economicCounterAccount: true,
         economicVatCode: true,
         economicCurrency: true,
+        expenseAutoApproveThreshold: true,
       },
     });
 
@@ -41,9 +44,10 @@ export async function PUT(req: Request) {
     }
 
     const body = await req.json();
-    const { currency, economicRevenueAccount, economicCounterAccount, economicVatCode, economicCurrency } = body;
+    const { currency, defaultHourlyRate, useUniversalRate, economicRevenueAccount, economicCounterAccount, economicVatCode, economicCurrency, expenseAutoApproveThreshold } = body;
 
     const data: Record<string, unknown> = {
+      defaultHourlyRate: defaultHourlyRate ? parseFloat(defaultHourlyRate) : null,
       economicRevenueAccount: economicRevenueAccount || null,
       economicCounterAccount: economicCounterAccount || null,
       economicVatCode: economicVatCode || null,
@@ -53,16 +57,25 @@ export async function PUT(req: Request) {
     if (currency !== undefined) {
       data.currency = currency || "USD";
     }
+    if (useUniversalRate !== undefined) {
+      data.useUniversalRate = !!useUniversalRate;
+    }
+    if (expenseAutoApproveThreshold !== undefined) {
+      data.expenseAutoApproveThreshold = expenseAutoApproveThreshold !== null ? parseFloat(expenseAutoApproveThreshold) : null;
+    }
 
     const company = await db.company.update({
       where: { id: user.companyId },
       data,
       select: {
         currency: true,
+        defaultHourlyRate: true,
+        useUniversalRate: true,
         economicRevenueAccount: true,
         economicCounterAccount: true,
         economicVatCode: true,
         economicCurrency: true,
+        expenseAutoApproveThreshold: true,
       },
     });
 

@@ -1,0 +1,433 @@
+"use client";
+
+import { useState, useEffect, useCallback, useRef } from "react";
+import {
+  Upload,
+  FileText,
+  Trash2,
+  Sparkles,
+  Loader2,
+  FileUp,
+  Clock,
+  DollarSign,
+  CalendarDays,
+  BookOpen,
+  Tag,
+  ShieldX,
+} from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { useTranslations } from "@/lib/i18n";
+
+interface ContractSectionProps {
+  projectId: string;
+  userRole: string;
+}
+
+interface Contract {
+  id: string;
+  projectId: string;
+  fileName: string;
+  fileUrl: string;
+  fileType: string;
+  fileSize: number;
+  extractedTerms: Record<string, unknown> | null;
+  extractedAt: string | null;
+  maxHours: number | null;
+  maxBudget: number | null;
+  budgetCurrency: string | null;
+  deadline: string | null;
+  scopeDescription: string | null;
+  scopeKeywords: string[];
+  exclusions: string[];
+  uploadedById: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  uploadedBy: {
+    firstName: string;
+    lastName: string;
+  };
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+  return (bytes / 1048576).toFixed(1) + " MB";
+}
+
+export function ContractSection({ projectId, userRole }: ContractSectionProps) {
+  const t = useTranslations("contracts");
+
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [extractingId, setExtractingId] = useState<string | null>(null);
+  const [notes, setNotes] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchContracts = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/contracts/${projectId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setContracts(data);
+    } catch {
+      // silently fail
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    fetchContracts();
+  }, [fetchContracts]);
+
+  const handleUpload = async () => {
+    const file = fileInputRef.current?.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("projectId", projectId);
+      if (notes.trim()) {
+        formData.append("notes", notes.trim());
+      }
+
+      const res = await fetch("/api/contracts/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) return;
+
+      const uploaded: Contract = await res.json();
+
+      // Reset form
+      setNotes("");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+
+      // Refresh contracts list
+      await fetchContracts();
+
+      // Auto-trigger extraction
+      handleExtract(uploaded.id);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleExtract = async (contractId: string) => {
+    setExtractingId(contractId);
+    try {
+      const res = await fetch("/api/contracts/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contractId }),
+      });
+
+      if (!res.ok) return;
+
+      await fetchContracts();
+    } finally {
+      setExtractingId(null);
+    }
+  };
+
+  const handleDelete = async (contractId: string) => {
+    if (!window.confirm(t("deleteConfirm"))) return;
+
+    try {
+      const res = await fetch(
+        `/api/contracts/${projectId}?contractId=${contractId}`,
+        { method: "DELETE" }
+      );
+
+      if (!res.ok) return;
+
+      setContracts((prev) => prev.filter((c) => c.id !== contractId));
+    } catch {
+      // silently fail
+    }
+  };
+
+  const hasExtractedTerms = (contract: Contract) =>
+    contract.extractedAt !== null;
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">{t("title")}</h3>
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <h3 className="text-lg font-semibold">{t("title")}</h3>
+
+      {/* Upload Form */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="space-y-4">
+            <div className="flex flex-col gap-2">
+              <label
+                htmlFor="contract-file"
+                className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground"
+              >
+                <FileUp className="h-4 w-4" />
+                {fileInputRef.current?.files?.[0]?.name ?? t("upload")}
+              </label>
+              <input
+                ref={fileInputRef}
+                id="contract-file"
+                type="file"
+                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                className="sr-only"
+                onChange={() => {
+                  // Force re-render so the label updates with the file name
+                  setNotes((n) => n);
+                }}
+              />
+              <p className="text-xs text-muted-foreground">{t("fileTypes")}</p>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="contract-notes" className="text-sm font-medium">
+                {t("notes")}
+              </label>
+              <Textarea
+                id="contract-notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder={t("notesPlaceholder")}
+                rows={2}
+              />
+            </div>
+
+            <Button
+              onClick={handleUpload}
+              disabled={uploading || !fileInputRef.current?.files?.length}
+              size="sm"
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t("uploading")}
+                </>
+              ) : (
+                <>
+                  <Upload className="mr-2 h-4 w-4" />
+                  {t("upload")}
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Empty State */}
+      {contracts.length === 0 && (
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-10 text-center">
+          <FileText className="h-10 w-10 text-muted-foreground/40" />
+          <p className="mt-3 text-sm font-medium text-muted-foreground">
+            {t("noContracts")}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground/70">
+            {t("noContractsDescription")}
+          </p>
+        </div>
+      )}
+
+      {/* Contract List */}
+      {contracts.length > 0 && (
+        <div className="space-y-4">
+          {contracts.map((contract) => (
+            <Card key={contract.id}>
+              <CardContent className="pt-6">
+                <div className="space-y-4">
+                  {/* Contract Header */}
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <FileText className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          {contract.fileName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatFileSize(contract.fileSize)}
+                          {" \u00b7 "}
+                          {new Date(contract.createdAt).toLocaleDateString()}
+                          {" \u00b7 "}
+                          {contract.uploadedBy.firstName}{" "}
+                          {contract.uploadedBy.lastName}
+                        </p>
+                        {contract.notes && (
+                          <p className="mt-1 text-xs text-muted-foreground italic">
+                            {contract.notes}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleExtract(contract.id)}
+                        disabled={extractingId === contract.id}
+                      >
+                        {extractingId === contract.id ? (
+                          <>
+                            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                            {t("extracting")}
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="mr-2 h-3.5 w-3.5" />
+                            {hasExtractedTerms(contract)
+                              ? t("reExtract")
+                              : t("extract")}
+                          </>
+                        )}
+                      </Button>
+
+                      {userRole === "admin" && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => handleDelete(contract.id)}
+                          title={t("deleteContract")}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Extracted Terms */}
+                  {hasExtractedTerms(contract) && (
+                    <div className="rounded-lg border bg-muted/30 p-4">
+                      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        {t("extractedTerms")}
+                      </p>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        {contract.maxHours != null && (
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">
+                              {t("maxHours")}:
+                            </span>
+                            <span className="text-sm font-medium">
+                              {contract.maxHours}h
+                            </span>
+                          </div>
+                        )}
+
+                        {contract.maxBudget != null && (
+                          <div className="flex items-center gap-2">
+                            <DollarSign className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">
+                              {t("maxBudget")}:
+                            </span>
+                            <span className="text-sm font-medium">
+                              {contract.budgetCurrency
+                                ? `${contract.maxBudget.toLocaleString()} ${contract.budgetCurrency}`
+                                : contract.maxBudget.toLocaleString()}
+                            </span>
+                          </div>
+                        )}
+
+                        {contract.deadline && (
+                          <div className="flex items-center gap-2">
+                            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">
+                              {t("deadline")}:
+                            </span>
+                            <span className="text-sm font-medium">
+                              {new Date(
+                                contract.deadline
+                              ).toLocaleDateString()}
+                            </span>
+                          </div>
+                        )}
+
+                        {contract.scopeDescription && (
+                          <div className="col-span-full flex items-start gap-2">
+                            <BookOpen className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                            <div>
+                              <span className="text-xs text-muted-foreground">
+                                {t("scope")}:
+                              </span>
+                              <p className="text-sm">
+                                {contract.scopeDescription}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {contract.scopeKeywords.length > 0 && (
+                          <div className="col-span-full flex items-start gap-2">
+                            <Tag className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                            <div>
+                              <span className="text-xs text-muted-foreground">
+                                {t("keywords")}:
+                              </span>
+                              <div className="mt-1 flex flex-wrap gap-1.5">
+                                {contract.scopeKeywords.map((kw) => (
+                                  <Badge
+                                    key={kw}
+                                    variant="secondary"
+                                    className="text-xs"
+                                  >
+                                    {kw}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {contract.exclusions.length > 0 && (
+                          <div className="col-span-full flex items-start gap-2">
+                            <ShieldX className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                            <div>
+                              <span className="text-xs text-muted-foreground">
+                                {t("exclusions")}:
+                              </span>
+                              <div className="mt-1 flex flex-wrap gap-1.5">
+                                {contract.exclusions.map((ex) => (
+                                  <Badge
+                                    key={ex}
+                                    variant="outline"
+                                    className="text-xs"
+                                  >
+                                    {ex}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

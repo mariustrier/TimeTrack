@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { companyName } = body;
+    const { companyName, currency } = body;
 
     if (!companyName) {
       return NextResponse.json(
@@ -33,7 +33,10 @@ export async function POST(req: Request) {
     }
 
     const company = await db.company.create({
-      data: { name: companyName },
+      data: {
+        name: companyName,
+        currency: currency || "USD",
+      },
     });
 
     const user = await db.user.create({

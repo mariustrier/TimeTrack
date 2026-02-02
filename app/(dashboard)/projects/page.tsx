@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FolderKanban, Plus, Pencil, Trash2 } from "lucide-react";
+import { FolderKanban, Plus, Pencil, Trash2, FileText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +31,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useTranslations } from "@/lib/i18n";
+import { convertAndFormat, convertAndFormatBudget, SUPPORTED_CURRENCIES } from "@/lib/currency";
+import { ContractSection } from "@/components/contracts/contract-section";
 
 interface Project {
   id: string;
@@ -38,9 +40,15 @@ interface Project {
   client: string | null;
   color: string;
   budgetHours: number | null;
+  budgetTotalHours: number | null;
   billable: boolean;
   active: boolean;
   currency: string | null;
+  pricingType: string;
+  fixedPrice: number | null;
+  rateMode: string;
+  projectRate: number | null;
+  moneyUsed: number;
   _count: { timeEntries: number };
 }
 
@@ -52,6 +60,7 @@ const COLORS = [
 export default function ProjectsPage() {
   const t = useTranslations("projects");
   const tc = useTranslations("common");
+  const tContracts = useTranslations("contracts");
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,7 +76,15 @@ export default function ProjectsPage() {
   const [budgetHours, setBudgetHours] = useState("");
   const [billable, setBillable] = useState(true);
   const [currency, setCurrency] = useState("");
-  const [companyCurrency, setCompanyCurrency] = useState("USD");
+  const [masterCurrency, setMasterCurrency] = useState("USD");
+  const [displayCurrency, setDisplayCurrency] = useState("USD");
+  const [pricingType, setPricingType] = useState("hourly");
+  const [fixedPrice, setFixedPrice] = useState("");
+  const [defaultHourlyRate, setDefaultHourlyRate] = useState<number | null>(null);
+  const [rateMode, setRateMode] = useState("COMPANY_RATE");
+  const [projectRate, setProjectRate] = useState("");
+  const [userRole, setUserRole] = useState("employee");
+  const [contractProjectId, setContractProjectId] = useState<string | null>(null);
 
   async function fetchProjects() {
     setLoading(true);
@@ -86,8 +103,19 @@ export default function ProjectsPage() {
     fetch("/api/admin/economic")
       .then((res) => res.ok ? res.json() : null)
       .then((data) => {
-        if (data?.currency) setCompanyCurrency(data.currency);
+        if (data?.currency) {
+          setMasterCurrency(data.currency || "USD");
+          setDisplayCurrency(data.currency || "USD");
+        }
+        if (data?.defaultHourlyRate) setDefaultHourlyRate(data.defaultHourlyRate);
       })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (data?.role) setUserRole(data.role); })
       .catch(() => {});
   }, []);
 
@@ -99,6 +127,10 @@ export default function ProjectsPage() {
     setBudgetHours("");
     setBillable(true);
     setCurrency("");
+    setPricingType("hourly");
+    setFixedPrice("");
+    setRateMode("COMPANY_RATE");
+    setProjectRate("");
     setModalOpen(true);
   }
 
@@ -110,6 +142,10 @@ export default function ProjectsPage() {
     setBudgetHours(project.budgetHours?.toString() || "");
     setBillable(project.billable);
     setCurrency(project.currency || "");
+    setPricingType(project.pricingType || "hourly");
+    setFixedPrice(project.fixedPrice?.toString() || "");
+    setRateMode(project.rateMode || "COMPANY_RATE");
+    setProjectRate(project.projectRate?.toString() || "");
     setModalOpen(true);
   }
 
@@ -117,7 +153,18 @@ export default function ProjectsPage() {
     if (!name.trim()) return;
     setSaving(true);
     try {
-      const body = { name, client, color, budgetHours, billable, currency: (currency && currency !== "default") ? currency : null };
+      const body = {
+        name,
+        client,
+        color,
+        pricingType,
+        budgetHours: pricingType === "hourly" ? budgetHours : null,
+        fixedPrice: pricingType === "fixed_price" ? fixedPrice : null,
+        rateMode: pricingType === "fixed_price" ? rateMode : "COMPANY_RATE",
+        projectRate: pricingType === "fixed_price" && rateMode === "PROJECT_RATE" ? projectRate : null,
+        billable,
+        currency: (currency && currency !== "default") ? currency : null,
+      };
       if (editingProject) {
         await fetch(`/api/projects/${editingProject.id}`, {
           method: "PUT",
@@ -171,10 +218,27 @@ export default function ProjectsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-        <Button onClick={openCreateModal}>
-          <Plus className="mr-2 h-4 w-4" />
-          {t("newProject")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Select value={displayCurrency} onValueChange={setDisplayCurrency}>
+            <SelectTrigger className="w-[100px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SUPPORTED_CURRENCIES.map((c) => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {displayCurrency !== masterCurrency && (
+            <span className="text-xs text-muted-foreground">
+              ({masterCurrency})
+            </span>
+          )}
+          <Button onClick={openCreateModal}>
+            <Plus className="mr-2 h-4 w-4" />
+            {t("newProject")}
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -220,7 +284,7 @@ export default function ProjectsPage() {
                       {project.client || "-"}
                     </TableCell>
                     <TableCell>
-                      {project.budgetHours ? `${project.budgetHours}h` : "-"}
+                      {project.budgetTotalHours != null ? `${project.budgetTotalHours}h` : "-"}
                     </TableCell>
                     <TableCell>{project._count.timeEntries}</TableCell>
                     <TableCell>
@@ -231,7 +295,10 @@ export default function ProjectsPage() {
                         {project.billable && (
                           <Badge variant="outline">{tc("billable")}</Badge>
                         )}
-                        {project.currency && project.currency !== companyCurrency && (
+                        {project.pricingType === "fixed_price" && (
+                          <Badge variant="outline">{t("fixedPrice")}</Badge>
+                        )}
+                        {project.currency && project.currency !== masterCurrency && (
                           <Badge variant="outline">{project.currency}</Badge>
                         )}
                       </div>
@@ -255,6 +322,15 @@ export default function ProjectsPage() {
                         >
                           <Trash2 className="h-4 w-4 text-red-500" />
                         </Button>
+                        {(userRole === "admin" || userRole === "manager") && (
+                          <button
+                            onClick={() => setContractProjectId(project.id)}
+                            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                            title={tContracts("title")}
+                          >
+                            <FileText className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -306,25 +382,103 @@ export default function ProjectsPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>{t("budgetHours")}</Label>
-              <Input
-                type="number"
-                value={budgetHours}
-                onChange={(e) => setBudgetHours(e.target.value)}
-                placeholder={t("optional")}
-              />
+              <Label>{t("pricingType")}</Label>
+              <Select value={pricingType} onValueChange={(val) => {
+                setPricingType(val);
+                if (val === "fixed_price") setBudgetHours("");
+                if (val === "hourly") setFixedPrice("");
+              }}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hourly">{t("hourlyPricing")}</SelectItem>
+                  <SelectItem value="fixed_price">{t("fixedPricePricing")}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+            {pricingType === "hourly" && (
+              <div className="space-y-2">
+                <Label>{t("budgetHours")}</Label>
+                <Input
+                  type="number"
+                  value={budgetHours}
+                  onChange={(e) => setBudgetHours(e.target.value)}
+                  placeholder={t("optional")}
+                />
+              </div>
+            )}
+            {pricingType === "fixed_price" && (
+              <>
+                <div className="space-y-2">
+                  <Label>{t("fixedPriceAmount").replace("{currency}", masterCurrency)}</Label>
+                  <Input
+                    type="number"
+                    value={fixedPrice}
+                    onChange={(e) => setFixedPrice(e.target.value)}
+                    placeholder={t("fixedPricePlaceholder")}
+                  />
+                  {fixedPrice && defaultHourlyRate && rateMode === "COMPANY_RATE" && (
+                    <p className="text-xs text-muted-foreground">
+                      {t("estimatedHours")
+                        .replace("{hours}", (parseFloat(fixedPrice) / defaultHourlyRate).toFixed(1))
+                        .replace("{rate}", convertAndFormatBudget(defaultHourlyRate, masterCurrency, masterCurrency))}
+                    </p>
+                  )}
+                  {fixedPrice && rateMode === "PROJECT_RATE" && projectRate && (
+                    <p className="text-xs text-muted-foreground">
+                      {t("estimatedHours")
+                        .replace("{hours}", (parseFloat(fixedPrice) / parseFloat(projectRate)).toFixed(1))
+                        .replace("{rate}", convertAndFormatBudget(parseFloat(projectRate), masterCurrency, masterCurrency))}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("rateMode")}</Label>
+                  <Select value={rateMode} onValueChange={setRateMode}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="COMPANY_RATE">
+                        {t("companyRate")} — {t("companyRateDescription")}
+                      </SelectItem>
+                      <SelectItem value="EMPLOYEE_RATES">
+                        {t("employeeRates")} — {t("employeeRatesDescription")}
+                      </SelectItem>
+                      <SelectItem value="PROJECT_RATE">
+                        {t("projectRateOption")} — {t("projectRateDescription")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {rateMode === "COMPANY_RATE" && !defaultHourlyRate && (
+                    <p className="text-xs text-amber-600">{t("noCompanyRate")}</p>
+                  )}
+                </div>
+                {rateMode === "PROJECT_RATE" && (
+                  <div className="space-y-2">
+                    <Label>{t("projectRateInput").replace("{currency}", masterCurrency)}</Label>
+                    <Input
+                      type="number"
+                      value={projectRate}
+                      onChange={(e) => setProjectRate(e.target.value)}
+                      placeholder="e.g. 800"
+                    />
+                  </div>
+                )}
+              </>
+            )}
             <div className="space-y-2">
               <Label>{tc("currency")}</Label>
               <Select value={currency} onValueChange={setCurrency}>
                 <SelectTrigger>
-                  <SelectValue placeholder={t("companyDefault", { currency: companyCurrency })} />
+                  <SelectValue placeholder={t("companyDefault", { currency: masterCurrency })} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="default">{t("companyDefault", { currency: companyCurrency })}</SelectItem>
-                  <SelectItem value="USD">USD</SelectItem>
-                  <SelectItem value="EUR">EUR</SelectItem>
-                  <SelectItem value="DKK">DKK</SelectItem>
+                  <SelectItem value="default">{t("companyDefault").replace("{currency}", masterCurrency)}</SelectItem>
+                  {SUPPORTED_CURRENCIES.map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -367,6 +521,18 @@ export default function ProjectsPage() {
               {saving ? tc("deleting") : tc("delete")}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Contract Dialog */}
+      <Dialog open={!!contractProjectId} onOpenChange={(open) => !open && setContractProjectId(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{tContracts("title")}</DialogTitle>
+          </DialogHeader>
+          {contractProjectId && (
+            <ContractSection projectId={contractProjectId} userRole={userRole} />
+          )}
         </DialogContent>
       </Dialog>
     </div>

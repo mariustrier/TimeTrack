@@ -1,0 +1,16 @@
+{
+  "name": "Cloud Timer",
+  "short_name": "CloudTimer",
+  "description": "Modern Time Tracking for Teams",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#3B82F6",
+  "background_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

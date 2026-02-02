@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUser, isAdminOrManager } from "@/lib/auth";
 import {
   aggregateEmployeeTimeDistribution,
   aggregateEmployeeUtilizationTrend,
@@ -14,7 +14,9 @@ import {
   aggregateCompanyRevenueOverhead,
   aggregateNonBillableTrend,
   aggregateUnbilledWork,
+  aggregateExpenseBreakdown,
 } from "@/lib/analytics-utils";
+import { expandRecurringExpenses } from "@/lib/expense-utils";
 
 export async function GET(req: Request) {
   try {
@@ -22,7 +24,7 @@ export async function GET(req: Request) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    if (user.role !== "admin") {
+    if (!isAdminOrManager(user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -181,10 +183,34 @@ export async function GET(req: Request) {
       }
 
       case "company": {
+        // Fetch approved project expenses within date range
+        const projExpenses = await db.expense.findMany({
+          where: {
+            companyId: user.companyId,
+            approvalStatus: "approved",
+            date: { gte: from, lte: to },
+          },
+          select: { amount: true, date: true, category: true, description: true },
+        });
+        const castProjExpenses = projExpenses.map((e) => ({
+          ...e,
+          date: e.date.toISOString(),
+        }));
+
+        // Fetch company overhead and expand recurring into range
+        const rawCompExpenses = await db.companyExpense.findMany({
+          where: { companyId: user.companyId },
+        });
+        const expandedCompExpenses = expandRecurringExpenses(rawCompExpenses, from, to).map((e) => ({
+          ...e,
+          date: e.date.toISOString(),
+        }));
+
         return NextResponse.json({
-          revenueOverhead: aggregateCompanyRevenueOverhead(castEntries, from, to, granularity),
+          revenueOverhead: aggregateCompanyRevenueOverhead(castEntries, from, to, granularity, castProjExpenses, expandedCompExpenses),
           nonBillableTrend: aggregateNonBillableTrend(castEntries, from, to, granularity),
           unbilledWork: aggregateUnbilledWork(castEntries),
+          expenseBreakdown: aggregateExpenseBreakdown(castProjExpenses, expandedCompExpenses, from, to, granularity),
           currency,
         });
       }
