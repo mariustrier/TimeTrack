@@ -32,6 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useTranslations } from "@/lib/i18n";
+import { PageGuide } from "@/components/ui/page-guide";
 
 interface TeamMember {
   id: string;
@@ -188,6 +189,7 @@ export default function TeamPage() {
 
   return (
     <div className="space-y-6">
+      <PageGuide pageId="team" titleKey="teamTitle" descKey="teamDesc" tips={["teamTip1", "teamTip2", "teamTip3"]} />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
         <div className="flex items-center gap-2">

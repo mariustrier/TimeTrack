@@ -6,7 +6,8 @@ import { isSuperAdmin } from "@/lib/auth";
 import { Toaster } from "sonner";
 import { LocaleProvider } from "@/lib/i18n";
 import { CookieConsent } from "@/components/ui/cookie-consent";
-import { GuidedTour } from "@/components/ui/guided-tour";
+import { GuidedTour, AdminSetupTour } from "@/components/ui/guided-tour";
+import { GuideProvider } from "@/components/ui/guide-context";
 
 export default async function DashboardLayout({
   children,
@@ -37,15 +38,18 @@ export default async function DashboardLayout({
 
   return (
     <LocaleProvider>
-      <div className="flex h-screen overflow-hidden bg-background">
-        <Sidebar userRole={user.role} isSuperAdmin={isSuperAdmin(user.email)} />
-        <main className="flex-1 overflow-y-auto">
-          <div className="p-6 lg:p-8">{children}</div>
-        </main>
-        <Toaster richColors />
-        <CookieConsent />
-        <GuidedTour showTour={!user.tourCompletedAt} userRole={user.role} />
-      </div>
+      <GuideProvider dismissedGuides={user.dismissedGuides}>
+        <div className="flex h-screen overflow-hidden bg-background">
+          <Sidebar userRole={user.role} isSuperAdmin={isSuperAdmin(user.email)} />
+          <main className="flex-1 overflow-y-auto">
+            <div className="p-6 lg:p-8">{children}</div>
+          </main>
+          <Toaster richColors />
+          <CookieConsent />
+          <GuidedTour showTour={!user.tourCompletedAt} userRole={user.role} />
+          <AdminSetupTour showTour={!user.setupTourCompletedAt && !!user.tourCompletedAt} userRole={user.role} />
+        </div>
+      </GuideProvider>
     </LocaleProvider>
   );
 }

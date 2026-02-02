@@ -51,6 +51,8 @@ model User {
 
   acceptedTermsAt      DateTime?
   tourCompletedAt      DateTime?
+  setupTourCompletedAt DateTime?
+  dismissedGuides      String[]  @default([])
   deletionRequestedAt  DateTime?
   deletionReason       String?
   deletedAt            DateTime?

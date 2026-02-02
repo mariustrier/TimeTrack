@@ -16,6 +16,7 @@ import { TeamInsights } from "@/components/analytics/team-insights";
 import { ProjectInsights } from "@/components/analytics/project-insights";
 import { CompanyInsights } from "@/components/analytics/company-insights";
 import { useTranslations } from "@/lib/i18n";
+import { PageGuide } from "@/components/ui/page-guide";
 
 export default function AnalyticsPage() {
   const t = useTranslations("analytics");
@@ -30,6 +31,7 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
+      <PageGuide pageId="analytics" titleKey="analyticsTitle" descKey="analyticsDesc" tips={["analyticsTip1", "analyticsTip2", "analyticsTip3"]} />
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>

@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useTranslations, useDateLocale } from "@/lib/i18n";
+import { PageGuide } from "@/components/ui/page-guide";
 
 interface VacationRequest {
   id: string;
@@ -122,6 +123,7 @@ export default function AdminVacationsPage() {
 
   return (
     <div className="space-y-6">
+      <PageGuide pageId="adminVacations" titleKey="adminVacationsTitle" descKey="adminVacationsDesc" tips={["adminVacationsTip1", "adminVacationsTip2", "adminVacationsTip3"]} />
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>

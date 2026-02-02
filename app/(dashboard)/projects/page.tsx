@@ -33,6 +33,7 @@ import {
 import { useTranslations } from "@/lib/i18n";
 import { convertAndFormat, convertAndFormatBudget, SUPPORTED_CURRENCIES } from "@/lib/currency";
 import { ContractSection } from "@/components/contracts/contract-section";
+import { PageGuide } from "@/components/ui/page-guide";
 
 interface Project {
   id: string;
@@ -216,6 +217,7 @@ export default function ProjectsPage() {
 
   return (
     <div className="space-y-6">
+      <PageGuide pageId="projects" titleKey="projectsTitle" descKey="projectsDesc" tips={["projectsTip1", "projectsTip2", "projectsTip3"]} />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
         <div className="flex items-center gap-2">

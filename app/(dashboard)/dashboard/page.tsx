@@ -54,6 +54,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { convertAndFormatBudget } from "@/lib/currency";
 import { useTranslations, useDateLocale } from "@/lib/i18n";
+import { PageGuide } from "@/components/ui/page-guide";
 
 interface Project {
   id: string;
@@ -414,6 +415,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <PageGuide pageId="dashboard" titleKey="dashboardTitle" descKey="dashboardDesc" tips={["dashboardTip1", "dashboardTip2", "dashboardTip3"]} />
       {/* Week Navigation */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>

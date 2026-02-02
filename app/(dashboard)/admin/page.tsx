@@ -54,6 +54,7 @@ import { toast } from "sonner";
 import { formatHours, formatPercentage } from "@/lib/calculations";
 import { SUPPORTED_CURRENCIES, convertAndFormat, convertAndFormatBudget } from "@/lib/currency";
 import { useTranslations, useDateLocale } from "@/lib/i18n";
+import { PageGuide } from "@/components/ui/page-guide";
 
 interface EmployeeStat {
   id: string;
@@ -332,6 +333,12 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-6">
+      <PageGuide
+        pageId="admin"
+        titleKey="adminTitle"
+        descKey="adminDesc"
+        tips={["adminTip1", "adminTip2", "adminTip3"]}
+      />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -634,7 +641,7 @@ export default function AdminPage() {
       </div>
 
       {/* Master Currency */}
-      <Card>
+      <Card data-tour="admin-currency">
         <CardContent className="p-6">
           <h3 className="text-lg font-semibold text-foreground">{t("masterCurrency")}</h3>
           <p className="mt-1 text-sm text-muted-foreground">{t("masterCurrencyDescription")}</p>
@@ -651,7 +658,7 @@ export default function AdminPage() {
       </Card>
 
       {/* Universal Bill Rate */}
-      <Card>
+      <Card data-tour="admin-bill-rate">
         <CardContent className="p-6">
           <h3 className="text-lg font-semibold text-foreground">{t("universalBillRate")}</h3>
           <p className="mt-1 text-sm text-muted-foreground">{t("universalBillRateDesc")}</p>
@@ -688,7 +695,7 @@ export default function AdminPage() {
             </Badge>
           </div>
           {useUniversalRate && (
-            <div className="mt-4 flex items-center gap-3">
+            <div className="mt-4 flex items-center gap-3" data-tour="admin-hourly-rate">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">
                   {t("universalRateLabel").replace("{currency}", masterCurrency)}
@@ -739,7 +746,7 @@ export default function AdminPage() {
       </Card>
 
       {/* Expense Settings */}
-      <Card>
+      <Card data-tour="admin-expense-settings">
         <CardContent className="p-6">
           <div className="flex items-start justify-between">
             <div>

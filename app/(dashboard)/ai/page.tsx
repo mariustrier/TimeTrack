@@ -13,6 +13,7 @@ import {
   Info,
 } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
+import { PageGuide } from "@/components/ui/page-guide";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -180,6 +181,7 @@ export default function AIAssistantPage() {
 
   return (
     <div className="space-y-6">
+      <PageGuide pageId="ai" titleKey="aiTitle" descKey="aiDesc" tips={["aiTip1", "aiTip2", "aiTip3"]} />
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">

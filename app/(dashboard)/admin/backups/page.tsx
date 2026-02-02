@@ -5,6 +5,7 @@ import { HardDrive, Download, FileArchive, CheckCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "@/lib/i18n";
+import { PageGuide } from "@/components/ui/page-guide";
 
 export default function BackupsPage() {
   const t = useTranslations("backups");
@@ -37,6 +38,7 @@ export default function BackupsPage() {
 
   return (
     <div className="space-y-6">
+      <PageGuide pageId="backups" titleKey="backupsTitle" descKey="backupsDesc" tips={["backupsTip1", "backupsTip2", "backupsTip3"]} />
       <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
 
       <div className="grid gap-6 md:grid-cols-2">

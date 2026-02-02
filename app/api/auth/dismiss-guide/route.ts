@@ -5,23 +5,21 @@ import { db } from "@/lib/db";
 export async function POST(request: Request) {
   try {
     const user = await requireAuth();
-    const body = await request.json().catch(() => ({}));
-    const tourId = body.tourId || "welcome";
+    const { pageId } = await request.json();
 
-    const field = tourId === "setup" ? "setupTourCompletedAt" : "tourCompletedAt";
-
-    if (body.reset) {
-      await db.user.update({
-        where: { id: user.id },
-        data: { [field]: null },
-      });
-      return NextResponse.json({ success: true, reset: true });
+    if (!pageId || typeof pageId !== "string") {
+      return NextResponse.json({ error: "pageId required" }, { status: 400 });
     }
 
-    await db.user.update({
-      where: { id: user.id },
-      data: { [field]: new Date() },
-    });
+    // Only add if not already dismissed
+    if (!user.dismissedGuides.includes(pageId)) {
+      await db.user.update({
+        where: { id: user.id },
+        data: {
+          dismissedGuides: { push: pageId },
+        },
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch {

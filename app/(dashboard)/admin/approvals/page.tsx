@@ -4,12 +4,14 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TimeEntryApprovals } from "@/components/approvals/time-entry-approvals";
 import { ExpenseApprovals } from "@/components/approvals/expense-approvals";
 import { useTranslations } from "@/lib/i18n";
+import { PageGuide } from "@/components/ui/page-guide";
 
 export default function ApprovalsPage() {
   const t = useTranslations("approvals");
 
   return (
     <div className="space-y-6">
+      <PageGuide pageId="approvals" titleKey="approvalsTitle" descKey="approvalsDesc" tips={["approvalsTip1", "approvalsTip2", "approvalsTip3"]} />
       <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
       <Tabs defaultValue="time-entries">
         <TabsList>

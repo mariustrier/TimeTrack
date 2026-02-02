@@ -34,6 +34,7 @@ import {
 import { toast } from "sonner";
 import { useTranslations } from "@/lib/i18n";
 import { convertAndFormat } from "@/lib/currency";
+import { PageGuide } from "@/components/ui/page-guide";
 
 interface CompanyExpenseItem {
   id: string;
@@ -308,6 +309,7 @@ export default function CompanyExpensesPage() {
 
   return (
     <div className="space-y-6">
+      <PageGuide pageId="companyExpenses" titleKey="companyExpensesTitle" descKey="companyExpensesDesc" tips={["companyExpensesTip1", "companyExpensesTip2", "companyExpensesTip3"]} />
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>

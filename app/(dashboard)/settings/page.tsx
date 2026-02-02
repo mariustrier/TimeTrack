@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Trash2, AlertTriangle, Clock, RotateCcw } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
+import { PageGuide } from "@/components/ui/page-guide";
 import { toast } from "sonner";
 
 export default function SettingsPage() {
@@ -81,6 +82,7 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-8">
+      <PageGuide pageId="settings" titleKey="settingsTitle" descKey="settingsDesc" tips={["settingsTip1", "settingsTip2", "settingsTip3"]} />
       <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
 
       {/* Replay Tour Section */}
