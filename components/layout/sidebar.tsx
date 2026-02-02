@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 import {
-  Clock,
   LayoutDashboard,
   Palmtree,
   FolderKanban,
@@ -20,6 +19,7 @@ import {
   Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LogoIcon } from "@/components/ui/logo-icon";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { LocaleToggle } from "@/components/ui/locale-toggle";
 import { useTranslations } from "@/lib/i18n";
@@ -107,7 +107,7 @@ export function Sidebar({ userRole, isSuperAdmin: superAdmin }: SidebarProps) {
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-border bg-card">
       <div className="flex h-16 items-center gap-2 border-b border-border px-6">
-        <Clock className="h-6 w-6 text-brand-500" />
+        <LogoIcon className="h-7 w-7 text-brand-500" />
         <span className="text-lg font-bold text-foreground">{t("timetrack")}</span>
       </div>
 
