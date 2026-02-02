@@ -119,8 +119,8 @@ function TourOverlay({ steps, namespace, tourId, onComplete }: TourOverlayProps)
   const spotlightRadius = 8;
 
   return (
-    <div className="fixed inset-0 z-[9999]" onClick={(e) => e.stopPropagation()}>
-      <svg className="fixed inset-0 w-full h-full" style={{ pointerEvents: "none" }}>
+    <div className="fixed inset-0 z-[9999]" style={{ pointerEvents: "none" }}>
+      <svg className="fixed inset-0 w-full h-full">
         <defs>
           <mask id={`tour-mask-${tourId}`}>
             <rect x="0" y="0" width="100%" height="100%" fill="white" />
@@ -141,7 +141,6 @@ function TourOverlay({ steps, namespace, tourId, onComplete }: TourOverlayProps)
           fill="rgba(0, 0, 0, 0.6)"
           mask={`url(#tour-mask-${tourId})`}
           style={{ pointerEvents: "auto" }}
-          onClick={handleSkip}
         />
       </svg>
 
@@ -160,9 +159,8 @@ function TourOverlay({ steps, namespace, tourId, onComplete }: TourOverlayProps)
 
       <div
         ref={tooltipRef}
-        style={getTooltipStyle()}
+        style={{ ...getTooltipStyle(), pointerEvents: "auto" }}
         className="z-[10000] w-80 rounded-xl border border-border bg-card p-5 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={handleSkip}
