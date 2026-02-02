@@ -26,7 +26,16 @@ export async function GET(req: Request) {
 
     const entries = await db.timeEntry.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        date: true,
+        hours: true,
+        comment: true,
+        userId: true,
+        projectId: true,
+        approvalStatus: true,
+        billingStatus: true,
+        submittedAt: true,
         user: { select: { id: true, firstName: true, lastName: true, email: true } },
         project: { select: { id: true, name: true, color: true, billable: true } },
       },

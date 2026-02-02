@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { put, del } from "@vercel/blob";
 import { db } from "@/lib/db";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_TYPES = [
@@ -17,6 +18,9 @@ export async function POST(req: Request) {
     if (!user || user.role !== "admin") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const limited = checkRateLimit(`upload-logo:${user.companyId}`, { windowMs: 60000, maxRequests: 5 });
+    if (limited) return limited;
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;

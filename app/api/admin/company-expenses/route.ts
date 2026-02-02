@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
+import { validate } from "@/lib/validate";
+import { createCompanyExpenseSchema } from "@/lib/schemas";
 
 export async function GET(req: Request) {
   try {
@@ -47,23 +49,13 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { amount, description, category, date, recurring, frequency, receiptUrl, receiptFileName, receiptFileSize } = body;
-
-    if (!amount || amount <= 0) {
-      return NextResponse.json({ error: "Amount must be greater than 0" }, { status: 400 });
-    }
-
-    if (!description) {
-      return NextResponse.json({ error: "Description is required" }, { status: 400 });
-    }
-
-    if (!category) {
-      return NextResponse.json({ error: "Category is required" }, { status: 400 });
-    }
+    const result = validate(createCompanyExpenseSchema, body);
+    if (!result.success) return result.response;
+    const { amount, description, category, date, recurring, frequency, receiptUrl, receiptFileName, receiptFileSize } = result.data;
 
     const expense = await db.companyExpense.create({
       data: {
-        amount: parseFloat(String(amount)),
+        amount,
         description,
         category,
         date: new Date(date),

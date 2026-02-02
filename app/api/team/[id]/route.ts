@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
+import { validate } from "@/lib/validate";
+import { updateTeamMemberSchema } from "@/lib/schemas";
 
 export async function PUT(
   req: Request,
@@ -23,7 +25,9 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { firstName, lastName, role, employmentType, hourlyRate, costRate, weeklyTarget, vacationDays } = body;
+    const result = validate(updateTeamMemberSchema, body);
+    if (!result.success) return result.response;
+    const { firstName, lastName, role, employmentType, hourlyRate, costRate, weeklyTarget, vacationDays } = result.data;
 
     const updated = await db.user.update({
       where: { id: params.id },
@@ -32,10 +36,10 @@ export async function PUT(
         ...(lastName !== undefined && { lastName }),
         ...(role !== undefined && { role }),
         ...(employmentType !== undefined && { employmentType }),
-        ...(hourlyRate !== undefined && { hourlyRate: parseFloat(hourlyRate) }),
-        ...(costRate !== undefined && { costRate: parseFloat(costRate) }),
-        ...(weeklyTarget !== undefined && { weeklyTarget: parseFloat(weeklyTarget) }),
-        ...(vacationDays !== undefined && { vacationDays: parseInt(vacationDays) }),
+        ...(hourlyRate !== undefined && { hourlyRate }),
+        ...(costRate !== undefined && { costRate }),
+        ...(weeklyTarget !== undefined && { weeklyTarget }),
+        ...(vacationDays !== undefined && { vacationDays }),
       },
     });
 

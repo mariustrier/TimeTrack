@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
+import { validate } from "@/lib/validate";
+import { createProjectSchema } from "@/lib/schemas";
 
 export async function GET() {
   try {
@@ -9,7 +11,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const [projects, hoursUsedAgg, allocations, myHoursUsedAgg] =
+    const [projects, hoursUsedAgg, allocations, myHoursUsedAgg, company, users, billableAgg] =
       await Promise.all([
         db.project.findMany({
           where: { companyId: user.companyId },
@@ -45,6 +47,28 @@ export async function GET() {
           },
           _sum: { hours: true },
         }),
+
+        // Company settings for universal rate
+        db.company.findUnique({
+          where: { id: user.companyId },
+          select: { defaultHourlyRate: true, useUniversalRate: true },
+        }),
+
+        // User rates for moneyUsed calculation
+        db.user.findMany({
+          where: { companyId: user.companyId },
+          select: { id: true, hourlyRate: true, employmentType: true },
+        }),
+
+        // Billable hours grouped by project+user (avoids fetching individual rows)
+        db.timeEntry.groupBy({
+          by: ["projectId", "userId"],
+          where: {
+            companyId: user.companyId,
+            billingStatus: { in: ["billable", "included"] },
+          },
+          _sum: { hours: true },
+        }),
       ]);
 
     const hoursMap: Record<string, number> = {};
@@ -62,17 +86,6 @@ export async function GET() {
       myHoursMap[entry.projectId] = entry._sum.hours || 0;
     }
 
-    // Fetch company settings for universal rate
-    const company = await db.company.findUnique({
-      where: { id: user.companyId },
-      select: { defaultHourlyRate: true, useUniversalRate: true },
-    });
-
-    // Fetch user rates for moneyUsed calculation
-    const users = await db.user.findMany({
-      where: { companyId: user.companyId },
-      select: { id: true, hourlyRate: true, employmentType: true },
-    });
     const userRateMap: Record<string, number> = {};
     for (const u of users) {
       const isFreelancer = u.employmentType === "freelancer";
@@ -81,19 +94,10 @@ export async function GET() {
         : u.hourlyRate;
     }
 
-    // Fetch billable time entries for moneyUsed calculation
-    const billableEntries = await db.timeEntry.findMany({
-      where: {
-        companyId: user.companyId,
-        billingStatus: { in: ["billable", "included"] },
-      },
-      select: { projectId: true, userId: true, hours: true },
-    });
-
     const moneyUsedMap: Record<string, number> = {};
-    for (const entry of billableEntries) {
-      const rate = userRateMap[entry.userId] || 0;
-      moneyUsedMap[entry.projectId] = (moneyUsedMap[entry.projectId] || 0) + entry.hours * rate;
+    for (const agg of billableAgg) {
+      const rate = userRateMap[agg.userId] || 0;
+      moneyUsedMap[agg.projectId] = (moneyUsedMap[agg.projectId] || 0) + (agg._sum.hours || 0) * rate;
     }
 
     const enriched = projects.map((p) => {
@@ -141,24 +145,22 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { name, client, color, budgetHours, billable, currency, pricingType, fixedPrice, rateMode, projectRate } = body;
-
-    if (!name) {
-      return NextResponse.json({ error: "Name is required" }, { status: 400 });
-    }
+    const result = validate(createProjectSchema, body);
+    if (!result.success) return result.response;
+    const { name, client, color, budgetHours, billable, currency, pricingType, fixedPrice, rateMode, projectRate } = result.data;
 
     const project = await db.project.create({
       data: {
         name,
         client: client || null,
         color: color || "#3B82F6",
-        budgetHours: budgetHours ? parseFloat(budgetHours) : null,
+        budgetHours: budgetHours || null,
         billable: billable !== false,
         currency: currency || null,
         pricingType: pricingType || "hourly",
-        fixedPrice: fixedPrice ? parseFloat(fixedPrice) : null,
+        fixedPrice: fixedPrice || null,
         rateMode: rateMode || "COMPANY_RATE",
-        projectRate: projectRate ? parseFloat(projectRate) : null,
+        projectRate: projectRate || null,
         companyId: user.companyId,
       },
     });

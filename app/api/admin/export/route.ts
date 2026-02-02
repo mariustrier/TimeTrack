@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
 import JSZip from "jszip";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 function toCsv(headers: string[], rows: string[][]): string {
   const escape = (val: string) => {
@@ -26,6 +27,9 @@ export async function GET() {
     if (user.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    const limited = checkRateLimit(`export:${user.companyId}`, { windowMs: 300000, maxRequests: 3 });
+    if (limited) return limited;
 
     const [company, users, projects, timeEntries, vacationRequests, expenses, companyExpenses] = await Promise.all([
       db.company.findUnique({ where: { id: user.companyId } }),

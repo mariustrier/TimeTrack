@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { put } from "@vercel/blob";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = [
@@ -16,6 +17,9 @@ export async function POST(req: Request) {
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const limited = checkRateLimit(`upload:${user.id}`, { windowMs: 60000, maxRequests: 20 });
+    if (limited) return limited;
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;

@@ -2,10 +2,14 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireManager } from "@/lib/auth";
 import { extractContractTerms } from "@/lib/ai/extract-terms";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
   try {
     const user = await requireManager();
+
+    const limited = checkRateLimit(`extract:${user.companyId}`, { windowMs: 60000, maxRequests: 5 });
+    if (limited) return limited;
 
     const body = await req.json();
     const { contractId } = body;

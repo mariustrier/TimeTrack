@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
+import { validate } from "@/lib/validate";
+import { updateTimeEntrySchema } from "@/lib/schemas";
 
 export async function PUT(
   req: Request,
@@ -25,7 +27,9 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { hours, comment, billingStatus, nonBillableReason } = body;
+    const result = validate(updateTimeEntrySchema, body);
+    if (!result.success) return result.response;
+    const { hours, comment, billingStatus, nonBillableReason } = result.data;
 
     // Approval status guards
     if (entry.approvalStatus === "locked") {
@@ -55,7 +59,7 @@ export async function PUT(
     // Build update data
     const data: Record<string, unknown> = {};
     if (hours !== undefined && entry.approvalStatus === "draft") {
-      data.hours = parseFloat(hours);
+      data.hours = hours;
     }
     if (comment !== undefined && entry.approvalStatus === "draft") {
       data.comment = comment;

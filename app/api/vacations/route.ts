@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
+import { validate } from "@/lib/validate";
+import { createVacationSchema } from "@/lib/schemas";
 
 export async function GET() {
   try {
@@ -40,22 +42,15 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { startDate, endDate, type, note } = body;
-
-    if (!startDate || !endDate) {
-      return NextResponse.json({ error: "Start date and end date are required" }, { status: 400 });
-    }
+    const result = validate(createVacationSchema, body);
+    if (!result.success) return result.response;
+    const { startDate, endDate, type, note } = result.data;
 
     const start = new Date(startDate);
     const end = new Date(endDate);
 
     if (end < start) {
       return NextResponse.json({ error: "End date must be after start date" }, { status: 400 });
-    }
-
-    const validTypes = ["vacation", "sick", "personal"];
-    if (type && !validTypes.includes(type)) {
-      return NextResponse.json({ error: "Invalid type" }, { status: 400 });
     }
 
     const request = await db.vacationRequest.create({

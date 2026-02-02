@@ -37,6 +37,16 @@ export async function GET(req: Request) {
 
     const members = await db.user.findMany({
       where: { companyId: user.companyId },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        hourlyRate: true,
+        costRate: true,
+        weeklyTarget: true,
+        employmentType: true,
+      },
     });
 
     const entries = await db.timeEntry.findMany({
@@ -44,9 +54,10 @@ export async function GET(req: Request) {
         companyId: user.companyId,
         ...dateFilter,
       },
-      include: {
-        user: true,
-        project: true,
+      select: {
+        userId: true,
+        hours: true,
+        billingStatus: true,
       },
     });
 

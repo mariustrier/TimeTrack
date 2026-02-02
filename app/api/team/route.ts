@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser, isAdminOrManager } from "@/lib/auth";
+import { validate } from "@/lib/validate";
+import { createTeamMemberSchema } from "@/lib/schemas";
 
 export async function GET() {
   try {
@@ -14,6 +16,21 @@ export async function GET() {
 
     const members = await db.user.findMany({
       where: { companyId: user.companyId },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        imageUrl: true,
+        role: true,
+        employmentType: true,
+        hourlyRate: true,
+        costRate: true,
+        weeklyTarget: true,
+        vacationDays: true,
+        companyId: true,
+        createdAt: true,
+      },
       orderBy: { firstName: "asc" },
     });
 
@@ -35,11 +52,9 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { email, firstName, lastName, role, employmentType, hourlyRate, costRate, weeklyTarget } = body;
-
-    if (!email) {
-      return NextResponse.json({ error: "Email is required" }, { status: 400 });
-    }
+    const result = validate(createTeamMemberSchema, body);
+    if (!result.success) return result.response;
+    const { email, firstName, lastName, role, employmentType, hourlyRate, costRate, weeklyTarget } = result.data;
 
     const existing = await db.user.findFirst({
       where: { email, companyId: user.companyId },
@@ -56,9 +71,9 @@ export async function POST(req: Request) {
         lastName: lastName || null,
         role: role || "employee",
         employmentType: employmentType || "employee",
-        hourlyRate: hourlyRate ? parseFloat(hourlyRate) : 0,
-        costRate: costRate ? parseFloat(costRate) : 0,
-        weeklyTarget: weeklyTarget ? parseFloat(weeklyTarget) : 40,
+        hourlyRate: hourlyRate ?? 0,
+        costRate: costRate ?? 0,
+        weeklyTarget: weeklyTarget ?? 40,
         companyId: user.companyId,
       },
     });

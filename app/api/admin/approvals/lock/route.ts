@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
 import { getWeekBounds } from "@/lib/week-helpers";
+import { validate } from "@/lib/validate";
+import { approvalActionSchema } from "@/lib/schemas";
 
 export async function POST(req: Request) {
   try {
@@ -14,11 +16,9 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { userId, weekStart } = body;
-
-    if (!userId || !weekStart) {
-      return NextResponse.json({ error: "userId and weekStart are required" }, { status: 400 });
-    }
+    const result = validate(approvalActionSchema, body);
+    if (!result.success) return result.response;
+    const { userId, weekStart } = result.data;
 
     const { weekStart: start, weekEnd: end } = getWeekBounds(weekStart);
 

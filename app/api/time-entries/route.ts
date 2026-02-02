@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
 import { getWeekBounds } from "@/lib/week-helpers";
+import { validate } from "@/lib/validate";
+import { createTimeEntrySchema } from "@/lib/schemas";
 
 export async function GET(req: Request) {
   try {
@@ -64,14 +66,9 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { hours, date, comment, projectId, billingStatus } = body;
-
-    if (!hours || !date || !projectId) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
+    const result = validate(createTimeEntrySchema, body);
+    if (!result.success) return result.response;
+    const { hours, date, comment, projectId, billingStatus } = result.data;
 
     const project = await db.project.findFirst({
       where: { id: projectId, companyId: user.companyId },
@@ -108,7 +105,7 @@ export async function POST(req: Request) {
 
     const entry = await db.timeEntry.create({
       data: {
-        hours: parseFloat(hours),
+        hours,
         date: entryDate,
         comment: comment || null,
         userId: user.id,

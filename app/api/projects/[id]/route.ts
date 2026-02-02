@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
+import { validate } from "@/lib/validate";
+import { updateProjectSchema } from "@/lib/schemas";
 
 export async function PUT(
   req: Request,
@@ -23,7 +25,9 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { name, client, color, budgetHours, billable, active, currency, pricingType, fixedPrice, rateMode, projectRate } = body;
+    const result = validate(updateProjectSchema, body);
+    if (!result.success) return result.response;
+    const { name, client, color, budgetHours, billable, currency, pricingType, fixedPrice, rateMode, projectRate } = result.data;
 
     const updated = await db.project.update({
       where: { id: params.id },
@@ -32,15 +36,15 @@ export async function PUT(
         ...(client !== undefined && { client }),
         ...(color !== undefined && { color }),
         ...(budgetHours !== undefined && {
-          budgetHours: budgetHours ? parseFloat(budgetHours) : null,
+          budgetHours: budgetHours ?? null,
         }),
         ...(billable !== undefined && { billable }),
-        ...(active !== undefined && { active }),
+        ...(body.active !== undefined && { active: body.active }),
         ...(currency !== undefined && { currency: currency || null }),
         ...(pricingType !== undefined && { pricingType }),
-        ...(fixedPrice !== undefined && { fixedPrice: fixedPrice ? parseFloat(fixedPrice) : null }),
+        ...(fixedPrice !== undefined && { fixedPrice: fixedPrice ?? null }),
         ...(rateMode !== undefined && { rateMode }),
-        ...(projectRate !== undefined && { projectRate: projectRate ? parseFloat(projectRate) : null }),
+        ...(projectRate !== undefined && { projectRate: projectRate ?? null }),
       },
     });
 

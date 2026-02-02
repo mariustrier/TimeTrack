@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser, isAdminOrManager } from "@/lib/auth";
+import { validate } from "@/lib/validate";
+import { createExpenseSchema } from "@/lib/schemas";
 
 export async function GET(req: Request) {
   try {
@@ -63,19 +65,9 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { amount, description, category, date, projectId, receiptUrl, receiptFileName, receiptFileSize } = body;
-
-    if (!amount || amount <= 0) {
-      return NextResponse.json({ error: "Amount must be greater than 0" }, { status: 400 });
-    }
-
-    if (!description) {
-      return NextResponse.json({ error: "Description is required" }, { status: 400 });
-    }
-
-    if (!projectId) {
-      return NextResponse.json({ error: "Project is required" }, { status: 400 });
-    }
+    const result = validate(createExpenseSchema, body);
+    if (!result.success) return result.response;
+    const { amount, description, category, date, projectId, receiptUrl, receiptFileName, receiptFileSize } = result.data;
 
     // Validate project belongs to user's company
     const project = await db.project.findFirst({
@@ -97,7 +89,7 @@ export async function POST(req: Request) {
 
     const expense = await db.expense.create({
       data: {
-        amount: parseFloat(String(amount)),
+        amount,
         description,
         category: category || "other",
         date: new Date(date),
