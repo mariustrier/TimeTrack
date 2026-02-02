@@ -803,7 +803,9 @@
     "expenseSettings": "Expense auto-approval",
     "expenseSettingsDesc": "Set a threshold to auto-approve small expenses. Saves time on routine reimbursements.",
     "done": "Setup complete!",
-    "doneDesc": "Your company is configured. Next: create your first project in Projects, then invite your team in Team."
+    "doneDesc": "Your company is configured. Next: create your first project in Projects, then invite your team in Team.",
+    "companyExpenses": "Company expenses",
+    "companyExpensesDesc": "Track recurring overhead like rent, software, and salaries. These costs factor into your profitability calculations."
   },
   "guides": {
     "gotIt": "Got it!",
@@ -872,5 +874,24 @@
     "settingsTip1": "Export all your personal data anytime",
     "settingsTip2": "Replay the guided tour to revisit features",
     "settingsTip3": "Request account deletion if needed"
+  },
+  "infoTips": {
+    "revenue": "Total billable hours multiplied by each employee's bill rate for the selected week.",
+    "utilization": "Percentage of weekly target hours that were actually logged. 100% means the target was met.",
+    "universalBillRate": "When enabled, all employees (except freelancers) are billed at the same hourly rate. Freelancers always use their individual rate.",
+    "autoApproveThreshold": "Expenses below this amount are automatically approved when submitted, skipping admin review.",
+    "revenueAccount": "The account number in e-conomic where revenue from billable hours is posted (e.g. 1000).",
+    "counterAccount": "The offsetting account in e-conomic, typically a debtor or bank account (e.g. 5800).",
+    "vatCode": "The VAT/tax code used in e-conomic, e.g. U25 for 25% Danish VAT.",
+    "billRate": "The hourly rate charged to clients for this person's work.",
+    "costRate": "The internal cost per hour, typically based on salary. Used to calculate profit margin.",
+    "employmentType": "Employees use the company's universal bill rate (if enabled). Freelancers always keep their individual rate.",
+    "pricingType": "Hourly: billed per hour worked at the applicable rate. Fixed Price: a set project fee regardless of hours.",
+    "expenseCategories": "Rent: office/premises. Insurance: business policies. Utilities: electricity, water, internet. Software: SaaS/licenses. Salaries: wages and benefits. Other: miscellaneous.",
+    "draftStatus": "Created but not yet submitted for approval. You can still edit it.",
+    "submittedStatus": "Submitted and waiting for admin approval.",
+    "approvedOnlyFilter": "Show only approved and locked time entries. Excludes drafts and pending submissions.",
+    "timeEntriesTab": "Review and approve weekly timesheet submissions from team members.",
+    "expensesTab": "Review and approve expense reports submitted by team members."
   }
 }

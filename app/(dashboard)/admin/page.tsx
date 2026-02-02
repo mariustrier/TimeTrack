@@ -55,6 +55,7 @@ import { formatHours, formatPercentage } from "@/lib/calculations";
 import { SUPPORTED_CURRENCIES, convertAndFormat, convertAndFormatBudget } from "@/lib/currency";
 import { useTranslations, useDateLocale } from "@/lib/i18n";
 import { PageGuide } from "@/components/ui/page-guide";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 
 interface EmployeeStat {
   id: string;
@@ -393,7 +394,7 @@ export default function AdminPage() {
                 <DollarSign className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">{t("revenue")}</p>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">{t("revenue")} <InfoTooltip textKey="revenue" size={12} /></p>
                 <p className="text-xl font-bold">{convertAndFormat(stats.totalRevenue, masterCurrency, displayCurrency)}</p>
               </div>
             </div>
@@ -439,7 +440,7 @@ export default function AdminPage() {
                 <BarChart3 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">{t("utilization")}</p>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">{t("utilization")} <InfoTooltip textKey="utilization" size={12} /></p>
                 <p className="text-xl font-bold">{formatPercentage(stats.utilization)}</p>
               </div>
             </div>
@@ -660,7 +661,7 @@ export default function AdminPage() {
       {/* Universal Bill Rate */}
       <Card data-tour="admin-bill-rate">
         <CardContent className="p-6">
-          <h3 className="text-lg font-semibold text-foreground">{t("universalBillRate")}</h3>
+          <h3 className="text-lg font-semibold text-foreground flex items-center gap-1.5">{t("universalBillRate")} <InfoTooltip textKey="universalBillRate" /></h3>
           <p className="mt-1 text-sm text-muted-foreground">{t("universalBillRateDesc")}</p>
           <div className="mt-4 flex items-center gap-3">
             <button
@@ -755,7 +756,7 @@ export default function AdminPage() {
             </div>
           </div>
           <div className="mt-4 flex items-center gap-3">
-            <Label className="whitespace-nowrap">{t("autoApproveThreshold")} ({masterCurrency})</Label>
+            <Label className="whitespace-nowrap flex items-center gap-1">{t("autoApproveThreshold")} ({masterCurrency}) <InfoTooltip textKey="autoApproveThreshold" size={13} /></Label>
             <Input
               type="number"
               className="w-32"
@@ -791,7 +792,7 @@ export default function AdminPage() {
       </Card>
 
       {/* Company Expenses Link */}
-      <Card>
+      <Card data-tour="admin-company-expenses">
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -883,7 +884,7 @@ export default function AdminPage() {
             <h3 className="mb-3 text-sm font-semibold">{t("accountSettings")}</h3>
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               <div className="space-y-2">
-                <Label htmlFor="eco-revenue">{t("revenueAccount")}</Label>
+                <Label htmlFor="eco-revenue" className="flex items-center gap-1">{t("revenueAccount")} <InfoTooltip textKey="revenueAccount" size={13} /></Label>
                 <Input
                   id="eco-revenue"
                   value={ecoRevenueAccount}
@@ -892,7 +893,7 @@ export default function AdminPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="eco-counter">{t("counterAccount")}</Label>
+                <Label htmlFor="eco-counter" className="flex items-center gap-1">{t("counterAccount")} <InfoTooltip textKey="counterAccount" size={13} /></Label>
                 <Input
                   id="eco-counter"
                   value={ecoCounterAccount}
@@ -901,7 +902,7 @@ export default function AdminPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="eco-vat">{t("vatCode")}</Label>
+                <Label htmlFor="eco-vat" className="flex items-center gap-1">{t("vatCode")} <InfoTooltip textKey="vatCode" size={13} /></Label>
                 <Input
                   id="eco-vat"
                   value={ecoVatCode}

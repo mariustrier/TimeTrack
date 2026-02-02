@@ -273,6 +273,7 @@ const SETUP_STEPS: TourStep[] = [
   { id: "setup-currency", target: "admin-currency", titleKey: "currency", descKey: "currencyDesc", placement: "top" },
   { id: "setup-bill", target: "admin-bill-rate", titleKey: "billRate", descKey: "billRateDesc", placement: "top" },
   { id: "setup-expense", target: "admin-expense-settings", titleKey: "expenseSettings", descKey: "expenseSettingsDesc", placement: "top" },
+  { id: "setup-company-expenses", target: "admin-company-expenses", titleKey: "companyExpenses", descKey: "companyExpensesDesc", placement: "top" },
   { id: "setup-done", titleKey: "done", descKey: "doneDesc" },
 ];
 

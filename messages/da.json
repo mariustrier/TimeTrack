@@ -803,7 +803,9 @@
     "expenseSettings": "Automatisk godkendelse af udgifter",
     "expenseSettingsDesc": "Sæt en grænse for automatisk godkendelse af små udgifter. Sparer tid på rutinerefusioner.",
     "done": "Opsætning fuldført!",
-    "doneDesc": "Dit firma er konfigureret. Næste: opret dit første projekt under Projekter, og invitér dit team under Hold."
+    "doneDesc": "Dit firma er konfigureret. Næste: opret dit første projekt under Projekter, og invitér dit team under Hold.",
+    "companyExpenses": "Virksomhedsudgifter",
+    "companyExpensesDesc": "Spor tilbagevendende faste udgifter som husleje, software og lønninger. Disse omkostninger indgår i dine rentabilitetsberegninger."
   },
   "guides": {
     "gotIt": "Forstået!",
@@ -872,5 +874,24 @@
     "settingsTip1": "Eksportér alle dine personlige data når som helst",
     "settingsTip2": "Genafspil rundturen for at genbesøge funktioner",
     "settingsTip3": "Anmod om kontosletning hvis nødvendigt"
+  },
+  "infoTips": {
+    "revenue": "Fakturerbare timer ganget med hver medarbejders fakturasats for den valgte uge.",
+    "utilization": "Procentdel af det ugentlige mål, der faktisk er registreret. 100% betyder målet er nået.",
+    "universalBillRate": "Når aktiveret faktureres alle medarbejdere (undtagen freelancere) med samme timesats. Freelancere bruger altid deres individuelle sats.",
+    "autoApproveThreshold": "Udgifter under dette beløb godkendes automatisk ved indsendelse uden admin-gennemgang.",
+    "revenueAccount": "Kontonummeret i e-conomic hvor omsætning fra fakturerbare timer posteres (f.eks. 1000).",
+    "counterAccount": "Modkontoen i e-conomic, typisk en debitor- eller bankkonto (f.eks. 5800).",
+    "vatCode": "Momskoden brugt i e-conomic for denne postering, f.eks. U25 for 25% dansk moms.",
+    "billRate": "Timesatsen der faktureres til kunder for denne persons arbejde.",
+    "costRate": "Den interne timepris for denne person, typisk baseret på løn. Bruges til at beregne avance.",
+    "employmentType": "Medarbejdere bruger firmaets universelle fakturasats (hvis aktiveret). Freelancere bruger altid deres individuelle sats.",
+    "pricingType": "Timebaseret: faktureres per arbejdet time. Fastpris: et fast projekthonorar uanset timer.",
+    "expenseCategories": "Husleje: kontor/lokaler. Forsikring: erhvervspolicer. Forsyninger: el, vand, internet. Software: SaaS/licenser. Lønninger: løn og goder. Andet: diverse.",
+    "draftStatus": "Oprettet men endnu ikke indsendt til godkendelse. Du kan stadig redigere den.",
+    "submittedStatus": "Indsendt og afventer admin-godkendelse.",
+    "approvedOnlyFilter": "Vis kun godkendte og låste tidsregistreringer. Ekskluderer kladder og afventende indsendelser.",
+    "timeEntriesTab": "Gennemgå og godkend ugentlige timeseddelindsendelser fra holdmedlemmer.",
+    "expensesTab": "Gennemgå og godkend udgiftsrapporter indsendt af holdmedlemmer."
   }
 }

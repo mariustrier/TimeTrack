@@ -8,6 +8,7 @@ import { LocaleProvider } from "@/lib/i18n";
 import { CookieConsent } from "@/components/ui/cookie-consent";
 import { GuidedTour, AdminSetupTour } from "@/components/ui/guided-tour";
 import { GuideProvider } from "@/components/ui/guide-context";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 export default async function DashboardLayout({
   children,
@@ -38,6 +39,7 @@ export default async function DashboardLayout({
 
   return (
     <LocaleProvider>
+      <TooltipProvider delayDuration={200}>
       <GuideProvider dismissedGuides={user.dismissedGuides}>
         <div className="flex h-screen overflow-hidden bg-background">
           <Sidebar userRole={user.role} isSuperAdmin={isSuperAdmin(user.email)} />
@@ -50,6 +52,7 @@ export default async function DashboardLayout({
           <AdminSetupTour showTour={!user.setupTourCompletedAt && !!user.tourCompletedAt} userRole={user.role} />
         </div>
       </GuideProvider>
+      </TooltipProvider>
     </LocaleProvider>
   );
 }

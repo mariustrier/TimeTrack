@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/table";
 import { useTranslations } from "@/lib/i18n";
 import { PageGuide } from "@/components/ui/page-guide";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 
 interface TeamMember {
   id: string;
@@ -232,8 +233,8 @@ export default function TeamPage() {
                   <TableHead>{tc("name")}</TableHead>
                   <TableHead>{tc("email")}</TableHead>
                   <TableHead>{t("role")}</TableHead>
-                  <TableHead>{t("billRate")}</TableHead>
-                  <TableHead>{t("costRate")}</TableHead>
+                  <TableHead><span className="flex items-center gap-1">{t("billRate")} <InfoTooltip textKey="billRate" size={13} /></span></TableHead>
+                  <TableHead><span className="flex items-center gap-1">{t("costRate")} <InfoTooltip textKey="costRate" size={13} /></span></TableHead>
                   <TableHead>{t("weeklyTarget")}</TableHead>
                   <TableHead className="w-20">{tc("actions")}</TableHead>
                 </TableRow>
@@ -345,7 +346,7 @@ export default function TeamPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>{t("employmentType")}</Label>
+                <Label className="flex items-center gap-1">{t("employmentType")} <InfoTooltip textKey="employmentType" size={13} /></Label>
                 <Select value={employmentType} onValueChange={setEmploymentType}>
                   <SelectTrigger>
                     <SelectValue />

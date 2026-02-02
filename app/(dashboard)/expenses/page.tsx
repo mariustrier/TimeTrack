@@ -35,6 +35,7 @@ import { toast } from "sonner";
 import { useTranslations } from "@/lib/i18n";
 import { convertAndFormat } from "@/lib/currency";
 import { PageGuide } from "@/components/ui/page-guide";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 
 interface Expense {
   id: string;
@@ -130,15 +131,23 @@ export default function ExpensesPage() {
   function getStatusBadge(status: string) {
     switch (status) {
       case "draft":
-        return <Badge variant="secondary">{t("draft")}</Badge>;
+        return (
+          <span className="inline-flex items-center gap-1">
+            <Badge variant="secondary">{t("draft")}</Badge>
+            <InfoTooltip textKey="draftStatus" size={12} />
+          </span>
+        );
       case "submitted":
         return (
-          <Badge
-            variant="outline"
-            className="border-amber-300 text-amber-600 dark:border-amber-700 dark:text-amber-400"
-          >
-            {t("submitted")}
-          </Badge>
+          <span className="inline-flex items-center gap-1">
+            <Badge
+              variant="outline"
+              className="border-amber-300 text-amber-600 dark:border-amber-700 dark:text-amber-400"
+            >
+              {t("submitted")}
+            </Badge>
+            <InfoTooltip textKey="submittedStatus" size={12} />
+          </span>
         );
       case "approved":
         return (

@@ -17,6 +17,7 @@ import { ProjectInsights } from "@/components/analytics/project-insights";
 import { CompanyInsights } from "@/components/analytics/company-insights";
 import { useTranslations } from "@/lib/i18n";
 import { PageGuide } from "@/components/ui/page-guide";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 
 export default function AnalyticsPage() {
   const t = useTranslations("analytics");
@@ -54,6 +55,7 @@ export default function AnalyticsPage() {
               <SelectItem value="all">{t("allEntries")}</SelectItem>
             </SelectContent>
           </Select>
+          <InfoTooltip textKey="approvedOnlyFilter" size={13} />
           <DateRangePicker value={dateRange} onChange={setDateRange} />
         </div>
       </div>

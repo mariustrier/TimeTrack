@@ -35,6 +35,7 @@ import { toast } from "sonner";
 import { useTranslations } from "@/lib/i18n";
 import { convertAndFormat } from "@/lib/currency";
 import { PageGuide } from "@/components/ui/page-guide";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 
 interface CompanyExpenseItem {
   id: string;
@@ -387,7 +388,7 @@ export default function CompanyExpensesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>{te("description")}</TableHead>
-                  <TableHead>{te("category")}</TableHead>
+                  <TableHead><span className="flex items-center gap-1">{te("category")} <InfoTooltip textKey="expenseCategories" size={13} /></span></TableHead>
                   <TableHead className="text-right">{te("amount")}</TableHead>
                   <TableHead>{tc("date")}</TableHead>
                   <TableHead>{tc("type")}</TableHead>

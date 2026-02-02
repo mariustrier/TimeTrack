@@ -34,6 +34,7 @@ import { useTranslations } from "@/lib/i18n";
 import { convertAndFormat, convertAndFormatBudget, SUPPORTED_CURRENCIES } from "@/lib/currency";
 import { ContractSection } from "@/components/contracts/contract-section";
 import { PageGuide } from "@/components/ui/page-guide";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 
 interface Project {
   id: string;
@@ -384,7 +385,7 @@ export default function ProjectsPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>{t("pricingType")}</Label>
+              <Label className="flex items-center gap-1">{t("pricingType")} <InfoTooltip textKey="pricingType" size={13} /></Label>
               <Select value={pricingType} onValueChange={(val) => {
                 setPricingType(val);
                 if (val === "fixed_price") setBudgetHours("");
