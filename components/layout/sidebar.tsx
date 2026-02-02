@@ -17,6 +17,7 @@ import {
   Sparkles,
   Shield,
   Receipt,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -60,6 +61,11 @@ const navItems: NavItem[] = [
     href: "/admin/backups",
     icon: HardDrive,
     roles: ["admin"],
+  },
+  {
+    labelKey: "settings",
+    href: "/settings",
+    icon: Settings,
   },
   {
     labelKey: "platform",

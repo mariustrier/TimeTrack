@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { isSuperAdmin } from "@/lib/auth";
 import { Toaster } from "sonner";
 import { LocaleProvider } from "@/lib/i18n";
+import { CookieConsent } from "@/components/ui/cookie-consent";
 
 export default async function DashboardLayout({
   children,
@@ -25,6 +26,14 @@ export default async function DashboardLayout({
     redirect("/onboarding");
   }
 
+  if (user.deletedAt) {
+    redirect("/sign-in");
+  }
+
+  if (!user.acceptedTermsAt) {
+    redirect("/consent");
+  }
+
   return (
     <LocaleProvider>
       <div className="flex h-screen overflow-hidden bg-background">
@@ -33,6 +42,7 @@ export default async function DashboardLayout({
           <div className="p-6 lg:p-8">{children}</div>
         </main>
         <Toaster richColors />
+        <CookieConsent />
       </div>
     </LocaleProvider>
   );

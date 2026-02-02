@@ -24,7 +24,77 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { amount, description, category, date, recurring, frequency, receiptUrl, receiptFileName, receiptFileSize } = body;
+    const { amount, description, category, date, recurring, frequency, receiptUrl, receiptFileName, receiptFileSize, amendmentReason } = body;
+
+    // Bogføringsloven: finalized expenses require an amendment reason
+    if (expense.isFinalized) {
+      if (!amendmentReason) {
+        return NextResponse.json(
+          { error: "Amendment reason is required to modify a finalized expense" },
+          { status: 400 }
+        );
+      }
+
+      // Snapshot old values before update
+      const oldValues = {
+        amount: expense.amount,
+        description: expense.description,
+        category: expense.category,
+        date: expense.date,
+        recurring: expense.recurring,
+        frequency: expense.frequency,
+      };
+
+      const updated = await db.companyExpense.update({
+        where: { id: params.id },
+        data: {
+          ...(amount !== undefined && { amount: parseFloat(String(amount)) }),
+          ...(description !== undefined && { description }),
+          ...(category !== undefined && { category }),
+          ...(date !== undefined && { date: new Date(date) }),
+          ...(recurring !== undefined && { recurring: !!recurring }),
+          ...(frequency !== undefined && { frequency: frequency || null }),
+          ...(receiptUrl !== undefined && { receiptUrl: receiptUrl || null, receiptFileName: receiptFileName || null, receiptFileSize: receiptFileSize || null }),
+        },
+      });
+
+      // Compute changes for audit trail
+      const changes: Record<string, { from: unknown; to: unknown }> = {};
+      if (amount !== undefined && parseFloat(String(amount)) !== oldValues.amount) {
+        changes.amount = { from: oldValues.amount, to: parseFloat(String(amount)) };
+      }
+      if (description !== undefined && description !== oldValues.description) {
+        changes.description = { from: oldValues.description, to: description };
+      }
+      if (category !== undefined && category !== oldValues.category) {
+        changes.category = { from: oldValues.category, to: category };
+      }
+      if (date !== undefined && new Date(date).toISOString() !== new Date(oldValues.date).toISOString()) {
+        changes.date = { from: oldValues.date, to: new Date(date) };
+      }
+      if (recurring !== undefined && !!recurring !== oldValues.recurring) {
+        changes.recurring = { from: oldValues.recurring, to: !!recurring };
+      }
+      if (frequency !== undefined && (frequency || null) !== oldValues.frequency) {
+        changes.frequency = { from: oldValues.frequency, to: frequency || null };
+      }
+
+      await db.auditLog.create({
+        data: {
+          companyId: user.companyId,
+          entityType: "CompanyExpense",
+          entityId: expense.id,
+          action: "AMEND",
+          actorId: user.id,
+          metadata: JSON.stringify({
+            reason: amendmentReason,
+            changes,
+          }),
+        },
+      });
+
+      return NextResponse.json(updated);
+    }
 
     const updated = await db.companyExpense.update({
       where: { id: params.id },
@@ -47,7 +117,7 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -65,6 +135,42 @@ export async function DELETE(
 
     if (!expense) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    // Bogføringsloven: finalized expenses are soft-deleted with audit trail
+    if (expense.isFinalized) {
+      let voidReason: string | undefined;
+      try {
+        const body = await req.json();
+        voidReason = body.voidReason;
+      } catch {
+        // no body provided
+      }
+
+      if (!voidReason) {
+        return NextResponse.json(
+          { error: "Void reason is required to delete a finalized expense" },
+          { status: 400 }
+        );
+      }
+
+      await db.companyExpense.update({
+        where: { id: params.id },
+        data: { isDeleted: true, deletedAt: new Date(), deletedBy: user.id },
+      });
+
+      await db.auditLog.create({
+        data: {
+          companyId: user.companyId,
+          entityType: "CompanyExpense",
+          entityId: expense.id,
+          action: "VOID",
+          actorId: user.id,
+          metadata: JSON.stringify({ reason: voidReason }),
+        },
+      });
+
+      return NextResponse.json({ success: true });
     }
 
     await db.companyExpense.delete({ where: { id: params.id } });

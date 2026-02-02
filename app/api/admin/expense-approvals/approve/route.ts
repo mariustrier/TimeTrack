@@ -31,6 +31,8 @@ export async function POST(req: Request) {
         approvalStatus: "approved",
         approvedAt: now,
         approvedBy: user.id,
+        isFinalized: true,
+        finalizedAt: now,
       },
     });
 

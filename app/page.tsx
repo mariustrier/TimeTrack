@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { LocaleProvider, useTranslations } from "@/lib/i18n";
 import { LocaleToggle } from "@/components/ui/locale-toggle";
+import { CookieConsent } from "@/components/ui/cookie-consent";
 
 function Navbar() {
   const t = useTranslations("landing");
@@ -25,7 +26,7 @@ function Navbar() {
         </Link>
         <div className="hidden items-center gap-8 md:flex">
           <a href="#features" className="text-sm text-slate-300 hover:text-white transition-colors">{t("features")}</a>
-          <a href="#pricing" className="text-sm text-slate-300 hover:text-white transition-colors">{t("pricing")}</a>
+          <a href="#pricing" className="text-sm text-slate-300 hover:text-white transition-colors">{t("earlyAccess")}</a>
         </div>
         <div className="flex items-center gap-3">
           <LocaleToggle />
@@ -193,37 +194,16 @@ function FeaturesSection() {
 
 function PricingSection() {
   const t = useTranslations("landing");
-  const plans = [
-    {
-      name: t("starter"),
-      price: "$15",
-      description: t("starterDesc"),
-      features: [
-        t("starterF1"),
-        t("starterF2"),
-        t("starterF3"),
-        t("starterF4"),
-        t("starterF5"),
-      ],
-      cta: t("startFreeTrial"),
-      popular: false,
-    },
-    {
-      name: t("pro"),
-      price: "$25",
-      description: t("proDesc"),
-      features: [
-        t("proF1"),
-        t("proF2"),
-        t("proF3"),
-        t("proF4"),
-        t("proF5"),
-        t("proF6"),
-        t("proF7"),
-      ],
-      cta: t("startFreeTrial"),
-      popular: true,
-    },
+
+  const allFeatures = [
+    t("proF1"),
+    t("proF2"),
+    t("proF3"),
+    t("proF4"),
+    t("proF5"),
+    t("proF6"),
+    t("proF7"),
+    t("proF8"),
   ];
 
   return (
@@ -231,59 +211,38 @@ function PricingSection() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            {t("pricingTitle")}
+            {t("earlyAccess")}
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            {t("pricingSubtitle")}
+            {t("earlyAccessDesc")}
           </p>
         </div>
-        <div className="mx-auto mt-16 grid max-w-4xl gap-8 lg:grid-cols-2">
-          {plans.map((plan) => (
-            <div
-              key={plan.name}
-              className={`relative rounded-2xl border bg-card p-8 shadow-sm ${
-                plan.popular
-                  ? "border-brand-500 ring-1 ring-brand-500"
-                  : "border-border"
-              }`}
-            >
-              {plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="rounded-full bg-brand-500 px-4 py-1 text-xs font-semibold text-white">
-                    {t("mostPopular")}
-                  </span>
-                </div>
-              )}
-              <h3 className="text-lg font-semibold text-foreground">
-                {plan.name}
-              </h3>
-              <p className="mt-1 text-sm text-muted-foreground">{plan.description}</p>
-              <div className="mt-6">
-                <span className="text-4xl font-bold text-foreground">
-                  {plan.price}
-                </span>
-                <span className="text-muted-foreground">{t("perUserMonth")}</span>
-              </div>
-              <ul className="mt-8 space-y-3">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-center gap-3">
-                    <Check className="h-4 w-4 text-brand-500" />
-                    <span className="text-sm text-muted-foreground">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              <Link
-                href="/sign-up"
-                className={`mt-8 block rounded-lg py-3 text-center text-sm font-semibold transition-colors ${
-                  plan.popular
-                    ? "bg-brand-500 text-white hover:bg-brand-600"
-                    : "bg-muted text-foreground hover:bg-accent"
-                }`}
-              >
-                {plan.cta}
-              </Link>
+        <div className="mx-auto mt-12 max-w-lg">
+          <div className="relative rounded-2xl border border-brand-500 ring-1 ring-brand-500 bg-card p-8 shadow-sm">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+              <span className="rounded-full bg-brand-500 px-4 py-1 text-xs font-semibold text-white">
+                {t("earlyAccess")}
+              </span>
             </div>
-          ))}
+            <h3 className="text-lg font-semibold text-foreground">{t("allFeaturesIncluded")}</h3>
+            <div className="mt-4">
+              <span className="text-4xl font-bold text-foreground">{t("freePrice")}</span>
+            </div>
+            <ul className="mt-8 space-y-3">
+              {allFeatures.map((feature) => (
+                <li key={feature} className="flex items-center gap-3">
+                  <Check className="h-4 w-4 text-brand-500" />
+                  <span className="text-sm text-muted-foreground">{feature}</span>
+                </li>
+              ))}
+            </ul>
+            <Link
+              href="/sign-up"
+              className="mt-8 block rounded-lg bg-brand-500 py-3 text-center text-sm font-semibold text-white hover:bg-brand-600 transition-colors"
+            >
+              {t("getStartedFree")}
+            </Link>
+          </div>
         </div>
       </div>
     </section>
@@ -319,6 +278,7 @@ function CTASection() {
 
 function Footer() {
   const t = useTranslations("landing");
+  const tl = useTranslations("legal");
   return (
     <footer className="bg-brand-950 py-12">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -326,6 +286,12 @@ function Footer() {
           <div className="flex items-center gap-2">
             <Clock className="h-6 w-6 text-brand-400" />
             <span className="text-lg font-bold text-white">Cloud Timer</span>
+          </div>
+          <div className="flex items-center gap-6">
+            <Link href="/legal/privacy" className="text-sm text-slate-400 hover:text-white transition-colors">{tl("privacyPolicy")}</Link>
+            <Link href="/legal/terms" className="text-sm text-slate-400 hover:text-white transition-colors">{tl("termsOfService")}</Link>
+            <Link href="/legal/dpa" className="text-sm text-slate-400 hover:text-white transition-colors">{tl("dpa")}</Link>
+            <Link href="/legal/cookies" className="text-sm text-slate-400 hover:text-white transition-colors">{tl("cookiePolicy")}</Link>
           </div>
           <p className="text-sm text-slate-400">
             &copy; {new Date().getFullYear()} Cloud Timer. {t("allRightsReserved")}
@@ -348,7 +314,7 @@ export default function LandingPage() {
       "Track time, manage projects, and boost team profitability with Cloud Timer. Built for agencies and consultancies.",
     offers: {
       "@type": "Offer",
-      price: "15",
+      price: "0",
       priceCurrency: "USD",
     },
     publisher: {
@@ -372,6 +338,7 @@ export default function LandingPage() {
         <PricingSection />
         <CTASection />
         <Footer />
+        <CookieConsent />
       </main>
     </LocaleProvider>
   );

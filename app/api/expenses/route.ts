@@ -17,6 +17,7 @@ export async function GET(req: Request) {
 
     const where: Record<string, unknown> = {
       companyId: user.companyId,
+      isDeleted: { not: true },
     };
 
     // Regular users see only their own expenses
