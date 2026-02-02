@@ -48,6 +48,18 @@ function TourOverlay({ steps, namespace, tourId, onComplete }: TourOverlayProps)
     }
   }, [step]);
 
+  // Scroll target into view when step changes
+  useEffect(() => {
+    if (!step?.target) return;
+    const el = document.querySelector(`[data-tour="${step.target}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Update rect after scroll settles
+      const timer = setTimeout(() => updateTargetRect(), 400);
+      return () => clearTimeout(timer);
+    }
+  }, [step, updateTargetRect]);
+
   useEffect(() => {
     updateTargetRect();
     const handleResize = () => updateTargetRect();
@@ -242,7 +254,6 @@ export function GuidedTour({ showTour, userRole }: GuidedTourProps) {
 const SETUP_STEPS: TourStep[] = [
   { id: "setup-welcome", titleKey: "welcome", descKey: "welcomeDesc" },
   { id: "setup-currency", target: "admin-currency", titleKey: "currency", descKey: "currencyDesc", placement: "top" },
-  { id: "setup-hourly", target: "admin-hourly-rate", titleKey: "hourlyRate", descKey: "hourlyRateDesc", placement: "top" },
   { id: "setup-bill", target: "admin-bill-rate", titleKey: "billRate", descKey: "billRateDesc", placement: "top" },
   { id: "setup-expense", target: "admin-expense-settings", titleKey: "expenseSettings", descKey: "expenseSettingsDesc", placement: "top" },
   { id: "setup-done", titleKey: "done", descKey: "doneDesc" },
