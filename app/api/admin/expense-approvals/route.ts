@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const user = await getAuthUser();
     if (!user) {
@@ -12,12 +12,20 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const { searchParams } = new URL(req.url);
+    const status = searchParams.get("status");
+
+    const where: Record<string, unknown> = {
+      companyId: user.companyId,
+      isDeleted: { not: true },
+    };
+
+    if (status) {
+      where.approvalStatus = status;
+    }
+
     const expenses = await db.expense.findMany({
-      where: {
-        companyId: user.companyId,
-        approvalStatus: "submitted",
-        isDeleted: { not: true },
-      },
+      where,
       include: {
         user: { select: { id: true, firstName: true, lastName: true, email: true } },
         project: { select: { id: true, name: true, color: true } },
@@ -25,21 +33,7 @@ export async function GET() {
       orderBy: { date: "desc" },
     });
 
-    // Group by user
-    const grouped: Record<string, { user: { id: string; firstName: string | null; lastName: string | null; email: string }; expenses: typeof expenses }> = {};
-
-    for (const expense of expenses) {
-      const uid = expense.userId;
-      if (!grouped[uid]) {
-        grouped[uid] = {
-          user: expense.user,
-          expenses: [],
-        };
-      }
-      grouped[uid].expenses.push(expense);
-    }
-
-    return NextResponse.json(Object.values(grouped));
+    return NextResponse.json({ expenses });
   } catch (error) {
     console.error("[EXPENSE_APPROVALS_GET]", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
