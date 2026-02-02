@@ -38,7 +38,7 @@ interface PendingExpense {
   receiptUrl: string | null;
   receiptFileName: string | null;
   user: { firstName: string | null; lastName: string | null; email: string };
-  project: { name: string; color: string };
+  project: { name: string; color: string } | null;
 }
 
 export function ExpenseApprovals() {
@@ -330,9 +330,9 @@ export function ExpenseApprovals() {
                         <div className="flex items-center gap-2">
                           <div
                             className="h-2.5 w-2.5 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: expense.project.color }}
+                            style={{ backgroundColor: expense.project?.color || "#94a3b8" }}
                           />
-                          <span className="text-foreground">{expense.project.name}</span>
+                          <span className="text-foreground">{expense.project?.name || "-"}</span>
                         </div>
                       </TableCell>
                       <TableCell>
