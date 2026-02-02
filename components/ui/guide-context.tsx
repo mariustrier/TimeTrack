@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback } from "react";
+import { createContext, useContext, useState, useCallback, useEffect } from "react";
 
 interface GuideContextValue {
   isDismissed: (pageId: string) => boolean;
@@ -20,6 +20,10 @@ export function GuideProvider({
   children: React.ReactNode;
 }) {
   const [dismissed, setDismissed] = useState<string[]>(initial);
+
+  useEffect(() => {
+    setDismissed(initial);
+  }, [initial]);
 
   const isDismissed = useCallback(
     (pageId: string) => dismissed.includes(pageId),
