@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
-import { Receipt, Plus, Pencil, Trash2, Send, Paperclip } from "lucide-react";
+import { Receipt, Plus, Pencil, Trash2, Paperclip } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -273,27 +273,6 @@ export default function ExpensesPage() {
     }
   }
 
-  async function handleSubmitExpenses() {
-    const draftIds = expenses
-      .filter((e) => e.approvalStatus === "draft")
-      .map((e) => e.id);
-
-    if (draftIds.length === 0) return;
-
-    try {
-      const res = await fetch("/api/expenses/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ expenseIds: draftIds }),
-      });
-      if (res.ok) {
-        fetchExpenses();
-      }
-    } catch (error) {
-      console.error("Failed to submit expenses:", error);
-    }
-  }
-
   async function handleReceiptUpload(file: File) {
     if (file.size > 10 * 1024 * 1024) {
       toast.error(t("fileTooLarge"));
@@ -322,10 +301,6 @@ export default function ExpensesPage() {
     }
   }
 
-  const draftCount = expenses.filter(
-    (e) => e.approvalStatus === "draft"
-  ).length;
-
   if (loading) {
     return (
       <div className="space-y-6">
@@ -342,12 +317,6 @@ export default function ExpensesPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
         <div className="flex items-center gap-2">
-          {draftCount > 0 && (
-            <Button variant="outline" onClick={handleSubmitExpenses}>
-              <Send className="mr-2 h-4 w-4" />
-              {t("submitExpenses")}
-            </Button>
-          )}
           <Button onClick={openCreateModal}>
             <Plus className="mr-2 h-4 w-4" />
             {t("addExpense")}
@@ -442,6 +411,7 @@ export default function ExpensesPage() {
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         {(expense.approvalStatus === "draft" ||
+                          expense.approvalStatus === "submitted" ||
                           expense.approvalStatus === "rejected") && (
                           <Button
                             variant="ghost"
@@ -451,7 +421,8 @@ export default function ExpensesPage() {
                             <Pencil className="h-4 w-4" />
                           </Button>
                         )}
-                        {expense.approvalStatus === "draft" && (
+                        {(expense.approvalStatus === "draft" ||
+                          expense.approvalStatus === "submitted") && (
                           <Button
                             variant="ghost"
                             size="icon"

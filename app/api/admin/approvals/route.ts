@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
 import { getWeekId } from "@/lib/week-helpers";
+import { getDay } from "date-fns";
 
 export async function GET(req: Request) {
   try {
@@ -84,7 +85,20 @@ export async function GET(req: Request) {
       groups[key].entries.push(entry);
     }
 
-    const weekSubmissions = Object.values(groups).sort((a, b) => {
+    // Filter: only show weeks where Friday (or weekend) is submitted
+    // This prevents partial week submissions from appearing until complete
+    const filteredGroups = Object.values(groups).filter((group) => {
+      // For non-submitted status filters (approved, locked, all), show everything
+      if (statusFilter !== "submitted") return true;
+
+      // Check if any entry in this week is Friday (5), Saturday (6), or Sunday (0)
+      return group.entries.some((entry) => {
+        const dayOfWeek = getDay(new Date(entry.date));
+        return dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0;
+      });
+    });
+
+    const weekSubmissions = filteredGroups.sort((a, b) => {
       // Sort by submittedAt ascending (oldest first)
       if (a.submittedAt && b.submittedAt) return a.submittedAt.localeCompare(b.submittedAt);
       return a.weekStart.localeCompare(b.weekStart);

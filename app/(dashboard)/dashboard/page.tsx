@@ -134,6 +134,7 @@ export default function DashboardPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submittingDay, setSubmittingDay] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [hours, setHours] = useState("");
@@ -154,7 +155,7 @@ export default function DashboardPage() {
   const weekEnd = useMemo(() => endOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
   const weekDays = useMemo(() => eachDayOfInterval({ start: weekStart, end: weekEnd }), [weekStart, weekEnd]);
 
-  // Compute week approval status
+  // Compute week approval status (for banners)
   const weekStatus = useMemo(() => {
     if (entries.length === 0) return "empty";
     const statuses = new Set(entries.map((e) => e.approvalStatus));
@@ -164,6 +165,20 @@ export default function DashboardPage() {
     return "draft";
   }, [entries]);
 
+  // Check if a specific day is editable (all entries are draft or no entries)
+  function isDayEditable(day: Date): boolean {
+    const dateStr = format(day, "yyyy-MM-dd");
+    const dayEntries = entries.filter((e) => e.date.split("T")[0] === dateStr);
+    if (dayEntries.length === 0) return true;
+    return dayEntries.every((e) => e.approvalStatus === "draft");
+  }
+
+  // Check if there are any draft entries in the week (for Submit Week button)
+  const hasDraftEntries = useMemo(() => {
+    return entries.some((e) => e.approvalStatus === "draft");
+  }, [entries]);
+
+  // Legacy: keep for status banners
   const isWeekEditable = weekStatus === "draft" || weekStatus === "empty";
 
   const fetchData = useCallback(async (silent = false) => {
@@ -368,6 +383,44 @@ export default function DashboardPage() {
     }
   }
 
+  // Get draft entries for a specific day
+  function getDraftEntriesForDay(date: Date): TimeEntry[] {
+    const dateStr = format(date, "yyyy-MM-dd");
+    return entries.filter(
+      (e) => e.date.split("T")[0] === dateStr && e.approvalStatus === "draft"
+    );
+  }
+
+  // Check if day has any draft entries
+  function dayHasDraftEntries(date: Date): boolean {
+    return getDraftEntriesForDay(date).length > 0;
+  }
+
+  // Submit a single day
+  async function handleSubmitDay(date: Date) {
+    const dateStr = format(date, "yyyy-MM-dd");
+    setSubmittingDay(dateStr);
+    try {
+      const res = await fetch("/api/time-entries/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: dateStr }),
+      });
+      if (res.ok) {
+        toast.success(t("daySubmitted"));
+        fetchData();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || t("failedToSubmit"));
+      }
+    } catch (error) {
+      console.error("Failed to submit day:", error);
+      toast.error(t("failedToSubmit"));
+    } finally {
+      setSubmittingDay(null);
+    }
+  }
+
   // Check if entry is read-only
   const isEntryReadOnly = (entry: TimeEntry) => entry.approvalStatus !== "draft";
 
@@ -422,7 +475,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
         <div className="flex items-center gap-2">
-          {weekStatus === "draft" && entries.length > 0 && (
+          {hasDraftEntries && (
             <Button onClick={() => setSubmitDialogOpen(true)}>
               <Send className="mr-2 h-4 w-4" />
               {t("submitWeek")}
@@ -626,11 +679,11 @@ export default function DashboardPage() {
                               </button>
                             ) : (
                               <button
-                                onClick={() => isWeekEditable && openModal(day, project.id)}
-                                disabled={!isWeekEditable}
+                                onClick={() => isDayEditable(day) && openModal(day, project.id)}
+                                disabled={!isDayEditable(day)}
                                 className={cn(
                                   "relative mx-auto flex h-10 w-16 items-center justify-center rounded-md border text-sm transition-colors",
-                                  isWeekEditable
+                                  isDayEditable(day)
                                     ? "border-dashed border-border text-muted-foreground hover:border-muted-foreground hover:bg-muted/50"
                                     : "border-dashed border-border/50 text-muted-foreground/30 cursor-not-allowed"
                                 )}
@@ -704,6 +757,44 @@ export default function DashboardPage() {
                     <td className="px-4 py-3 text-center font-bold text-brand-600">
                       {grandTotal.toFixed(1)}
                     </td>
+                  </tr>
+                  {/* Daily Submit Buttons row */}
+                  <tr className="bg-muted/30">
+                    <td className="px-4 py-2 text-sm text-muted-foreground">{t("submitDay")}</td>
+                    {weekDays.map((day) => {
+                      const hasDrafts = dayHasDraftEntries(day);
+                      const dateStr = format(day, "yyyy-MM-dd");
+                      const isSubmitting = submittingDay === dateStr;
+
+                      return (
+                        <td
+                          key={`submit-${day.toISOString()}`}
+                          className={cn("px-1 py-2 text-center", isToday(day) && "bg-brand-50/30")}
+                        >
+                          {hasDrafts ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleSubmitDay(day)}
+                              disabled={isSubmitting}
+                              className="h-7 px-2 text-xs"
+                            >
+                              {isSubmitting ? (
+                                <RefreshCw className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Send className="h-3 w-3" />
+                              )}
+                            </Button>
+                          ) : (
+                            <span className="text-muted-foreground/50">—</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                    {projects.some((p) => p.myAllocation != null || p.budgetTotalHours != null) && (
+                      <td className="px-2 py-2" />
+                    )}
+                    <td className="px-4 py-2" />
                   </tr>
                 </tfoot>
               </table>

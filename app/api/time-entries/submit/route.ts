@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
 import { getWeekBounds } from "@/lib/week-helpers";
+import { startOfDay, endOfDay } from "date-fns";
 
 export async function POST(req: Request) {
   try {
@@ -11,13 +12,33 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { weekStart } = body;
+    const { weekStart, date } = body;
 
-    if (!weekStart) {
-      return NextResponse.json({ error: "weekStart is required" }, { status: 400 });
+    // Must have exactly one of weekStart or date
+    if ((!weekStart && !date) || (weekStart && date)) {
+      return NextResponse.json(
+        { error: "Provide either weekStart (for week) or date (for day)" },
+        { status: 400 }
+      );
     }
 
-    const { weekStart: start, weekEnd: end } = getWeekBounds(weekStart);
+    let start: Date;
+    let end: Date;
+    let entityIdSuffix: string;
+    let isDay = false;
+
+    if (weekStart) {
+      const bounds = getWeekBounds(weekStart);
+      start = bounds.weekStart;
+      end = bounds.weekEnd;
+      entityIdSuffix = `week:${weekStart}`;
+    } else {
+      const dayDate = new Date(date);
+      start = startOfDay(dayDate);
+      end = endOfDay(dayDate);
+      entityIdSuffix = `day:${date}`;
+      isDay = true;
+    }
 
     // Find all draft entries for this user+week
     const draftEntries = await db.timeEntry.findMany({
@@ -31,7 +52,7 @@ export async function POST(req: Request) {
 
     if (draftEntries.length === 0) {
       return NextResponse.json(
-        { error: "No draft entries to submit for this week" },
+        { error: isDay ? "No draft entries to submit for this day" : "No draft entries to submit for this week" },
         { status: 400 }
       );
     }
@@ -56,13 +77,13 @@ export async function POST(req: Request) {
       data: {
         companyId: user.companyId,
         entityType: "TimeEntry",
-        entityId: `user:${user.id}|week:${weekStart}`,
+        entityId: `user:${user.id}|${entityIdSuffix}`,
         action: "SUBMIT",
         fromStatus: "draft",
         toStatus: "submitted",
         actorId: user.id,
         metadata: JSON.stringify({
-          weekStart,
+          ...(isDay ? { date } : { weekStart }),
           entryCount: draftEntries.length,
           totalHours,
         }),

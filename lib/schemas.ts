@@ -119,3 +119,17 @@ export const approvalActionSchema = z.object({
   weekStart: z.string().min(1),
   reason: z.string().max(1000).optional(),
 });
+
+// --- Day Submission ---
+
+export const submitDaySchema = z.object({
+  date: z.string().min(1), // yyyy-MM-dd
+});
+
+// --- Day Approval Actions (admin) ---
+
+export const dayApprovalActionSchema = z.object({
+  userId: z.string().min(1),
+  date: z.string().min(1), // yyyy-MM-dd
+  reason: z.string().max(1000).optional(),
+});

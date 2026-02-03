@@ -133,8 +133,8 @@ export async function PUT(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    if (expense.approvalStatus !== "draft" && expense.approvalStatus !== "rejected") {
-      return NextResponse.json({ error: "Can only update draft or rejected expenses" }, { status: 400 });
+    if (expense.approvalStatus !== "draft" && expense.approvalStatus !== "submitted" && expense.approvalStatus !== "rejected") {
+      return NextResponse.json({ error: "Can only update draft, submitted, or rejected expenses" }, { status: 400 });
     }
 
     if (projectId) {
@@ -228,8 +228,8 @@ export async function DELETE(
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 
-      if (expense.approvalStatus !== "draft") {
-        return NextResponse.json({ error: "Can only delete draft expenses" }, { status: 400 });
+      if (expense.approvalStatus !== "draft" && expense.approvalStatus !== "submitted") {
+        return NextResponse.json({ error: "Can only delete draft or submitted expenses" }, { status: 400 });
       }
     }
 

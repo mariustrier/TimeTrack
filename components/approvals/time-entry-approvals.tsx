@@ -40,6 +40,7 @@ interface Entry {
   date: string;
   comment: string | null;
   billingStatus: string;
+  approvalStatus: string;
   project: { id: string; name: string; color: string };
 }
 
@@ -88,6 +89,7 @@ export function TimeEntryApprovals() {
     weekStart: string;
   } | null>(null);
   const [acting, setActing] = useState(false);
+  const [dayActionPending, setDayActionPending] = useState<string | null>(null); // "userId|date"
 
   async function fetchApprovals() {
     setLoading(true);
@@ -151,6 +153,54 @@ export function TimeEntryApprovals() {
       toast.error(t("failedToLock"));
     } finally {
       setActing(false);
+    }
+  }
+
+  async function handleApproveDay(userId: string, date: string) {
+    const key = `${userId}|${date}`;
+    setDayActionPending(key);
+    try {
+      const res = await fetch("/api/admin/approvals/approve-day", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, date }),
+      });
+      if (res.ok) {
+        toast.success(t("dayApproved"));
+      } else {
+        const data = await res.json();
+        toast.error(data.error || t("failedToApprove"));
+      }
+      fetchApprovals();
+    } catch (error) {
+      console.error("Failed to approve day:", error);
+      toast.error(t("failedToApprove"));
+    } finally {
+      setDayActionPending(null);
+    }
+  }
+
+  async function handleRejectDay(userId: string, date: string) {
+    const key = `${userId}|${date}`;
+    setDayActionPending(key);
+    try {
+      const res = await fetch("/api/admin/approvals/reject-day", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, date }),
+      });
+      if (res.ok) {
+        toast.success(t("dayRejected"));
+      } else {
+        const data = await res.json();
+        toast.error(data.error || t("failedToApprove"));
+      }
+      fetchApprovals();
+    } catch (error) {
+      console.error("Failed to reject day:", error);
+      toast.error(t("failedToApprove"));
+    } finally {
+      setDayActionPending(null);
     }
   }
 
@@ -342,46 +392,95 @@ export function TimeEntryApprovals() {
 
                     {isExpanded && (
                       <div className="bg-muted/20 px-6 py-3 border-t">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="text-muted-foreground">
-                              <th className="text-left py-1.5 font-medium">{tc("date")}</th>
-                              <th className="text-left py-1.5 font-medium">{tc("project")}</th>
-                              <th className="text-right py-1.5 font-medium">{tc("hours")}</th>
-                              <th className="text-left py-1.5 font-medium pl-4">{tc("billable")}</th>
-                              <th className="text-left py-1.5 font-medium pl-4">{tc("comment")}</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {sub.entries.map((entry) => (
-                              <tr key={entry.id} className="border-t border-border/50">
-                                <td className="py-1.5 text-foreground">
-                                  {format(new Date(entry.date), "EEE, MMM d", formatOpts)}
-                                </td>
-                                <td className="py-1.5">
+                        {(() => {
+                          // Group entries by date
+                          const entriesByDate: Record<string, Entry[]> = {};
+                          for (const entry of sub.entries) {
+                            const dateKey = entry.date.split("T")[0];
+                            if (!entriesByDate[dateKey]) entriesByDate[dateKey] = [];
+                            entriesByDate[dateKey].push(entry);
+                          }
+
+                          const sortedDates = Object.keys(entriesByDate).sort();
+
+                          return sortedDates.map((dateKey) => {
+                            const dayEntries = entriesByDate[dateKey];
+                            const dayHours = dayEntries.reduce((s, e) => s + e.hours, 0);
+                            const dayKey = `${sub.userId}|${dateKey}`;
+                            const isPending = dayActionPending === dayKey;
+                            const hasSubmittedEntries = dayEntries.some(e => e.approvalStatus === "submitted");
+
+                            return (
+                              <div key={dateKey} className="mb-4 last:mb-0">
+                                {/* Day header with actions */}
+                                <div className="flex items-center justify-between mb-2 pb-1 border-b border-border/30">
                                   <div className="flex items-center gap-2">
-                                    <div
-                                      className="h-2.5 w-2.5 rounded-full"
-                                      style={{ backgroundColor: entry.project.color }}
-                                    />
-                                    <span className="text-foreground">{entry.project.name}</span>
+                                    <span className="font-medium text-foreground">
+                                      {format(new Date(dateKey), "EEE, MMM d", formatOpts)}
+                                    </span>
+                                    <Badge variant="outline" className="text-xs">
+                                      {dayHours.toFixed(1)}h
+                                    </Badge>
                                   </div>
-                                </td>
-                                <td className="py-1.5 text-right font-medium text-foreground">
-                                  {entry.hours}h
-                                </td>
-                                <td className="py-1.5 pl-4">
-                                  <Badge variant="outline" className="text-xs">
-                                    {BILLING_LABELS[entry.billingStatus] || entry.billingStatus}
-                                  </Badge>
-                                </td>
-                                <td className="py-1.5 pl-4 text-muted-foreground max-w-[300px] truncate">
-                                  {entry.comment || "-"}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                                  {sub.approvalStatus === "submitted" && hasSubmittedEntries && (
+                                    <div className="flex gap-1">
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleApproveDay(sub.userId, dateKey)}
+                                        disabled={isPending || acting}
+                                        className="h-6 px-2 text-xs"
+                                      >
+                                        <Check className="mr-1 h-3 w-3" />
+                                        {t("approveDay")}
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleRejectDay(sub.userId, dateKey)}
+                                        disabled={isPending || acting}
+                                        className="h-6 px-2 text-xs text-destructive hover:text-destructive"
+                                      >
+                                        <X className="mr-1 h-3 w-3" />
+                                        {t("rejectDay")}
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Entries table for this day */}
+                                <table className="w-full text-sm ml-2">
+                                  <tbody>
+                                    {dayEntries.map((entry) => (
+                                      <tr key={entry.id} className="border-t border-border/30 first:border-t-0">
+                                        <td className="py-1.5 w-48">
+                                          <div className="flex items-center gap-2">
+                                            <div
+                                              className="h-2 w-2 rounded-full"
+                                              style={{ backgroundColor: entry.project.color }}
+                                            />
+                                            <span className="text-foreground text-xs">{entry.project.name}</span>
+                                          </div>
+                                        </td>
+                                        <td className="py-1.5 w-16 text-right font-medium text-foreground">
+                                          {entry.hours}h
+                                        </td>
+                                        <td className="py-1.5 pl-4 w-24">
+                                          <Badge variant="outline" className="text-xs">
+                                            {BILLING_LABELS[entry.billingStatus] || entry.billingStatus}
+                                          </Badge>
+                                        </td>
+                                        <td className="py-1.5 pl-4 text-muted-foreground text-xs max-w-[200px] truncate">
+                                          {entry.comment || "-"}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            );
+                          });
+                        })()}
                       </div>
                     )}
                   </div>

@@ -97,6 +97,8 @@
     "submitting": "Indsender...",
     "weekSubmitted": "Uge indsendt til godkendelse",
     "failedToSubmit": "Kunne ikke indsende uge",
+    "submitDay": "Indsend",
+    "daySubmitted": "Dag indsendt til godkendelse",
     "projectBudgets": "Projektbudgetter",
     "budget": "Budget",
     "hoursLeft": "{remaining}t tilbage",
@@ -288,7 +290,11 @@
     "weekLocked": "Uge låst",
     "failedToLock": "Kunne ikke låse",
     "weekRejected": "Uge afvist — returneret til kladde",
-    "weekReopened": "Uge genåbnet — returneret til kladde"
+    "weekReopened": "Uge genåbnet — returneret til kladde",
+    "approveDay": "Godkend",
+    "rejectDay": "Afvis",
+    "dayApproved": "Dag godkendt",
+    "dayRejected": "Dag afvist — returneret til kladde"
   },
   "vacations": {
     "title": "Ferie",

@@ -97,6 +97,8 @@
     "submitting": "Submitting...",
     "weekSubmitted": "Week submitted for approval",
     "failedToSubmit": "Failed to submit week",
+    "submitDay": "Submit",
+    "daySubmitted": "Day submitted for approval",
     "projectBudgets": "Project Budgets",
     "budget": "Budget",
     "hoursLeft": "{remaining}h left",
@@ -288,7 +290,11 @@
     "weekLocked": "Week locked",
     "failedToLock": "Failed to lock",
     "weekRejected": "Week rejected — returned to draft",
-    "weekReopened": "Week reopened — returned to draft"
+    "weekReopened": "Week reopened — returned to draft",
+    "approveDay": "Approve",
+    "rejectDay": "Reject",
+    "dayApproved": "Day approved",
+    "dayRejected": "Day rejected — returned to draft"
   },
   "vacations": {
     "title": "Vacations",
