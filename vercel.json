@@ -1,14 +1,6 @@
 {
   "buildCommand": "npm run build",
   "framework": "nextjs",
-  "redirects": [
-    {
-      "source": "/:path*",
-      "has": [{ "type": "host", "value": "www.cloudtimer.dk" }],
-      "destination": "https://cloudtimer.dk/:path*",
-      "permanent": true
-    }
-  ],
   "crons": [
     {
       "path": "/api/cron/generate-insights",
