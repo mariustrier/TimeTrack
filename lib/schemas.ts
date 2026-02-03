@@ -10,6 +10,11 @@ export const createTimeEntrySchema = z.object({
   billingStatus: z
     .enum(["billable", "included", "non_billable", "internal", "presales"])
     .optional(),
+  // Mileage fields
+  mileageKm: z.coerce.number().nonnegative().max(9999).optional().nullable(),
+  mileageStartAddress: z.string().max(500).optional().nullable(),
+  mileageEndAddress: z.string().max(500).optional().nullable(),
+  mileageSource: z.enum(["manual", "calculated"]).optional().nullable(),
 });
 
 export const updateTimeEntrySchema = z.object({
@@ -19,6 +24,11 @@ export const updateTimeEntrySchema = z.object({
     .enum(["billable", "included", "non_billable", "internal", "presales"])
     .optional(),
   nonBillableReason: z.string().max(500).optional().nullable(),
+  // Mileage fields
+  mileageKm: z.coerce.number().nonnegative().max(9999).optional().nullable(),
+  mileageStartAddress: z.string().max(500).optional().nullable(),
+  mileageEndAddress: z.string().max(500).optional().nullable(),
+  mileageSource: z.enum(["manual", "calculated"]).optional().nullable(),
 });
 
 // --- Projects ---
@@ -132,4 +142,11 @@ export const dayApprovalActionSchema = z.object({
   userId: z.string().min(1),
   date: z.string().min(1), // yyyy-MM-dd
   reason: z.string().max(1000).optional(),
+});
+
+// --- Mileage Calculation ---
+
+export const calculateDistanceSchema = z.object({
+  startAddress: z.string().min(3).max(500),
+  endAddress: z.string().min(3).max(500),
 });

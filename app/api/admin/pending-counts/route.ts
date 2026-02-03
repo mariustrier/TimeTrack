@@ -75,7 +75,7 @@ export async function GET() {
 
     if (user.role === "admin" || user.role === "manager") {
       const insightCount = await db.contractInsight.count({
-        where: { companyId: user.companyId, dismissed: false },
+        where: { companyId: user.companyId, dismissed: false, seenAt: null },
       });
       counts.aiAssistant = insightCount;
     }

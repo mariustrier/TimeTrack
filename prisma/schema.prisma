@@ -122,6 +122,12 @@ model TimeEntry {
   billingStatus     String    @default("billable")  // "billable" | "included" | "non_billable" | "internal" | "presales"
   nonBillableReason String?
 
+  // Mileage tracking
+  mileageKm           Float?
+  mileageStartAddress String?
+  mileageEndAddress   String?
+  mileageSource       String?   // "manual" | "calculated"
+
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -242,6 +248,7 @@ model ContractInsight {
   dismissedById   String?
   dismissedAt     DateTime?
   actionTaken     String?
+  seenAt          DateTime?
   createdAt       DateTime        @default(now())
   expiresAt       DateTime?
 

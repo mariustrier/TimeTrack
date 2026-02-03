@@ -68,7 +68,17 @@ export async function POST(req: Request) {
     const body = await req.json();
     const result = validate(createTimeEntrySchema, body);
     if (!result.success) return result.response;
-    const { hours, date, comment, projectId, billingStatus } = result.data;
+    const {
+      hours,
+      date,
+      comment,
+      projectId,
+      billingStatus,
+      mileageKm,
+      mileageStartAddress,
+      mileageEndAddress,
+      mileageSource,
+    } = result.data;
 
     const project = await db.project.findFirst({
       where: { id: projectId, companyId: user.companyId },
@@ -112,6 +122,10 @@ export async function POST(req: Request) {
         projectId,
         companyId: user.companyId,
         billingStatus: billingStatus || defaultBillingStatus,
+        mileageKm: mileageKm ?? null,
+        mileageStartAddress: mileageStartAddress ?? null,
+        mileageEndAddress: mileageEndAddress ?? null,
+        mileageSource: mileageSource ?? null,
       },
       include: {
         project: { select: { id: true, name: true, color: true, billable: true } },

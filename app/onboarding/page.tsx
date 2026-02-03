@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Clock } from "lucide-react";
+import Image from "next/image";
 import { LocaleProvider, useTranslations } from "@/lib/i18n";
 import { LocaleToggle } from "@/components/ui/locale-toggle";
 import { SUPPORTED_CURRENCIES } from "@/lib/currency";
@@ -55,8 +55,8 @@ function OnboardingForm() {
       </div>
       <div className="w-full max-w-md">
         <div className="text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-brand-500">
-            <Clock className="h-7 w-7 text-white" />
+          <div className="mx-auto flex h-14 w-14 items-center justify-center">
+            <Image src="/logo.svg" alt="Cloud Timer" width={56} height={56} />
           </div>
           <h1 className="mt-6 text-2xl font-bold text-foreground">
             {t("welcome")}

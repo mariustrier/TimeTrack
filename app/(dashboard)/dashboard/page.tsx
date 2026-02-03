@@ -14,6 +14,7 @@ import {
 import {
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Target,
   DollarSign,
   Palmtree,
@@ -28,6 +29,8 @@ import {
   AlertCircle,
   X,
   RefreshCw,
+  Car,
+  MapPin,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -82,6 +85,10 @@ interface TimeEntry {
   approvalStatus: "draft" | "submitted" | "approved" | "locked";
   billingStatus: "billable" | "included" | "non_billable" | "internal" | "presales";
   nonBillableReason: string | null;
+  mileageKm: number | null;
+  mileageStartAddress: string | null;
+  mileageEndAddress: string | null;
+  mileageSource: "manual" | "calculated" | null;
 }
 
 interface StatCardProps {
@@ -150,6 +157,13 @@ export default function DashboardPage() {
   const [weekNoteDismissed, setWeekNoteDismissed] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [masterCurrency, setMasterCurrency] = useState("USD");
+  // Mileage state
+  const [mileageKm, setMileageKm] = useState("");
+  const [mileageStartAddress, setMileageStartAddress] = useState("");
+  const [mileageEndAddress, setMileageEndAddress] = useState("");
+  const [mileageSource, setMileageSource] = useState<"manual" | "calculated" | "">("");
+  const [mileageSectionOpen, setMileageSectionOpen] = useState(false);
+  const [calculatingDistance, setCalculatingDistance] = useState(false);
 
   const weekStart = useMemo(() => startOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
   const weekEnd = useMemo(() => endOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
@@ -294,6 +308,12 @@ export default function DashboardPage() {
       setComment(entry.comment || "");
       setBillingStatus(entry.billingStatus);
       setNonBillableReason(entry.nonBillableReason || "");
+      // Mileage fields
+      setMileageKm(entry.mileageKm?.toString() || "");
+      setMileageStartAddress(entry.mileageStartAddress || "");
+      setMileageEndAddress(entry.mileageEndAddress || "");
+      setMileageSource(entry.mileageSource || "");
+      setMileageSectionOpen(!!entry.mileageKm);
     } else {
       setEditingEntry(null);
       setHours("");
@@ -302,6 +322,12 @@ export default function DashboardPage() {
       const proj = projects.find((p) => p.id === projectId);
       setBillingStatus(proj?.billable !== false ? "billable" : "non_billable");
       setNonBillableReason("");
+      // Reset mileage fields
+      setMileageKm("");
+      setMileageStartAddress("");
+      setMileageEndAddress("");
+      setMileageSource("");
+      setMileageSectionOpen(false);
     }
     setModalOpen(true);
   }
@@ -320,6 +346,10 @@ export default function DashboardPage() {
             comment,
             billingStatus,
             nonBillableReason: billingStatus !== "billable" ? nonBillableReason : null,
+            mileageKm: mileageKm ? parseFloat(mileageKm) : null,
+            mileageStartAddress: mileageStartAddress || null,
+            mileageEndAddress: mileageEndAddress || null,
+            mileageSource: mileageSource || null,
           }),
         });
       } else {
@@ -332,6 +362,10 @@ export default function DashboardPage() {
             projectId: selectedProjectId,
             comment,
             billingStatus,
+            mileageKm: mileageKm ? parseFloat(mileageKm) : null,
+            mileageStartAddress: mileageStartAddress || null,
+            mileageEndAddress: mileageEndAddress || null,
+            mileageSource: mileageSource || null,
           }),
         });
       }
@@ -418,6 +452,36 @@ export default function DashboardPage() {
       toast.error(t("failedToSubmit"));
     } finally {
       setSubmittingDay(null);
+    }
+  }
+
+  // Calculate distance from addresses
+  async function handleCalculateDistance() {
+    if (!mileageStartAddress || !mileageEndAddress) return;
+    setCalculatingDistance(true);
+    try {
+      const res = await fetch("/api/mileage/calculate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          startAddress: mileageStartAddress,
+          endAddress: mileageEndAddress,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMileageKm(data.distanceKm.toString());
+        setMileageSource("calculated");
+        toast.success(t("distanceCalculated"));
+      } else {
+        const err = await res.json();
+        toast.error(err.error || t("distanceCalculationFailed"));
+      }
+    } catch (error) {
+      console.error("Failed to calculate distance:", error);
+      toast.error(t("distanceCalculationFailed"));
+    } finally {
+      setCalculatingDistance(false);
     }
   }
 
@@ -954,6 +1018,105 @@ export default function DashboardPage() {
                 )}
               </div>
             )}
+
+            {/* Mileage Section */}
+            <div className="rounded-lg border border-border">
+              <button
+                type="button"
+                onClick={() => setMileageSectionOpen(!mileageSectionOpen)}
+                className="flex w-full items-center justify-between p-3 text-sm font-medium hover:bg-muted/50"
+                disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
+              >
+                <span className="flex items-center gap-2">
+                  <Car className="h-4 w-4" />
+                  {t("mileage")}
+                  {mileageKm && (
+                    <Badge variant="secondary" className="ml-1">
+                      {mileageKm} km
+                    </Badge>
+                  )}
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 text-muted-foreground transition-transform",
+                    mileageSectionOpen && "rotate-180"
+                  )}
+                />
+              </button>
+
+              {mileageSectionOpen && (
+                <div className="space-y-3 border-t p-3">
+                  <div className="space-y-2">
+                    <Label>{t("kilometersDriven")}</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="9999"
+                      value={mileageKm}
+                      onChange={(e) => {
+                        setMileageKm(e.target.value);
+                        if (e.target.value && mileageSource !== "calculated") {
+                          setMileageSource("manual");
+                        }
+                      }}
+                      placeholder={t("mileagePlaceholder")}
+                      disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>{t("startAddress")}</Label>
+                    <Input
+                      value={mileageStartAddress}
+                      onChange={(e) => setMileageStartAddress(e.target.value)}
+                      placeholder={t("startAddressPlaceholder")}
+                      disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>{t("endAddress")}</Label>
+                    <Input
+                      value={mileageEndAddress}
+                      onChange={(e) => setMileageEndAddress(e.target.value)}
+                      placeholder={t("endAddressPlaceholder")}
+                      disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
+                    />
+                  </div>
+
+                  {mileageStartAddress && mileageEndAddress && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCalculateDistance}
+                      disabled={calculatingDistance || !!(editingEntry && isEntryReadOnly(editingEntry))}
+                    >
+                      {calculatingDistance ? (
+                        <>
+                          <RefreshCw className="mr-2 h-3 w-3 animate-spin" />
+                          {t("calculating")}
+                        </>
+                      ) : (
+                        <>
+                          <MapPin className="mr-2 h-3 w-3" />
+                          {t("calculateDistance")}
+                        </>
+                      )}
+                    </Button>
+                  )}
+
+                  {mileageSource && (
+                    <p className="text-xs text-muted-foreground">
+                      {mileageSource === "calculated"
+                        ? t("distanceWasCalculated")
+                        : t("distanceWasManual")}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           <DialogFooter className="gap-2">

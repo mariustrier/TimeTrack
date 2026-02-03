@@ -1,29 +1,87 @@
 import { db } from "@/lib/db";
 import { getAnthropicClient } from "./client";
 import { checkBudget, trackUsage } from "./cost-tracking";
+import { gatherInsightData, InsightDataPackage } from "./insight-data-gatherer";
 
 const INSIGHTS_MODEL = "claude-sonnet-4-20250514";
 
-const SYSTEM_PROMPT = `You are a friendly, supportive business advisor for a professional services company. Analyze the provided contract terms and time tracking data to generate helpful insights.
+const SYSTEM_PROMPT = `You are a friendly, supportive business advisor for a professional services company. Analyze the provided team and project data to generate helpful insights.
 
-Your tone should be warm and encouraging — like a trusted colleague, not a stern auditor. Use phrases like "Great opportunity", "Worth noting", "Nice work" rather than "WARNING" or "ALERT".
+Your tone should be warm and encouraging - like a trusted colleague, not a stern auditor. Use phrases like "Great opportunity", "Worth noting", "Nice work" rather than "WARNING" or "ALERT".
 
-Generate 3-8 insights as a JSON array. Each insight should have:
-- category: one of "OPPORTUNITY", "INSIGHT", "SUGGESTION", "HEADS_UP", "CELEBRATION"
-- title: short, friendly title (max 60 chars)
-- description: 1-2 sentences explaining the insight
-- suggestion: optional actionable suggestion
-- relatedHours: optional number if related to hours
-- relatedAmount: optional number if related to money
+## Data You'll Receive
 
-Focus on:
-- Budget utilization (approaching limits = HEADS_UP, well under = OPPORTUNITY)
-- Deadline proximity (upcoming = HEADS_UP)
-- Team productivity patterns (good trends = CELEBRATION)
-- Scope alignment (time spent matching contract scope = INSIGHT)
-- Optimization opportunities (SUGGESTION)
+You'll receive structured data about:
+- Team members and their weekly targets/utilization
+- Workload patterns (overtime, weekend work, underutilization)
+- Project status (budget usage, team distribution)
+- Vacation schedules and capacity forecasts
+- Productivity metrics (billable %, approval backlog)
+- Optional: Contract data if available
 
-Return ONLY the JSON array, no other text.`;
+## Insight Categories
+
+Generate insights using these categories:
+- CELEBRATION: Recognize achievements and positive trends
+- OPPORTUNITY: Highlight capacity, growth potential, or efficiency gains
+- INSIGHT: Provide non-obvious observations from the data
+- SUGGESTION: Actionable recommendations for improvement
+- HEADS_UP: Early warnings that need attention (not alarmist)
+
+## Guidelines
+
+1. Generate ONLY insights that provide real value - could be 1-2 or up to 8 depending on what's genuinely useful
+2. If nothing important to report, it's fine to generate just 1-2 insights or even none
+3. Don't pad with filler insights - quality over quantity
+4. Prioritize by impact: wellbeing issues > project risks > productivity > celebrations
+3. For small teams (1-5 people): Focus on individual patterns and personal workload
+4. For larger teams (6+ people): Focus on team-wide patterns and distribution
+5. Always include at least one positive insight if the data supports it
+6. Be specific: use names, numbers, and dates when relevant
+7. Make suggestions actionable and realistic
+8. If data is sparse (new company, few entries), acknowledge this and suggest building habits
+
+## DO NOT suggest these (they are unhelpful/obvious):
+- "Focus on fewer projects" or "reduce context switching" - multiple projects is normal
+- "Track your time more" - they're already using a time tracking app
+- "Consider using time tracking" - obviously they already do
+- Generic productivity advice that applies to everyone
+- Suggestions that require hiring or major business changes
+
+## Key Patterns to Look For
+
+Wellbeing:
+- Overwork: >40h/week for 3+ weeks = HEADS_UP
+- Underutilization: <70% for 3+ weeks = OPPORTUNITY (available capacity)
+- Weekend work: 3+ weekend days/month = HEADS_UP
+- Missing time entries = SUGGESTION (gentle reminder)
+
+Team Capacity:
+- Uneven workload distribution = SUGGESTION (rebalance)
+- Upcoming vacation gaps = HEADS_UP
+- Available capacity = OPPORTUNITY
+
+Projects:
+- Budget >80% used = HEADS_UP
+- Fast burn rate = INSIGHT
+- Single-person dependency >80% = HEADS_UP (risk)
+
+Productivity:
+- Declining billable % = INSIGHT
+- High billable week >85% = CELEBRATION
+- Large approval backlog = SUGGESTION
+
+## Output Format
+
+Return ONLY a JSON array. Each insight:
+{
+  "category": "OPPORTUNITY" | "INSIGHT" | "SUGGESTION" | "HEADS_UP" | "CELEBRATION",
+  "title": "Short, friendly title (max 60 chars)",
+  "description": "1-2 sentences explaining the insight",
+  "suggestion": "Optional actionable recommendation",
+  "relatedHours": Optional number if hours-related,
+  "relatedAmount": Optional number if money-related
+}`;
 
 interface GeneratedInsight {
   category: "OPPORTUNITY" | "INSIGHT" | "SUGGESTION" | "HEADS_UP" | "CELEBRATION";
@@ -34,8 +92,92 @@ interface GeneratedInsight {
   relatedAmount?: number;
 }
 
+function buildUserPrompt(data: InsightDataPackage): string {
+  const teamSizeContext =
+    data.team.members.length <= 5
+      ? "This is a small team - focus on individual patterns and personal workload."
+      : data.team.members.length <= 15
+        ? "This is a medium-sized team - balance individual and team-wide insights."
+        : "This is a larger team - focus on team-wide trends and significant outliers.";
+
+  const sections: string[] = [];
+
+  // Company context
+  sections.push(`## Company: ${data.company.name}
+${teamSizeContext}
+Team size: ${data.team.members.length} members
+Total weekly capacity: ${data.team.totalCapacityHoursWeekly} hours`);
+
+  // Team members
+  if (data.team.members.length > 0) {
+    sections.push(`## Team Members
+${JSON.stringify(
+  data.team.members.map((m) => ({
+    name: m.name,
+    weeklyTarget: m.weeklyTarget,
+    avgHoursLast4Weeks: m.avgHoursLast4Weeks,
+    utilizationPercent: m.utilizationPercent,
+  })),
+  null,
+  2
+)}`);
+  }
+
+  // Workload alerts
+  const hasWorkloadIssues =
+    data.workloadMetrics.usersOverworked.length > 0 ||
+    data.workloadMetrics.usersUnderutilized.length > 0 ||
+    data.workloadMetrics.weekendWorkers.length > 0;
+
+  if (hasWorkloadIssues) {
+    sections.push(`## Workload Alerts
+${data.workloadMetrics.usersOverworked.length > 0 ? `Overworked (>40h/week, 3+ weeks): ${JSON.stringify(data.workloadMetrics.usersOverworked)}` : ""}
+${data.workloadMetrics.usersUnderutilized.length > 0 ? `Underutilized (<70%): ${JSON.stringify(data.workloadMetrics.usersUnderutilized)}` : ""}
+${data.workloadMetrics.weekendWorkers.length > 0 ? `Weekend workers (3+ days this month): ${JSON.stringify(data.workloadMetrics.weekendWorkers)}` : ""}`);
+  }
+
+  // Vacations
+  if (data.vacations.upcoming.length > 0 || data.vacations.capacityReductions.length > 0) {
+    sections.push(`## Upcoming Vacations & Capacity
+${data.vacations.upcoming.length > 0 ? `Upcoming: ${JSON.stringify(data.vacations.upcoming)}` : "No upcoming vacations"}
+${data.vacations.capacityReductions.length > 0 ? `Reduced capacity days: ${JSON.stringify(data.vacations.capacityReductions)}` : ""}`);
+  }
+
+  // Projects
+  if (data.projects.active.length > 0) {
+    const projectsWithBudget = data.projects.active.filter((p) => p.budgetHours);
+    const projectsSummary = data.projects.active.map((p) => ({
+      name: p.name,
+      budgetHours: p.budgetHours,
+      hoursUsed: p.hoursUsed,
+      percentUsed: p.percentUsed,
+      weeklyBurnRate: p.weeklyBurnRate,
+      teamSize: p.teamMembers.length,
+    }));
+
+    sections.push(`## Active Projects (${data.projects.active.length})
+${JSON.stringify(projectsSummary, null, 2)}
+${data.projects.singlePersonRisks.length > 0 ? `\nSingle-person dependency risks: ${JSON.stringify(data.projects.singlePersonRisks)}` : ""}`);
+  }
+
+  // Productivity
+  sections.push(`## Productivity Metrics
+Pending approvals: ${data.productivity.pendingApprovals}
+${data.productivity.usersWithEntryGaps.length > 0 ? `Users with entry gaps (missed 3+ of last 5 days): ${JSON.stringify(data.productivity.usersWithEntryGaps)}` : ""}
+${data.productivity.billablePercentByWeek.length > 0 ? `Billable % trend (last 4 weeks): ${JSON.stringify(data.productivity.billablePercentByWeek.slice(-4))}` : ""}`);
+
+  // Contracts (optional)
+  if (data.contracts.length > 0) {
+    sections.push(`## Contracts (${data.contracts.length})
+${JSON.stringify(data.contracts, null, 2)}`);
+  }
+
+  return sections.join("\n\n");
+}
+
 export async function generateInsights(companyId: string) {
   try {
+    // 1. Check budget
     const budget = await checkBudget(companyId);
     if (!budget.allowed) {
       console.log(
@@ -44,67 +186,20 @@ export async function generateInsights(companyId: string) {
       return null;
     }
 
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    // 2. Gather comprehensive data
+    const data = await gatherInsightData(companyId);
 
-    const [contracts, recentEntries, teamMembers] = await Promise.all([
-      db.contract.findMany({
-        where: {
-          project: { companyId },
-          extractedAt: { not: null },
-        },
-        include: {
-          project: {
-            include: {
-              timeEntries: {
-                where: { date: { gte: thirtyDaysAgo } },
-                select: { hours: true },
-              },
-            },
-          },
-        },
-      }),
-      db.timeEntry.findMany({
-        where: {
-          companyId,
-          date: { gte: thirtyDaysAgo },
-        },
-        include: { project: true },
-      }),
-      db.user.count({
-        where: { companyId },
-      }),
-    ]);
-
-    const contractSummaries = contracts.map((c) => {
-      const hoursUsed = c.project.timeEntries.reduce(
-        (sum, e) => sum + e.hours,
-        0
-      );
-      return {
-        name: c.project.name,
-        maxHours: c.maxHours,
-        maxBudget: c.maxBudget,
-        deadline: c.deadline?.toISOString() ?? null,
-        scope: c.scopeDescription,
-        hoursUsed,
-      };
-    });
-
-    const timeByProject: Record<string, number> = {};
-    for (const entry of recentEntries) {
-      const projectName = entry.project.name;
-      timeByProject[projectName] = (timeByProject[projectName] ?? 0) + entry.hours;
+    // 3. Skip if no team members
+    if (data.team.members.length === 0) {
+      console.log(`[AI] No team members for company ${companyId}`);
+      return null;
     }
 
-    const summaryData = {
-      contracts: contractSummaries,
-      recentTimeBreakdown: timeByProject,
-      teamSize: teamMembers,
-    };
+    // 4. Build prompt
+    const userPrompt = buildUserPrompt(data);
 
+    // 5. Call Claude
     const client = getAnthropicClient();
-
     const response = await client.messages.create({
       model: INSIGHTS_MODEL,
       max_tokens: 2048,
@@ -112,19 +207,32 @@ export async function generateInsights(companyId: string) {
       messages: [
         {
           role: "user",
-          content: `Here is the current data for analysis:\n\n${JSON.stringify(summaryData, null, 2)}`,
+          content: userPrompt,
         },
       ],
     });
 
+    // 6. Parse response
     const textBlock = response.content.find((block) => block.type === "text");
     if (!textBlock || textBlock.type !== "text") {
       console.error("[AI] No text response from Claude");
       return null;
     }
 
-    const insights: GeneratedInsight[] = JSON.parse(textBlock.text);
+    let insights: GeneratedInsight[];
+    try {
+      // Strip markdown code blocks if present
+      let jsonText = textBlock.text.trim();
+      if (jsonText.startsWith("```")) {
+        jsonText = jsonText.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+      }
+      insights = JSON.parse(jsonText);
+    } catch {
+      console.error("[AI] Failed to parse insights JSON:", textBlock.text);
+      return null;
+    }
 
+    // 7. Clear old non-dismissed insights and store new ones
     await db.contractInsight.deleteMany({
       where: {
         companyId,
@@ -137,6 +245,7 @@ export async function generateInsights(companyId: string) {
         db.contractInsight.create({
           data: {
             companyId,
+            contractId: null,
             category: insight.category,
             title: insight.title,
             description: insight.description,
@@ -149,12 +258,17 @@ export async function generateInsights(companyId: string) {
       )
     );
 
+    // 8. Track usage
     await trackUsage(
       companyId,
       "generate-insights",
       INSIGHTS_MODEL,
       response.usage.input_tokens,
       response.usage.output_tokens
+    );
+
+    console.log(
+      `[AI] Generated ${created.length} insights for company ${companyId}`
     );
 
     return created;

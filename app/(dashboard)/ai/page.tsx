@@ -95,14 +95,23 @@ export default function AIAssistantPage() {
     }
   }, []);
 
+  const markAsSeen = useCallback(async () => {
+    try {
+      await fetch("/api/insights/mark-seen", { method: "POST" });
+    } catch (error) {
+      console.error("Failed to mark insights as seen:", error);
+    }
+  }, []);
+
   useEffect(() => {
     async function init() {
       setLoading(true);
       await fetchInsights();
+      await markAsSeen();
       setLoading(false);
     }
     init();
-  }, [fetchInsights]);
+  }, [fetchInsights, markAsSeen]);
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -195,14 +204,14 @@ export default function AIAssistantPage() {
         </div>
         <div className="flex items-center gap-2">
           {insights.length > 0 && (
-            <Button variant="outline" size="sm" onClick={handleDismissAll}>
-              {t("dismissAll")}
+            <Button variant="outline" onClick={handleDismissAll}>
+              <X className="mr-2 h-4 w-4" />
+              {t("closeAll")}
             </Button>
           )}
           <Button
             onClick={handleRefresh}
             disabled={refreshing}
-            size="sm"
           >
             <RefreshCw
               className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`}

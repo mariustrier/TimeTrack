@@ -29,7 +29,16 @@ export async function PUT(
     const body = await req.json();
     const result = validate(updateTimeEntrySchema, body);
     if (!result.success) return result.response;
-    const { hours, comment, billingStatus, nonBillableReason } = result.data;
+    const {
+      hours,
+      comment,
+      billingStatus,
+      nonBillableReason,
+      mileageKm,
+      mileageStartAddress,
+      mileageEndAddress,
+      mileageSource,
+    } = result.data;
 
     // Approval status guards
     if (entry.approvalStatus === "locked") {
@@ -84,6 +93,19 @@ export async function PUT(
     }
     if (nonBillableReason !== undefined) {
       data.nonBillableReason = nonBillableReason || null;
+    }
+    // Mileage fields (only editable when draft, like hours/comment)
+    if (mileageKm !== undefined && entry.approvalStatus === "draft") {
+      data.mileageKm = mileageKm ?? null;
+    }
+    if (mileageStartAddress !== undefined && entry.approvalStatus === "draft") {
+      data.mileageStartAddress = mileageStartAddress ?? null;
+    }
+    if (mileageEndAddress !== undefined && entry.approvalStatus === "draft") {
+      data.mileageEndAddress = mileageEndAddress ?? null;
+    }
+    if (mileageSource !== undefined && entry.approvalStatus === "draft") {
+      data.mileageSource = mileageSource ?? null;
     }
 
     const updated = await db.timeEntry.update({

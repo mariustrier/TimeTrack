@@ -2,21 +2,24 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireManager } from "@/lib/auth";
 
-export async function GET() {
+export async function POST() {
   try {
     const user = await requireManager();
 
-    const count = await db.contractInsight.count({
+    await db.contractInsight.updateMany({
       where: {
         companyId: user.companyId,
         dismissed: false,
         seenAt: null,
       },
+      data: {
+        seenAt: new Date(),
+      },
     });
 
-    return NextResponse.json({ count });
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[INSIGHTS_COUNT_GET]", error);
+    console.error("[INSIGHTS_MARK_SEEN]", error);
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
