@@ -69,61 +69,72 @@ export async function extractContractTerms(
     });
     const shouldAnonymize = (company?.aiAnonymization ?? true) && !options?.skipAnonymization;
 
-    const fileResponse = await fetch(contract.fileUrl);
-    if (!fileResponse.ok) {
-      throw new Error(`Failed to fetch contract file: ${fileResponse.statusText}`);
-    }
-
     const isPdf = contract.fileType === "application/pdf";
     const client = getAnthropicClient();
 
-    let userContent: Anthropic.Messages.ContentBlockParam[];
+    let userContent: Anthropic.Messages.ContentBlockParam[] = [];
     let systemPrompt = SYSTEM_PROMPT;
+    let useRawPdf = false;
 
     if (shouldAnonymize && isPdf) {
       // Anonymized PDF path: extract text, redact, send as plain text
-      const buffer = Buffer.from(await fileResponse.arrayBuffer());
+      try {
+        const fileResponse = await fetch(contract.fileUrl);
+        if (!fileResponse.ok) {
+          throw new Error(`Failed to fetch contract file: ${fileResponse.statusText}`);
+        }
+        const buffer = Buffer.from(await fileResponse.arrayBuffer());
 
-      // Fetch known names for scrubbing
-      const [users, projects] = await Promise.all([
-        db.user.findMany({
-          where: { companyId, deletedAt: null },
-          select: { firstName: true, lastName: true },
-        }),
-        db.project.findMany({
-          where: { companyId },
-          select: { name: true },
-        }),
-      ]);
+        // Fetch known names for scrubbing
+        const [users, projects] = await Promise.all([
+          db.user.findMany({
+            where: { companyId, deletedAt: null },
+            select: { firstName: true, lastName: true },
+          }),
+          db.project.findMany({
+            where: { companyId },
+            select: { name: true },
+          }),
+        ]);
 
-      const knownNames = {
-        companyName: company?.name || "",
-        employeeNames: users
-          .map((u) => `${u.firstName || ""} ${u.lastName || ""}`.trim())
-          .filter((n) => n.length > 0),
-        projectNames: projects.map((p) => p.name),
-      };
+        const knownNames = {
+          companyName: company?.name || "",
+          employeeNames: users
+            .map((u) => `${u.firstName || ""} ${u.lastName || ""}`.trim())
+            .filter((n) => n.length > 0),
+          projectNames: projects.map((p) => p.name),
+        };
 
-      const redaction = await redactContractText(buffer, knownNames);
+        const redaction = await redactContractText(buffer, knownNames);
 
-      if (redaction.isScannedPdf) {
-        return { scannedPdf: true };
+        if (redaction.isScannedPdf) {
+          return { scannedPdf: true };
+        }
+
+        console.log(
+          `[AI] Contract redacted: ${redaction.stats.originalLength} chars → ${redaction.redactedText.length} chars, ` +
+          `${redaction.stats.chunksKept}/${redaction.stats.chunksTotal} chunks, ${redaction.stats.redactionsApplied} redactions`
+        );
+
+        userContent = [
+          {
+            type: "text",
+            text: `Extract the key contract terms from this document:\n\n${redaction.redactedText}`,
+          },
+        ];
+        systemPrompt = SYSTEM_PROMPT_ANONYMIZED;
+      } catch (redactError) {
+        console.warn("[AI] PDF redaction failed, falling back to raw PDF:", redactError);
+        useRawPdf = true;
       }
+    }
 
-      console.log(
-        `[AI] Contract redacted: ${redaction.stats.originalLength} chars → ${redaction.redactedText.length} chars, ` +
-        `${redaction.stats.chunksKept}/${redaction.stats.chunksTotal} chunks, ${redaction.stats.redactionsApplied} redactions`
-      );
-
-      userContent = [
-        {
-          type: "text",
-          text: `Extract the key contract terms from this document:\n\n${redaction.redactedText}`,
-        },
-      ];
-      systemPrompt = SYSTEM_PROMPT_ANONYMIZED;
-    } else if (isPdf) {
-      // Non-anonymized PDF path: send raw base64
+    if ((isPdf && !shouldAnonymize) || useRawPdf) {
+      // Non-anonymized / fallback PDF path: send raw base64
+      const fileResponse = await fetch(contract.fileUrl);
+      if (!fileResponse.ok) {
+        throw new Error(`Failed to fetch contract file: ${fileResponse.statusText}`);
+      }
       const buffer = await fileResponse.arrayBuffer();
       const base64 = Buffer.from(buffer).toString("base64");
 
@@ -141,8 +152,12 @@ export async function extractContractTerms(
           text: "Extract the key contract terms from this document.",
         },
       ];
-    } else {
-      // Text/DOCX path (no anonymization for non-PDF text files)
+    } else if (!isPdf) {
+      // Text/DOCX path
+      const fileResponse = await fetch(contract.fileUrl);
+      if (!fileResponse.ok) {
+        throw new Error(`Failed to fetch contract file: ${fileResponse.statusText}`);
+      }
       const text = await fileResponse.text();
 
       userContent = [
