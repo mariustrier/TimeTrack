@@ -349,8 +349,9 @@ export default function DashboardPage() {
     setSaving(true);
 
     try {
+      let res: Response;
       if (editingEntry) {
-        await fetch(`/api/time-entries/${editingEntry.id}`, {
+        res = await fetch(`/api/time-entries/${editingEntry.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -367,7 +368,7 @@ export default function DashboardPage() {
           }),
         });
       } else {
-        await fetch("/api/time-entries", {
+        res = await fetch("/api/time-entries", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -385,10 +386,18 @@ export default function DashboardPage() {
           }),
         });
       }
+
+      if (!res.ok) {
+        const data = await res.json();
+        toast.error(data.error || "Failed to save time entry");
+        return;
+      }
+
       setModalOpen(false);
       fetchData();
     } catch (error) {
       console.error("Failed to save:", error);
+      toast.error("Failed to save time entry");
     } finally {
       setSaving(false);
     }
