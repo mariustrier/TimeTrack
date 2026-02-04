@@ -169,12 +169,12 @@ export function ContractSection({ projectId, userRole }: ContractSectionProps) {
       try {
         data = await res.json();
       } catch {
-        toast.error(t("extractFailed"));
+        toast.error(`${t("extractFailed")} (${res.status})`);
         return;
       }
 
       if (!res.ok) {
-        toast.error(data?.error || t("extractFailed"));
+        toast.error(data?.error || `${t("extractFailed")} (${res.status})`);
         return;
       }
 
