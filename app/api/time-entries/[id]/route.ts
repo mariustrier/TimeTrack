@@ -37,6 +37,8 @@ export async function PUT(
       mileageKm,
       mileageStartAddress,
       mileageEndAddress,
+      mileageStops,
+      mileageRoundTrip,
       mileageSource,
     } = result.data;
 
@@ -106,6 +108,12 @@ export async function PUT(
     }
     if (mileageSource !== undefined && entry.approvalStatus === "draft") {
       data.mileageSource = mileageSource ?? null;
+    }
+    if (mileageStops !== undefined && entry.approvalStatus === "draft") {
+      data.mileageStops = mileageStops ?? [];
+    }
+    if (mileageRoundTrip !== undefined && entry.approvalStatus === "draft") {
+      data.mileageRoundTrip = mileageRoundTrip ?? false;
     }
 
     const updated = await db.timeEntry.update({

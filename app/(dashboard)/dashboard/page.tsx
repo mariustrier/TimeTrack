@@ -88,6 +88,8 @@ interface TimeEntry {
   mileageKm: number | null;
   mileageStartAddress: string | null;
   mileageEndAddress: string | null;
+  mileageStops: string[];
+  mileageRoundTrip: boolean;
   mileageSource: "manual" | "calculated" | null;
 }
 
@@ -161,12 +163,15 @@ export default function DashboardPage() {
   const [mileageKm, setMileageKm] = useState("");
   const [mileageStartAddress, setMileageStartAddress] = useState("");
   const [mileageEndAddress, setMileageEndAddress] = useState("");
+  const [mileageStops, setMileageStops] = useState<string[]>([]);
+  const [mileageRoundTrip, setMileageRoundTrip] = useState(false);
   const [mileageSource, setMileageSource] = useState<"manual" | "calculated" | "">("");
   const [mileageSectionOpen, setMileageSectionOpen] = useState(false);
   const [calculatingDistance, setCalculatingDistance] = useState(false);
   const [startAddressSuggestions, setStartAddressSuggestions] = useState<string[]>([]);
   const [endAddressSuggestions, setEndAddressSuggestions] = useState<string[]>([]);
-  const [activeAddressField, setActiveAddressField] = useState<"start" | "end" | null>(null);
+  const [stopSuggestions, setStopSuggestions] = useState<string[]>([]);
+  const [activeAddressField, setActiveAddressField] = useState<"start" | "end" | number | null>(null);
 
   const weekStart = useMemo(() => startOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
   const weekEnd = useMemo(() => endOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
@@ -315,6 +320,8 @@ export default function DashboardPage() {
       setMileageKm(entry.mileageKm?.toString() || "");
       setMileageStartAddress(entry.mileageStartAddress || "");
       setMileageEndAddress(entry.mileageEndAddress || "");
+      setMileageStops(entry.mileageStops || []);
+      setMileageRoundTrip(entry.mileageRoundTrip || false);
       setMileageSource(entry.mileageSource || "");
       setMileageSectionOpen(!!entry.mileageKm);
     } else {
@@ -329,6 +336,8 @@ export default function DashboardPage() {
       setMileageKm("");
       setMileageStartAddress("");
       setMileageEndAddress("");
+      setMileageStops([]);
+      setMileageRoundTrip(false);
       setMileageSource("");
       setMileageSectionOpen(false);
     }
@@ -352,6 +361,8 @@ export default function DashboardPage() {
             mileageKm: mileageKm ? parseFloat(mileageKm) : null,
             mileageStartAddress: mileageStartAddress || null,
             mileageEndAddress: mileageEndAddress || null,
+            mileageStops: mileageStops.filter((s) => s.trim()),
+            mileageRoundTrip,
             mileageSource: mileageSource || null,
           }),
         });
@@ -368,6 +379,8 @@ export default function DashboardPage() {
             mileageKm: mileageKm ? parseFloat(mileageKm) : null,
             mileageStartAddress: mileageStartAddress || null,
             mileageEndAddress: mileageEndAddress || null,
+            mileageStops: mileageStops.filter((s) => s.trim()),
+            mileageRoundTrip,
             mileageSource: mileageSource || null,
           }),
         });
@@ -469,6 +482,8 @@ export default function DashboardPage() {
         body: JSON.stringify({
           startAddress: mileageStartAddress,
           endAddress: mileageEndAddress,
+          stops: mileageStops.filter((s) => s.trim()),
+          roundTrip: mileageRoundTrip,
         }),
       });
       if (res.ok) {
@@ -489,10 +504,11 @@ export default function DashboardPage() {
   }
 
   // Fetch address suggestions
-  async function fetchAddressSuggestions(query: string, field: "start" | "end") {
+  async function fetchAddressSuggestions(query: string, field: "start" | "end" | number) {
     if (query.length < 3) {
       if (field === "start") setStartAddressSuggestions([]);
-      else setEndAddressSuggestions([]);
+      else if (field === "end") setEndAddressSuggestions([]);
+      else setStopSuggestions([]);
       return;
     }
     try {
@@ -500,11 +516,29 @@ export default function DashboardPage() {
       if (res.ok) {
         const data = await res.json();
         if (field === "start") setStartAddressSuggestions(data.suggestions || []);
-        else setEndAddressSuggestions(data.suggestions || []);
+        else if (field === "end") setEndAddressSuggestions(data.suggestions || []);
+        else setStopSuggestions(data.suggestions || []);
       }
     } catch (error) {
       console.error("Failed to fetch address suggestions:", error);
     }
+  }
+
+  // Add a new stop
+  function addStop() {
+    setMileageStops([...mileageStops, ""]);
+  }
+
+  // Remove a stop
+  function removeStop(index: number) {
+    setMileageStops(mileageStops.filter((_, i) => i !== index));
+  }
+
+  // Update a stop value
+  function updateStop(index: number, value: string) {
+    const newStops = [...mileageStops];
+    newStops[index] = value;
+    setMileageStops(newStops);
   }
 
   // Check if entry is read-only
@@ -1120,6 +1154,67 @@ export default function DashboardPage() {
                     )}
                   </div>
 
+                  {/* Stops */}
+                  {mileageStops.map((stop, index) => (
+                    <div key={index} className="relative space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label>{t("stop")} {index + 1}</Label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeStop(index)}
+                          disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
+                          className="h-6 px-2 text-muted-foreground hover:text-destructive"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <Input
+                        value={stop}
+                        onChange={(e) => {
+                          updateStop(index, e.target.value);
+                          fetchAddressSuggestions(e.target.value, index);
+                          setActiveAddressField(index);
+                        }}
+                        onFocus={() => setActiveAddressField(index)}
+                        onBlur={() => setTimeout(() => setActiveAddressField(null), 200)}
+                        placeholder={t("stopPlaceholder")}
+                        disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
+                      />
+                      {activeAddressField === index && stopSuggestions.length > 0 && (
+                        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg">
+                          {stopSuggestions.map((suggestion, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              className="w-full px-3 py-2 text-left text-sm hover:bg-accent"
+                              onMouseDown={() => {
+                                updateStop(index, suggestion);
+                                setStopSuggestions([]);
+                              }}
+                            >
+                              {suggestion}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Add Stop Button */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addStop}
+                    disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
+                    className="w-full"
+                  >
+                    <Plus className="mr-2 h-3 w-3" />
+                    {t("addStop")}
+                  </Button>
+
                   <div className="relative space-y-2">
                     <Label>{t("endAddress")}</Label>
                     <Input
@@ -1152,6 +1247,33 @@ export default function DashboardPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* Round Trip Toggle */}
+                  <div className="flex items-center justify-between py-2">
+                    <Label className="cursor-pointer">{t("roundTrip")}</Label>
+                    <button
+                      type="button"
+                      onClick={() => setMileageRoundTrip(!mileageRoundTrip)}
+                      disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
+                      className={cn(
+                        "relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors",
+                        mileageRoundTrip ? "bg-brand-500" : "bg-gray-300 dark:bg-gray-600",
+                        editingEntry && isEntryReadOnly(editingEntry) ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform",
+                          mileageRoundTrip ? "translate-x-5" : "translate-x-0"
+                        )}
+                      />
+                    </button>
+                  </div>
+                  {mileageRoundTrip && (
+                    <p className="text-xs text-muted-foreground">
+                      {t("roundTripDescription")}
+                    </p>
+                  )}
 
                   {mileageStartAddress && mileageEndAddress && (
                     <Button

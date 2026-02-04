@@ -118,7 +118,12 @@
     "distanceCalculated": "Afstand beregnet",
     "distanceCalculationFailed": "Kunne ikke beregne afstand",
     "distanceWasCalculated": "Afstand blev beregnet fra adresser",
-    "distanceWasManual": "Afstand blev indtastet manuelt"
+    "distanceWasManual": "Afstand blev indtastet manuelt",
+    "stop": "Stop",
+    "stopPlaceholder": "f.eks. Kundens kontor",
+    "addStop": "Tilføj stop",
+    "roundTrip": "Tur/retur",
+    "roundTripDescription": "Afstanden fordobles for at medregne hjemturen"
   },
   "projects": {
     "title": "Projekter",

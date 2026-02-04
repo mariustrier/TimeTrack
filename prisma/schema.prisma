@@ -126,6 +126,8 @@ model TimeEntry {
   mileageKm           Float?
   mileageStartAddress String?
   mileageEndAddress   String?
+  mileageStops        String[]  @default([])  // Intermediate stops
+  mileageRoundTrip    Boolean   @default(false)
   mileageSource       String?   // "manual" | "calculated"
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)

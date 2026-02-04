@@ -14,6 +14,8 @@ export const createTimeEntrySchema = z.object({
   mileageKm: z.coerce.number().nonnegative().max(9999).optional().nullable(),
   mileageStartAddress: z.string().max(500).optional().nullable(),
   mileageEndAddress: z.string().max(500).optional().nullable(),
+  mileageStops: z.array(z.string().max(500)).optional().nullable(),
+  mileageRoundTrip: z.boolean().optional().nullable(),
   mileageSource: z.enum(["manual", "calculated"]).optional().nullable(),
 });
 
@@ -28,6 +30,8 @@ export const updateTimeEntrySchema = z.object({
   mileageKm: z.coerce.number().nonnegative().max(9999).optional().nullable(),
   mileageStartAddress: z.string().max(500).optional().nullable(),
   mileageEndAddress: z.string().max(500).optional().nullable(),
+  mileageStops: z.array(z.string().max(500)).optional().nullable(),
+  mileageRoundTrip: z.boolean().optional().nullable(),
   mileageSource: z.enum(["manual", "calculated"]).optional().nullable(),
 });
 
@@ -149,4 +153,6 @@ export const dayApprovalActionSchema = z.object({
 export const calculateDistanceSchema = z.object({
   startAddress: z.string().min(3).max(500),
   endAddress: z.string().min(3).max(500),
+  stops: z.array(z.string().min(3).max(500)).optional(),
+  roundTrip: z.boolean().optional(),
 });

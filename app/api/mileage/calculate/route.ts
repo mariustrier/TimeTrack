@@ -46,9 +46,8 @@ async function geocodeAddress(address: string): Promise<[number, number] | null>
   return data.features[0].geometry.coordinates; // [lng, lat]
 }
 
-async function calculateDrivingDistance(
-  startCoords: [number, number],
-  endCoords: [number, number]
+async function calculateRouteDistance(
+  coordinates: [number, number][]
 ): Promise<number | null> {
   const url = `${ORS_BASE_URL}/v2/directions/driving-car`;
 
@@ -59,7 +58,7 @@ async function calculateDrivingDistance(
       Authorization: OPENROUTESERVICE_API_KEY || "",
     },
     body: JSON.stringify({
-      coordinates: [startCoords, endCoords],
+      coordinates,
     }),
   });
 
@@ -105,30 +104,31 @@ export async function POST(req: Request) {
     const result = validate(calculateDistanceSchema, body);
     if (!result.success) return result.response;
 
-    const { startAddress, endAddress } = result.data;
+    const { startAddress, endAddress, stops, roundTrip } = result.data;
 
-    // Geocode both addresses
-    const [startCoords, endCoords] = await Promise.all([
-      geocodeAddress(startAddress),
-      geocodeAddress(endAddress),
-    ]);
+    // Build list of all addresses: start -> stops -> end
+    const allAddresses = [startAddress, ...(stops || []), endAddress];
 
-    if (!startCoords) {
-      return NextResponse.json(
-        { error: "Could not find start address. Please try a more specific address." },
-        { status: 400 }
-      );
+    // Geocode all addresses in parallel
+    const coordsResults = await Promise.all(
+      allAddresses.map((addr) => geocodeAddress(addr))
+    );
+
+    // Check for geocoding failures
+    for (let i = 0; i < coordsResults.length; i++) {
+      if (!coordsResults[i]) {
+        const addressType = i === 0 ? "start" : i === coordsResults.length - 1 ? "end" : `stop ${i}`;
+        return NextResponse.json(
+          { error: `Could not find ${addressType} address. Please try a more specific address.` },
+          { status: 400 }
+        );
+      }
     }
 
-    if (!endCoords) {
-      return NextResponse.json(
-        { error: "Could not find end address. Please try a more specific address." },
-        { status: 400 }
-      );
-    }
+    const coordinates = coordsResults as [number, number][];
 
-    // Calculate driving distance
-    const distanceKm = await calculateDrivingDistance(startCoords, endCoords);
+    // Calculate driving distance through all waypoints
+    const distanceKm = await calculateRouteDistance(coordinates);
 
     if (distanceKm === null) {
       return NextResponse.json(
@@ -137,8 +137,11 @@ export async function POST(req: Request) {
       );
     }
 
+    // Double distance if round trip
+    const finalDistance = roundTrip ? distanceKm * 2 : distanceKm;
+
     return NextResponse.json({
-      distanceKm: Math.round(distanceKm * 10) / 10, // Round to 1 decimal
+      distanceKm: Math.round(finalDistance * 10) / 10, // Round to 1 decimal
     });
   } catch (error) {
     console.error("[MILEAGE_CALCULATE]", error);

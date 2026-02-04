@@ -77,6 +77,8 @@ export async function POST(req: Request) {
       mileageKm,
       mileageStartAddress,
       mileageEndAddress,
+      mileageStops,
+      mileageRoundTrip,
       mileageSource,
     } = result.data;
 
@@ -125,6 +127,8 @@ export async function POST(req: Request) {
         mileageKm: mileageKm ?? null,
         mileageStartAddress: mileageStartAddress ?? null,
         mileageEndAddress: mileageEndAddress ?? null,
+        mileageStops: mileageStops ?? [],
+        mileageRoundTrip: mileageRoundTrip ?? false,
         mileageSource: mileageSource ?? null,
       },
       include: {

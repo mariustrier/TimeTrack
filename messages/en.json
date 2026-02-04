@@ -118,7 +118,12 @@
     "distanceCalculated": "Distance calculated",
     "distanceCalculationFailed": "Could not calculate distance",
     "distanceWasCalculated": "Distance was calculated from addresses",
-    "distanceWasManual": "Distance was entered manually"
+    "distanceWasManual": "Distance was entered manually",
+    "stop": "Stop",
+    "stopPlaceholder": "e.g. Client office",
+    "addStop": "Add Stop",
+    "roundTrip": "Round Trip",
+    "roundTripDescription": "Distance will be doubled to account for the return journey"
   },
   "projects": {
     "title": "Projects",
