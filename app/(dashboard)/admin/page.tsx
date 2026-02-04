@@ -28,6 +28,7 @@ import {
   Upload,
   ImageIcon,
   Trash2,
+  ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -140,6 +141,8 @@ export default function AdminPage() {
   const [useUniversalRate, setUseUniversalRate] = useState(false);
   const [universalRateInput, setUniversalRateInput] = useState("");
   const [universalRateSaving, setUniversalRateSaving] = useState(false);
+  const [aiAnonymization, setAiAnonymization] = useState(true);
+  const [aiAnonymizationSaving, setAiAnonymizationSaving] = useState(false);
   const [expenseThresholdInput, setExpenseThresholdInput] = useState("");
   const [expenseThresholdSaving, setExpenseThresholdSaving] = useState(false);
   const [receiptExportStart, setReceiptExportStart] = useState("");
@@ -205,6 +208,7 @@ export default function AdminPage() {
           setEcoVatCode(data.economicVatCode || "");
           setEcoCurrency(data.economicCurrency || "DKK");
           setUseUniversalRate(data.useUniversalRate || false);
+          setAiAnonymization(data.aiAnonymization ?? true);
           setUniversalRateInput(data.defaultHourlyRate?.toString() || "");
           setExpenseThresholdInput(data.expenseAutoApproveThreshold?.toString() || "");
           setCompanyLogoUrl(data.logoUrl || null);
@@ -794,6 +798,50 @@ export default function AdminPage() {
               <Save className="mr-1 h-4 w-4" />
               {expenseThresholdSaving ? tc("saving") : tc("save")}
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* AI Data Privacy */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center gap-3">
+            <ShieldCheck className="h-5 w-5 text-primary" />
+            <div>
+              <h3 className="text-lg font-semibold text-foreground">{t("aiAnonymization")}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{t("aiAnonymizationDesc")}</p>
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-3">
+            <button
+              onClick={async () => {
+                const newVal = !aiAnonymization;
+                setAiAnonymization(newVal);
+                setAiAnonymizationSaving(true);
+                try {
+                  await fetch("/api/admin/economic", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ aiAnonymization: newVal }),
+                  });
+                } catch { /* ignore */ } finally {
+                  setAiAnonymizationSaving(false);
+                }
+              }}
+              disabled={aiAnonymizationSaving}
+              className={cn(
+                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                aiAnonymization ? "bg-primary" : "bg-muted-foreground/30"
+              )}
+            >
+              <span className={cn(
+                "inline-block h-4 w-4 rounded-full bg-white transition-transform",
+                aiAnonymization ? "translate-x-6" : "translate-x-1"
+              )} />
+            </button>
+            <Badge variant={aiAnonymization ? "default" : "secondary"}>
+              {aiAnonymization ? t("anonymizationEnabled") : t("anonymizationDisabled")}
+            </Badge>
           </div>
         </CardContent>
       </Card>

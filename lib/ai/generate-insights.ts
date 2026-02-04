@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { getAnthropicClient } from "./client";
 import { checkBudget, trackUsage } from "./cost-tracking";
 import { gatherInsightData, InsightDataPackage } from "./insight-data-gatherer";
+import { anonymizeInsightData, deanonymizeInsights, AnonymizationMap } from "./anonymize";
 
 const INSIGHTS_MODEL = "claude-sonnet-4-20250514";
 
@@ -82,6 +83,11 @@ Return ONLY a JSON array. Each insight:
   "relatedHours": Optional number if hours-related,
   "relatedAmount": Optional number if money-related
 }`;
+
+const SYSTEM_PROMPT_ANONYMIZED = SYSTEM_PROMPT.replace(
+  "6. Be specific: use names, numbers, and dates when relevant",
+  "6. Be specific: use the provided identifier labels (Employee A, Project Alpha, etc.) when referencing team members and projects. Use numbers and dates when relevant."
+);
 
 interface GeneratedInsight {
   category: "OPPORTUNITY" | "INSIGHT" | "SUGGESTION" | "HEADS_UP" | "CELEBRATION";
@@ -195,15 +201,30 @@ export async function generateInsights(companyId: string) {
       return null;
     }
 
-    // 4. Build prompt
-    const userPrompt = buildUserPrompt(data);
+    // 3b. Check if anonymization is enabled
+    const company = await db.company.findUnique({
+      where: { id: companyId },
+      select: { aiAnonymization: true },
+    });
+    const shouldAnonymize = company?.aiAnonymization ?? true;
+
+    // 4. Conditionally anonymize data before building prompt
+    let promptData = data;
+    let anonMap: AnonymizationMap | null = null;
+    if (shouldAnonymize) {
+      const result = anonymizeInsightData(data);
+      promptData = result.anonymizedData;
+      anonMap = result.map;
+    }
+
+    const userPrompt = buildUserPrompt(promptData);
 
     // 5. Call Claude
     const client = getAnthropicClient();
     const response = await client.messages.create({
       model: INSIGHTS_MODEL,
       max_tokens: 2048,
-      system: SYSTEM_PROMPT,
+      system: shouldAnonymize ? SYSTEM_PROMPT_ANONYMIZED : SYSTEM_PROMPT,
       messages: [
         {
           role: "user",
@@ -230,6 +251,11 @@ export async function generateInsights(companyId: string) {
     } catch {
       console.error("[AI] Failed to parse insights JSON:", textBlock.text);
       return null;
+    }
+
+    // 6b. De-anonymize insights if anonymization was applied
+    if (shouldAnonymize && anonMap) {
+      insights = deanonymizeInsights(insights, anonMap);
     }
 
     // 7. Clear old non-dismissed insights and store new ones

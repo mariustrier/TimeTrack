@@ -49,6 +49,63 @@ export async function GET(
   }
 }
 
+export async function PUT(req: Request) {
+  try {
+    const user = await requireManager();
+
+    const body = await req.json();
+    const { contractId, maxHours, maxBudget, budgetCurrency, deadline, scopeDescription, scopeKeywords, exclusions } = body;
+
+    if (!contractId) {
+      return NextResponse.json({ error: "Contract ID is required" }, { status: 400 });
+    }
+
+    const contract = await db.contract.findUnique({
+      where: { id: contractId },
+      include: { project: { select: { companyId: true } } },
+    });
+
+    if (!contract || contract.project.companyId !== user.companyId) {
+      return NextResponse.json({ error: "Contract not found" }, { status: 404 });
+    }
+
+    const terms = {
+      maxHours: maxHours != null ? parseFloat(maxHours) : null,
+      maxBudget: maxBudget != null ? parseFloat(maxBudget) : null,
+      budgetCurrency: budgetCurrency || null,
+      deadline: deadline ? new Date(deadline) : null,
+      scopeDescription: scopeDescription || null,
+      scopeKeywords: scopeKeywords || [],
+      exclusions: exclusions || [],
+    };
+
+    const updated = await db.contract.update({
+      where: { id: contractId },
+      data: {
+        ...terms,
+        extractedTerms: JSON.parse(JSON.stringify(terms)),
+        extractedAt: new Date(),
+      },
+      include: { uploadedBy: { select: { firstName: true, lastName: true } } },
+    });
+
+    return NextResponse.json(updated);
+  } catch (error) {
+    console.error("[CONTRACTS_PUT]", error);
+
+    if (error instanceof Error) {
+      if (error.message === "Unauthorized") {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      if (error.message === "Forbidden") {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
+
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
 export async function DELETE(req: Request) {
   try {
     const user = await requireManager();

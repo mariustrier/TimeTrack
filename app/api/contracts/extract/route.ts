@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     if (limited) return limited;
 
     const body = await req.json();
-    const { contractId } = body;
+    const { contractId, skipAnonymization } = body;
 
     if (!contractId) {
       return NextResponse.json(
@@ -36,9 +36,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const updatedContract = await extractContractTerms(contractId, user.companyId);
+    const result = await extractContractTerms(contractId, user.companyId, {
+      skipAnonymization: !!skipAnonymization,
+    });
 
-    return NextResponse.json(updatedContract);
+    return NextResponse.json(result);
   } catch (error) {
     console.error("[CONTRACT_EXTRACT]", error);
 

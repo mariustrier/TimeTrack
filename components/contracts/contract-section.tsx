@@ -14,12 +14,26 @@ import {
   BookOpen,
   Tag,
   ShieldX,
+  AlertTriangle,
+  Save,
+  PenLine,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useTranslations } from "@/lib/i18n";
+import { toast } from "sonner";
 
 interface ContractSectionProps {
   projectId: string;
@@ -67,6 +81,23 @@ export function ContractSection({ projectId, userRole }: ContractSectionProps) {
   const [extractingId, setExtractingId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Scanned PDF dialog state
+  const [scannedDialogOpen, setScannedDialogOpen] = useState(false);
+  const [scannedContractId, setScannedContractId] = useState<string | null>(null);
+
+  // Manual entry state
+  const [manualEntryId, setManualEntryId] = useState<string | null>(null);
+  const [manualSaving, setManualSaving] = useState(false);
+  const [manualForm, setManualForm] = useState({
+    maxHours: "",
+    maxBudget: "",
+    budgetCurrency: "DKK",
+    deadline: "",
+    scopeDescription: "",
+    scopeKeywords: "",
+    exclusions: "",
+  });
 
   const fetchContracts = useCallback(async () => {
     try {
@@ -123,20 +154,87 @@ export function ContractSection({ projectId, userRole }: ContractSectionProps) {
     }
   };
 
-  const handleExtract = async (contractId: string) => {
+  const handleExtract = async (contractId: string, skipAnonymization = false) => {
     setExtractingId(contractId);
     try {
       const res = await fetch("/api/contracts/extract", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contractId }),
+        body: JSON.stringify({ contractId, skipAnonymization }),
       });
 
       if (!res.ok) return;
 
+      const data = await res.json();
+
+      // Check if scanned PDF was detected
+      if (data && data.scannedPdf) {
+        setScannedContractId(contractId);
+        setScannedDialogOpen(true);
+        return;
+      }
+
       await fetchContracts();
     } finally {
       setExtractingId(null);
+    }
+  };
+
+  const handleScannedProceed = async () => {
+    setScannedDialogOpen(false);
+    if (scannedContractId) {
+      await handleExtract(scannedContractId, true);
+    }
+    setScannedContractId(null);
+  };
+
+  const handleScannedManual = () => {
+    setScannedDialogOpen(false);
+    if (scannedContractId) {
+      setManualEntryId(scannedContractId);
+      setManualForm({
+        maxHours: "",
+        maxBudget: "",
+        budgetCurrency: "DKK",
+        deadline: "",
+        scopeDescription: "",
+        scopeKeywords: "",
+        exclusions: "",
+      });
+    }
+    setScannedContractId(null);
+  };
+
+  const handleManualSave = async () => {
+    if (!manualEntryId) return;
+    setManualSaving(true);
+    try {
+      const res = await fetch(`/api/contracts/${projectId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contractId: manualEntryId,
+          maxHours: manualForm.maxHours || null,
+          maxBudget: manualForm.maxBudget || null,
+          budgetCurrency: manualForm.budgetCurrency || null,
+          deadline: manualForm.deadline || null,
+          scopeDescription: manualForm.scopeDescription || null,
+          scopeKeywords: manualForm.scopeKeywords
+            ? manualForm.scopeKeywords.split(",").map((k) => k.trim()).filter(Boolean)
+            : [],
+          exclusions: manualForm.exclusions
+            ? manualForm.exclusions.split(",").map((e) => e.trim()).filter(Boolean)
+            : [],
+        }),
+      });
+
+      if (res.ok) {
+        toast.success(t("termsSaved"));
+        setManualEntryId(null);
+        await fetchContracts();
+      }
+    } finally {
+      setManualSaving(false);
     }
   };
 
@@ -301,6 +399,28 @@ export function ContractSection({ projectId, userRole }: ContractSectionProps) {
                         )}
                       </Button>
 
+                      {!hasExtractedTerms(contract) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setManualEntryId(contract.id);
+                            setManualForm({
+                              maxHours: "",
+                              maxBudget: "",
+                              budgetCurrency: "DKK",
+                              deadline: "",
+                              scopeDescription: "",
+                              scopeKeywords: "",
+                              exclusions: "",
+                            });
+                          }}
+                        >
+                          <PenLine className="mr-2 h-3.5 w-3.5" />
+                          {t("enterManually")}
+                        </Button>
+                      )}
+
                       {userRole === "admin" && (
                         <Button
                           variant="ghost"
@@ -314,6 +434,95 @@ export function ContractSection({ projectId, userRole }: ContractSectionProps) {
                       )}
                     </div>
                   </div>
+
+                  {/* Manual Entry Form */}
+                  {manualEntryId === contract.id && (
+                    <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        {t("manualEntry")}
+                      </p>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs">{t("maxHours")}</Label>
+                          <Input
+                            type="number"
+                            value={manualForm.maxHours}
+                            onChange={(e) => setManualForm((f) => ({ ...f, maxHours: e.target.value }))}
+                            placeholder="e.g. 500"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">{t("maxBudget")}</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              type="number"
+                              value={manualForm.maxBudget}
+                              onChange={(e) => setManualForm((f) => ({ ...f, maxBudget: e.target.value }))}
+                              placeholder="e.g. 50000"
+                              className="flex-1"
+                            />
+                            <select
+                              className="rounded-md border border-input bg-background px-2 text-sm"
+                              value={manualForm.budgetCurrency}
+                              onChange={(e) => setManualForm((f) => ({ ...f, budgetCurrency: e.target.value }))}
+                            >
+                              <option>DKK</option>
+                              <option>USD</option>
+                              <option>EUR</option>
+                              <option>GBP</option>
+                              <option>SEK</option>
+                              <option>NOK</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">{t("deadline")}</Label>
+                          <Input
+                            type="date"
+                            value={manualForm.deadline}
+                            onChange={(e) => setManualForm((f) => ({ ...f, deadline: e.target.value }))}
+                          />
+                        </div>
+                        <div className="space-y-1 col-span-full">
+                          <Label className="text-xs">{t("scope")}</Label>
+                          <Textarea
+                            value={manualForm.scopeDescription}
+                            onChange={(e) => setManualForm((f) => ({ ...f, scopeDescription: e.target.value }))}
+                            placeholder={t("scopePlaceholder")}
+                            rows={2}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">{t("keywords")}</Label>
+                          <Input
+                            value={manualForm.scopeKeywords}
+                            onChange={(e) => setManualForm((f) => ({ ...f, scopeKeywords: e.target.value }))}
+                            placeholder={t("keywordsPlaceholder")}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">{t("exclusions")}</Label>
+                          <Input
+                            value={manualForm.exclusions}
+                            onChange={(e) => setManualForm((f) => ({ ...f, exclusions: e.target.value }))}
+                            placeholder={t("exclusionsPlaceholder")}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 pt-1">
+                        <Button size="sm" onClick={handleManualSave} disabled={manualSaving}>
+                          {manualSaving ? (
+                            <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />{t("saving")}</>
+                          ) : (
+                            <><Save className="mr-2 h-3.5 w-3.5" />{t("save")}</>
+                          )}
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setManualEntryId(null)}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Extracted Terms */}
                   {hasExtractedTerms(contract) && (
@@ -428,6 +637,30 @@ export function ContractSection({ projectId, userRole }: ContractSectionProps) {
           ))}
         </div>
       )}
+
+      {/* Scanned PDF Dialog */}
+      <Dialog open={scannedDialogOpen} onOpenChange={setScannedDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              {t("scannedPdfTitle")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("scannedPdfMessage")}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button variant="outline" onClick={handleScannedManual}>
+              <PenLine className="mr-2 h-4 w-4" />
+              {t("enterManually")}
+            </Button>
+            <Button onClick={handleScannedProceed}>
+              {t("proceedWithoutAnonymization")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

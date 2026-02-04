@@ -23,6 +23,7 @@ export async function GET() {
         economicVatCode: true,
         economicCurrency: true,
         expenseAutoApproveThreshold: true,
+        aiAnonymization: true,
         logoUrl: true,
       },
     });
@@ -45,7 +46,7 @@ export async function PUT(req: Request) {
     }
 
     const body = await req.json();
-    const { currency, defaultHourlyRate, useUniversalRate, economicRevenueAccount, economicCounterAccount, economicVatCode, economicCurrency, expenseAutoApproveThreshold } = body;
+    const { currency, defaultHourlyRate, useUniversalRate, economicRevenueAccount, economicCounterAccount, economicVatCode, economicCurrency, expenseAutoApproveThreshold, aiAnonymization } = body;
 
     const data: Record<string, unknown> = {
       defaultHourlyRate: defaultHourlyRate ? parseFloat(defaultHourlyRate) : null,
@@ -64,6 +65,9 @@ export async function PUT(req: Request) {
     if (expenseAutoApproveThreshold !== undefined) {
       data.expenseAutoApproveThreshold = expenseAutoApproveThreshold !== null ? parseFloat(expenseAutoApproveThreshold) : null;
     }
+    if (aiAnonymization !== undefined) {
+      data.aiAnonymization = !!aiAnonymization;
+    }
 
     const company = await db.company.update({
       where: { id: user.companyId },
@@ -77,6 +81,7 @@ export async function PUT(req: Request) {
         economicVatCode: true,
         economicCurrency: true,
         expenseAutoApproveThreshold: true,
+        aiAnonymization: true,
       },
     });
 

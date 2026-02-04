@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { db } from "@/lib/db";
 import { getAnthropicClient } from "./client";
 import { checkBudget, trackUsage } from "./cost-tracking";
+import { redactContractText } from "./redact-contract";
 
 const EXTRACTION_MODEL = "claude-3-haiku-20241022";
 
@@ -12,6 +13,19 @@ const SYSTEM_PROMPT = `You are a contract analysis assistant. Extract key terms 
 - deadline: string or null (ISO date string if a deadline is mentioned)
 - scopeDescription: string or null (brief description of the project scope)
 - scopeKeywords: string[] (key topics/technologies mentioned)
+- exclusions: string[] (things explicitly excluded from scope)
+
+Return ONLY the JSON object, no other text.`;
+
+const SYSTEM_PROMPT_ANONYMIZED = `You are a contract analysis assistant. Extract key terms from this contract text. The text has been anonymized — entities like [PERSON_1], [COMPANY], [PROJECT_1], [EMAIL_1] etc. are placeholders for redacted information.
+
+Return a JSON object with these fields:
+- maxHours: number or null (maximum hours allowed)
+- maxBudget: number or null (maximum budget amount)
+- budgetCurrency: string or null (currency code like "USD", "DKK", "EUR")
+- deadline: string or null (ISO date string if a deadline is mentioned)
+- scopeDescription: string or null (brief description of the project scope — use placeholders as-is, do not try to reconstruct original names)
+- scopeKeywords: string[] (key topics/technologies mentioned — focus on technical/business keywords, not anonymized entities)
 - exclusions: string[] (things explicitly excluded from scope)
 
 Return ONLY the JSON object, no other text.`;
@@ -28,8 +42,9 @@ interface ExtractedTerms {
 
 export async function extractContractTerms(
   contractId: string,
-  companyId: string
-) {
+  companyId: string,
+  options?: { skipAnonymization?: boolean }
+): Promise<ExtractedTerms | { scannedPdf: true } | null> {
   try {
     const budget = await checkBudget(companyId);
     if (!budget.allowed) {
@@ -49,6 +64,13 @@ export async function extractContractTerms(
       return null;
     }
 
+    // Check if anonymization is enabled
+    const company = await db.company.findUnique({
+      where: { id: companyId },
+      select: { aiAnonymization: true, name: true },
+    });
+    const shouldAnonymize = (company?.aiAnonymization ?? true) && !options?.skipAnonymization;
+
     const fileResponse = await fetch(contract.fileUrl);
     if (!fileResponse.ok) {
       console.error(
@@ -58,12 +80,55 @@ export async function extractContractTerms(
     }
 
     const isPdf = contract.fileType === "application/pdf";
-
     const client = getAnthropicClient();
 
     let userContent: Anthropic.Messages.ContentBlockParam[];
+    let systemPrompt = SYSTEM_PROMPT;
 
-    if (isPdf) {
+    if (shouldAnonymize && isPdf) {
+      // Anonymized PDF path: extract text, redact, send as plain text
+      const buffer = Buffer.from(await fileResponse.arrayBuffer());
+
+      // Fetch known names for scrubbing
+      const [users, projects] = await Promise.all([
+        db.user.findMany({
+          where: { companyId, deletedAt: null },
+          select: { firstName: true, lastName: true },
+        }),
+        db.project.findMany({
+          where: { companyId },
+          select: { name: true },
+        }),
+      ]);
+
+      const knownNames = {
+        companyName: company?.name || "",
+        employeeNames: users
+          .map((u) => `${u.firstName || ""} ${u.lastName || ""}`.trim())
+          .filter((n) => n.length > 0),
+        projectNames: projects.map((p) => p.name),
+      };
+
+      const redaction = await redactContractText(buffer, knownNames);
+
+      if (redaction.isScannedPdf) {
+        return { scannedPdf: true };
+      }
+
+      console.log(
+        `[AI] Contract redacted: ${redaction.stats.originalLength} chars → ${redaction.redactedText.length} chars, ` +
+        `${redaction.stats.chunksKept}/${redaction.stats.chunksTotal} chunks, ${redaction.stats.redactionsApplied} redactions`
+      );
+
+      userContent = [
+        {
+          type: "text",
+          text: `Extract the key contract terms from this document:\n\n${redaction.redactedText}`,
+        },
+      ];
+      systemPrompt = SYSTEM_PROMPT_ANONYMIZED;
+    } else if (isPdf) {
+      // Non-anonymized PDF path: send raw base64
       const buffer = await fileResponse.arrayBuffer();
       const base64 = Buffer.from(buffer).toString("base64");
 
@@ -82,6 +147,7 @@ export async function extractContractTerms(
         },
       ];
     } else {
+      // Text/DOCX path (no anonymization for non-PDF text files)
       const text = await fileResponse.text();
 
       userContent = [
@@ -95,7 +161,7 @@ export async function extractContractTerms(
     const response = await client.messages.create({
       model: EXTRACTION_MODEL,
       max_tokens: 1024,
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       messages: [
         {
           role: "user",
