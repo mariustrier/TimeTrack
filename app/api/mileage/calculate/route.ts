@@ -19,14 +19,9 @@ interface GeocodingResult {
 }
 
 interface DirectionsResult {
-  features: Array<{
-    properties: {
-      segments: Array<{
-        distance: number; // meters
-      }>;
-      summary: {
-        distance: number; // meters
-      };
+  routes: Array<{
+    summary: {
+      distance: number; // meters
     };
   }>;
 }
@@ -74,11 +69,11 @@ async function calculateDrivingDistance(
   }
 
   const data: DirectionsResult = await response.json();
-  if (!data.features || data.features.length === 0) {
+  if (!data.routes || data.routes.length === 0) {
     return null;
   }
 
-  const distanceMeters = data.features[0].properties.summary.distance;
+  const distanceMeters = data.routes[0].summary.distance;
   return distanceMeters / 1000; // Convert to kilometers
 }
 
