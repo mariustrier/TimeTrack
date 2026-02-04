@@ -706,7 +706,8 @@
     "keywordsPlaceholder": "f.eks. React, API, design",
     "exclusionsPlaceholder": "f.eks. hosting, vedligeholdelse",
     "extractFailed": "Kunne ikke udtrække kontraktvilkår",
-    "extractSuccess": "Kontraktvilkår udtrukket"
+    "extractSuccess": "Kontraktvilkår udtrukket",
+    "encryptingMessage": "Krypterer din fil og holder dine data sikre..."
   },
   "superAdmin": {
     "title": "Platform Admin",

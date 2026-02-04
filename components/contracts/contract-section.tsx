@@ -341,6 +341,11 @@ export function ContractSection({ projectId, userRole }: ContractSectionProps) {
                 </>
               )}
             </Button>
+            {uploading && (
+              <p className="text-xs text-muted-foreground animate-pulse">
+                {t("encryptingMessage")}
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -446,6 +451,13 @@ export function ContractSection({ projectId, userRole }: ContractSectionProps) {
                       )}
                     </div>
                   </div>
+
+                  {/* Extracting message */}
+                  {extractingId === contract.id && (
+                    <p className="text-xs text-muted-foreground animate-pulse">
+                      {t("encryptingMessage")}
+                    </p>
+                  )}
 
                   {/* Manual Entry Form */}
                   {manualEntryId === contract.id && (

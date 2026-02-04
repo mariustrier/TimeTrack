@@ -706,7 +706,8 @@
     "keywordsPlaceholder": "e.g. React, API, design",
     "exclusionsPlaceholder": "e.g. hosting, maintenance",
     "extractFailed": "Failed to extract contract terms",
-    "extractSuccess": "Contract terms extracted successfully"
+    "extractSuccess": "Contract terms extracted successfully",
+    "encryptingMessage": "Encrypting your file and keeping your data safe..."
   },
   "superAdmin": {
     "title": "Platform Admin",
