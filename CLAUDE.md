@@ -16,13 +16,13 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 
 - `npm run dev` - Start development server
 - `npm run build` - Production build
-- `npm run test` - Run all 83 unit tests (Vitest)
+- `npm run test` - Run all 99 unit tests (Vitest)
 - `npm run test:watch` - Run tests in watch mode
 
 ## Project Structure
 
 - `app/(dashboard)/` - Dashboard pages (admin, analytics, projects, team, expenses, vacations, settings)
-- `app/api/` - 58 API routes, all scoped by companyId
+- `app/api/` - 60 API routes, all scoped by companyId
 - `lib/` - Shared utilities (calculations, currency, week-helpers, expense-utils, analytics-utils)
 - `lib/schemas.ts` - All Zod validation schemas
 - `lib/validate.ts` - Zod validation helper for API routes
@@ -61,10 +61,24 @@ Sentry is configured (client/server/edge). DSN is set via `SENTRY_DSN` and `NEXT
 - Users can edit/delete their expenses until approved by admin
 - Removed "Submit Expenses" button from UI
 
+### Mileage Tracking
+- Mileage registration integrated into time entry modal (collapsible section)
+- Fields: kilometers driven, start address, end address, intermediate stops, round trip toggle
+- Address autocomplete via OpenRouteService geocoding API
+- Automatic distance calculation via OpenRouteService directions API
+- Supports multi-stop routes (start → stops → end)
+- Round trip option doubles the calculated distance
+- Rate limited: 20 requests/minute per company
+- New API endpoints:
+  - `POST /api/mileage/calculate` - Calculate distance between addresses
+  - `GET /api/mileage/autocomplete` - Address suggestions
+- Database fields on TimeEntry: `mileageKm`, `mileageStartAddress`, `mileageEndAddress`, `mileageStops`, `mileageRoundTrip`, `mileageSource`
+- Environment variable: `OPENROUTESERVICE_API_KEY`
+
 ## Development Roadmap
 
 ### Phase 1: Foundation & Quality - COMPLETE
-- [x] Vitest testing infrastructure (83 tests across 5 suites)
+- [x] Vitest testing infrastructure (99 tests across 6 suites)
 - [x] Sentry error monitoring with error boundaries
 - [x] Zod input validation on 12 API routes
 - [x] Rate limiting on 6 routes
