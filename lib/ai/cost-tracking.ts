@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 
 const PRICING: Record<string, { input: number; output: number }> = {
-  "claude-3-haiku-20241022": { input: 0.1, output: 0.5 },
+  "claude-haiku-4-5-20251001": { input: 0.1, output: 0.5 },
   "claude-sonnet-4-20250514": { input: 0.3, output: 1.5 },
 };
 
