@@ -165,12 +165,12 @@ export function ContractSection({ projectId, userRole }: ContractSectionProps) {
         body: JSON.stringify({ contractId, skipAnonymization }),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        toast.error(t("extractFailed"));
+        toast.error(data?.error || t("extractFailed"));
         return;
       }
-
-      const data = await res.json();
 
       // Check if scanned PDF was detected
       if (data && data.scannedPdf) {

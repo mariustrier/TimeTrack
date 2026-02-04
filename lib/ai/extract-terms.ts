@@ -48,10 +48,9 @@ export async function extractContractTerms(
   try {
     const budget = await checkBudget(companyId);
     if (!budget.allowed) {
-      console.log(
-        `[AI] Budget exceeded for company ${companyId}. Daily: ${budget.dailyUsed}/${budget.dailyLimit}, Monthly: ${budget.monthlyUsed}/${budget.monthlyLimit}`
+      throw new Error(
+        `AI budget exceeded. Daily: ${budget.dailyUsed}/${budget.dailyLimit}, Monthly: ${budget.monthlyUsed}/${budget.monthlyLimit}`
       );
-      return null;
     }
 
     const contract = await db.contract.findUnique({
@@ -60,8 +59,7 @@ export async function extractContractTerms(
     });
 
     if (!contract) {
-      console.error(`[AI] Contract ${contractId} not found`);
-      return null;
+      throw new Error("Contract not found");
     }
 
     // Check if anonymization is enabled
@@ -73,10 +71,7 @@ export async function extractContractTerms(
 
     const fileResponse = await fetch(contract.fileUrl);
     if (!fileResponse.ok) {
-      console.error(
-        `[AI] Failed to fetch contract file: ${fileResponse.statusText}`
-      );
-      return null;
+      throw new Error(`Failed to fetch contract file: ${fileResponse.statusText}`);
     }
 
     const isPdf = contract.fileType === "application/pdf";
@@ -172,8 +167,7 @@ export async function extractContractTerms(
 
     const textBlock = response.content.find((block) => block.type === "text");
     if (!textBlock || textBlock.type !== "text") {
-      console.error("[AI] No text response from Claude");
-      return null;
+      throw new Error("No text response from Claude");
     }
 
     const terms: ExtractedTerms = JSON.parse(textBlock.text);
@@ -204,6 +198,6 @@ export async function extractContractTerms(
     return terms;
   } catch (error) {
     console.error("[AI] Error extracting contract terms:", error);
-    return null;
+    throw error;
   }
 }
