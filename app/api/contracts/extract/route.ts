@@ -4,8 +4,6 @@ import { requireManager } from "@/lib/auth";
 import { extractContractTerms } from "@/lib/ai/extract-terms";
 import { checkRateLimit } from "@/lib/rate-limit";
 
-export const maxDuration = 60;
-
 export async function POST(req: Request) {
   try {
     const user = await requireManager();

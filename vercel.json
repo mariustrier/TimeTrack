@@ -1,6 +1,11 @@
 {
   "buildCommand": "npm run build",
   "framework": "nextjs",
+  "functions": {
+    "app/api/contracts/extract/route.ts": {
+      "maxDuration": 60
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/generate-insights",
