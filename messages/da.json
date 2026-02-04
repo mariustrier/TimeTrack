@@ -704,7 +704,9 @@
     "termsSaved": "Kontraktvilkår gemt",
     "scopePlaceholder": "Kort beskrivelse af projektets omfang...",
     "keywordsPlaceholder": "f.eks. React, API, design",
-    "exclusionsPlaceholder": "f.eks. hosting, vedligeholdelse"
+    "exclusionsPlaceholder": "f.eks. hosting, vedligeholdelse",
+    "extractFailed": "Kunne ikke udtrække kontraktvilkår",
+    "extractSuccess": "Kontraktvilkår udtrukket"
   },
   "superAdmin": {
     "title": "Platform Admin",

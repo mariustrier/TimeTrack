@@ -165,7 +165,10 @@ export function ContractSection({ projectId, userRole }: ContractSectionProps) {
         body: JSON.stringify({ contractId, skipAnonymization }),
       });
 
-      if (!res.ok) return;
+      if (!res.ok) {
+        toast.error(t("extractFailed"));
+        return;
+      }
 
       const data = await res.json();
 
@@ -176,7 +179,15 @@ export function ContractSection({ projectId, userRole }: ContractSectionProps) {
         return;
       }
 
+      if (!data) {
+        toast.error(t("extractFailed"));
+        return;
+      }
+
+      toast.success(t("extractSuccess"));
       await fetchContracts();
+    } catch {
+      toast.error(t("extractFailed"));
     } finally {
       setExtractingId(null);
     }

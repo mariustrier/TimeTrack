@@ -704,7 +704,9 @@
     "termsSaved": "Contract terms saved",
     "scopePlaceholder": "Brief description of the project scope...",
     "keywordsPlaceholder": "e.g. React, API, design",
-    "exclusionsPlaceholder": "e.g. hosting, maintenance"
+    "exclusionsPlaceholder": "e.g. hosting, maintenance",
+    "extractFailed": "Failed to extract contract terms",
+    "extractSuccess": "Contract terms extracted successfully"
   },
   "superAdmin": {
     "title": "Platform Admin",

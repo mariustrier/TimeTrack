@@ -4,7 +4,7 @@ import { getAnthropicClient } from "./client";
 import { checkBudget, trackUsage } from "./cost-tracking";
 import { redactContractText } from "./redact-contract";
 
-const EXTRACTION_MODEL = "claude-3-haiku-20241022";
+const EXTRACTION_MODEL = "claude-3-5-haiku-20241022";
 
 const SYSTEM_PROMPT = `You are a contract analysis assistant. Extract key terms from this contract document. Return a JSON object with these fields:
 - maxHours: number or null (maximum hours allowed)
