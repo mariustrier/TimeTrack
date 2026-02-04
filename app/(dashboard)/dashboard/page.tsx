@@ -164,6 +164,9 @@ export default function DashboardPage() {
   const [mileageSource, setMileageSource] = useState<"manual" | "calculated" | "">("");
   const [mileageSectionOpen, setMileageSectionOpen] = useState(false);
   const [calculatingDistance, setCalculatingDistance] = useState(false);
+  const [startAddressSuggestions, setStartAddressSuggestions] = useState<string[]>([]);
+  const [endAddressSuggestions, setEndAddressSuggestions] = useState<string[]>([]);
+  const [activeAddressField, setActiveAddressField] = useState<"start" | "end" | null>(null);
 
   const weekStart = useMemo(() => startOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
   const weekEnd = useMemo(() => endOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
@@ -482,6 +485,25 @@ export default function DashboardPage() {
       toast.error(t("distanceCalculationFailed"));
     } finally {
       setCalculatingDistance(false);
+    }
+  }
+
+  // Fetch address suggestions
+  async function fetchAddressSuggestions(query: string, field: "start" | "end") {
+    if (query.length < 3) {
+      if (field === "start") setStartAddressSuggestions([]);
+      else setEndAddressSuggestions([]);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/mileage/autocomplete?q=${encodeURIComponent(query)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (field === "start") setStartAddressSuggestions(data.suggestions || []);
+        else setEndAddressSuggestions(data.suggestions || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch address suggestions:", error);
     }
   }
 
@@ -881,7 +903,7 @@ export default function DashboardPage() {
 
       {/* Time Entry Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingEntry
@@ -1065,24 +1087,70 @@ export default function DashboardPage() {
                     />
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="relative space-y-2">
                     <Label>{t("startAddress")}</Label>
                     <Input
                       value={mileageStartAddress}
-                      onChange={(e) => setMileageStartAddress(e.target.value)}
+                      onChange={(e) => {
+                        setMileageStartAddress(e.target.value);
+                        fetchAddressSuggestions(e.target.value, "start");
+                        setActiveAddressField("start");
+                      }}
+                      onFocus={() => setActiveAddressField("start")}
+                      onBlur={() => setTimeout(() => setActiveAddressField(null), 200)}
                       placeholder={t("startAddressPlaceholder")}
                       disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
                     />
+                    {activeAddressField === "start" && startAddressSuggestions.length > 0 && (
+                      <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg">
+                        {startAddressSuggestions.map((suggestion, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            className="w-full px-3 py-2 text-left text-sm hover:bg-accent"
+                            onMouseDown={() => {
+                              setMileageStartAddress(suggestion);
+                              setStartAddressSuggestions([]);
+                            }}
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="relative space-y-2">
                     <Label>{t("endAddress")}</Label>
                     <Input
                       value={mileageEndAddress}
-                      onChange={(e) => setMileageEndAddress(e.target.value)}
+                      onChange={(e) => {
+                        setMileageEndAddress(e.target.value);
+                        fetchAddressSuggestions(e.target.value, "end");
+                        setActiveAddressField("end");
+                      }}
+                      onFocus={() => setActiveAddressField("end")}
+                      onBlur={() => setTimeout(() => setActiveAddressField(null), 200)}
                       placeholder={t("endAddressPlaceholder")}
                       disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
                     />
+                    {activeAddressField === "end" && endAddressSuggestions.length > 0 && (
+                      <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg">
+                        {endAddressSuggestions.map((suggestion, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            className="w-full px-3 py-2 text-left text-sm hover:bg-accent"
+                            onMouseDown={() => {
+                              setMileageEndAddress(suggestion);
+                              setEndAddressSuggestions([]);
+                            }}
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {mileageStartAddress && mileageEndAddress && (
