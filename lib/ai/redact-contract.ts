@@ -1,4 +1,5 @@
-import { PDFParse } from "pdf-parse";
+// pdf-parse is imported dynamically inside redactContractText() to avoid
+// crashing the module at import time in Vercel serverless.
 
 // --- Types ---
 
@@ -166,7 +167,8 @@ export async function redactContractText(
   pdfBuffer: Buffer,
   knownNames: KnownNames
 ): Promise<RedactionResult> {
-  // A. Extract text
+  // A. Extract text (dynamic import to avoid crashing serverless at module load)
+  const { PDFParse } = await import("pdf-parse");
   const parser = new PDFParse({ data: pdfBuffer });
   const textResult = await parser.getText();
   await parser.destroy();
