@@ -80,6 +80,7 @@ export function ContractSection({ projectId, userRole }: ContractSectionProps) {
   const [uploading, setUploading] = useState(false);
   const [extractingId, setExtractingId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Scanned PDF dialog state
@@ -140,6 +141,7 @@ export function ContractSection({ projectId, userRole }: ContractSectionProps) {
 
       // Reset form
       setNotes("");
+      setSelectedFileName(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -283,7 +285,7 @@ export function ContractSection({ projectId, userRole }: ContractSectionProps) {
                 className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground"
               >
                 <FileUp className="h-4 w-4" />
-                {fileInputRef.current?.files?.[0]?.name ?? t("upload")}
+                {selectedFileName ?? t("upload")}
               </label>
               <input
                 ref={fileInputRef}
@@ -292,8 +294,7 @@ export function ContractSection({ projectId, userRole }: ContractSectionProps) {
                 accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 className="sr-only"
                 onChange={() => {
-                  // Force re-render so the label updates with the file name
-                  setNotes((n) => n);
+                  setSelectedFileName(fileInputRef.current?.files?.[0]?.name ?? null);
                 }}
               />
               <p className="text-xs text-muted-foreground">{t("fileTypes")}</p>
@@ -314,7 +315,7 @@ export function ContractSection({ projectId, userRole }: ContractSectionProps) {
 
             <Button
               onClick={handleUpload}
-              disabled={uploading || !fileInputRef.current?.files?.length}
+              disabled={uploading || !selectedFileName}
               size="sm"
             >
               {uploading ? (
