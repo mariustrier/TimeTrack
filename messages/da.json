@@ -126,7 +126,8 @@
     "roundTripDescription": "Afstanden fordobles for at medregne hjemturen",
     "absenceReason": "Fraværsårsag",
     "selectAbsenceReason": "Vælg årsag til fravær",
-    "absenceReasonRequired": "Vælg venligst en fraværsårsag"
+    "absenceReasonRequired": "Vælg venligst en fraværsårsag",
+    "absenceProject": "Fravær"
   },
   "projects": {
     "title": "Projekter",

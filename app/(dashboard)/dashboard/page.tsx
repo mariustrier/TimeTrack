@@ -830,7 +830,7 @@ export default function DashboardPage() {
                             "font-medium truncate",
                             project.systemType === "absence" ? "text-muted-foreground" : "text-foreground"
                           )}>
-                            {project.name}
+                            {project.systemType === "absence" ? t("absenceProject") : project.name}
                           </span>
                         </div>
                       </td>
@@ -1034,7 +1034,7 @@ export default function DashboardPage() {
                           className="h-2.5 w-2.5 rounded-full"
                           style={{ backgroundColor: p.color }}
                         />
-                        {p.name}
+                        {p.systemType === "absence" ? t("absenceProject") : p.name}
                       </div>
                     </SelectItem>
                   ))}

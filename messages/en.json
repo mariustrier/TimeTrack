@@ -126,7 +126,8 @@
     "roundTripDescription": "Distance will be doubled to account for the return journey",
     "absenceReason": "Absence Reason",
     "selectAbsenceReason": "Select reason for absence",
-    "absenceReasonRequired": "Please select an absence reason"
+    "absenceReasonRequired": "Please select an absence reason",
+    "absenceProject": "Absence"
   },
   "projects": {
     "title": "Projects",
