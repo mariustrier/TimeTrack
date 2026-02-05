@@ -185,7 +185,13 @@ export async function extractContractTerms(
       throw new Error("No text response from Claude");
     }
 
-    const terms: ExtractedTerms = JSON.parse(textBlock.text);
+    // Strip markdown code blocks if present (```json ... ```)
+    let jsonText = textBlock.text.trim();
+    if (jsonText.startsWith("```")) {
+      jsonText = jsonText.replace(/^```(?:json)?\s*/, "").replace(/\s*```$/, "");
+    }
+
+    const terms: ExtractedTerms = JSON.parse(jsonText);
 
     await db.contract.update({
       where: { id: contractId },
