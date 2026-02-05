@@ -562,9 +562,9 @@ export default function AdminPage() {
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950">
                 <DollarSign className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">{t("revenue")} <InfoTooltip textKey="revenue" size={12} /></p>
-                <p className="text-xl font-bold">{convertAndFormat(stats.totalRevenue, masterCurrency, displayCurrency)}</p>
+                <p className="text-lg font-bold truncate" title={convertAndFormat(stats.totalRevenue, masterCurrency, displayCurrency)}>{convertAndFormat(stats.totalRevenue, masterCurrency, displayCurrency)}</p>
               </div>
             </div>
           </CardContent>
@@ -575,9 +575,9 @@ export default function AdminPage() {
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50 dark:bg-red-950">
                 <Receipt className="h-5 w-5 text-red-600 dark:text-red-400" />
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="text-xs text-muted-foreground">{t("cost")}</p>
-                <p className="text-xl font-bold">{convertAndFormat(stats.totalCost, masterCurrency, displayCurrency)}</p>
+                <p className="text-lg font-bold truncate" title={convertAndFormat(stats.totalCost, masterCurrency, displayCurrency)}>{convertAndFormat(stats.totalCost, masterCurrency, displayCurrency)}</p>
               </div>
             </div>
           </CardContent>
@@ -595,9 +595,9 @@ export default function AdminPage() {
                   <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-400" />
                 )}
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="text-xs text-muted-foreground">{t("profit")}</p>
-                <p className="text-xl font-bold">{convertAndFormat(stats.totalProfit - stats.totalExpenses, masterCurrency, displayCurrency)}</p>
+                <p className="text-lg font-bold truncate" title={convertAndFormat(stats.totalProfit - stats.totalExpenses, masterCurrency, displayCurrency)}>{convertAndFormat(stats.totalProfit - stats.totalExpenses, masterCurrency, displayCurrency)}</p>
               </div>
             </div>
           </CardContent>
@@ -608,9 +608,9 @@ export default function AdminPage() {
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950">
                 <BarChart3 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">{t("utilization")} <InfoTooltip textKey="utilization" size={12} /></p>
-                <p className="text-xl font-bold">{formatPercentage(stats.utilization)}</p>
+                <p className="text-lg font-bold truncate">{formatPercentage(stats.utilization)}</p>
               </div>
             </div>
           </CardContent>
@@ -621,9 +621,9 @@ export default function AdminPage() {
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-950">
                 <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="text-xs text-muted-foreground">{t("teamHours")}</p>
-                <p className="text-xl font-bold">{formatHours(stats.totalHours)}</p>
+                <p className="text-lg font-bold truncate">{formatHours(stats.totalHours)}</p>
               </div>
             </div>
           </CardContent>
@@ -634,9 +634,9 @@ export default function AdminPage() {
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950">
                 <Wallet className="h-5 w-5 text-amber-600 dark:text-amber-400" />
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="text-xs text-muted-foreground">{t("totalExpenses")}</p>
-                <p className="text-xl font-bold">{convertAndFormat(stats.totalExpenses, masterCurrency, displayCurrency)}</p>
+                <p className="text-lg font-bold truncate" title={convertAndFormat(stats.totalExpenses, masterCurrency, displayCurrency)}>{convertAndFormat(stats.totalExpenses, masterCurrency, displayCurrency)}</p>
               </div>
             </div>
           </CardContent>
