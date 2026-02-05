@@ -1,22 +1,24 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireSuperAdmin } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 
 export async function POST() {
   try {
-    await requireSuperAdmin();
+    const user = await requireAdmin();
+    const companyId = user.companyId;
 
-    // Find all companies that don't have an absence project
-    const companiesWithoutAbsence = await db.company.findMany({
+    // Check if this company already has an absence project
+    const existingAbsenceProject = await db.project.findFirst({
       where: {
-        projects: {
-          none: {
-            systemType: "absence",
-          },
-        },
+        companyId,
+        systemType: "absence",
       },
-      select: { id: true, name: true },
     });
+
+    // Find companies to migrate (only this admin's company)
+    const companiesWithoutAbsence = existingAbsenceProject
+      ? []
+      : [{ id: companyId, name: "Your company" }];
 
     const results = [];
 
@@ -86,41 +88,34 @@ export async function POST() {
     }
 
     // Also assign universal reasons to any users who don't have them yet
-    // (for companies that already have absence reasons but users weren't assigned)
-    const allCompanies = await db.company.findMany({
-      select: { id: true },
+    const universalReasons = await db.absenceReason.findMany({
+      where: {
+        companyId,
+        code: { in: ["SICK", "VACATION"] },
+      },
     });
 
-    for (const company of allCompanies) {
-      const universalReasons = await db.absenceReason.findMany({
+    if (universalReasons.length > 0) {
+      const usersWithoutReasons = await db.user.findMany({
         where: {
-          companyId: company.id,
-          code: { in: ["SICK", "VACATION"] },
+          companyId,
+          absenceReasons: {
+            none: {},
+          },
         },
+        select: { id: true },
       });
 
-      if (universalReasons.length > 0) {
-        const usersWithoutReasons = await db.user.findMany({
-          where: {
-            companyId: company.id,
-            absenceReasons: {
-              none: {},
-            },
-          },
-          select: { id: true },
-        });
-
-        if (usersWithoutReasons.length > 0) {
-          for (const reason of universalReasons) {
-            await db.absenceReason.update({
-              where: { id: reason.id },
-              data: {
-                users: {
-                  connect: usersWithoutReasons.map((u) => ({ id: u.id })),
-                },
+      if (usersWithoutReasons.length > 0) {
+        for (const reason of universalReasons) {
+          await db.absenceReason.update({
+            where: { id: reason.id },
+            data: {
+              users: {
+                connect: usersWithoutReasons.map((u) => ({ id: u.id })),
               },
-            });
-          }
+            },
+          });
         }
       }
     }
