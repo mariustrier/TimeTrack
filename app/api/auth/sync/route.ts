@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     // Create system-managed Absence project
     await db.project.create({
       data: {
-        name: "Fravær",
+        name: "Absence",
         color: "#9CA3AF",
         billable: false,
         systemType: "absence",

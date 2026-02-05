@@ -26,7 +26,7 @@ export async function POST() {
       // Create Absence project
       await db.project.create({
         data: {
-          name: "Fravær",
+          name: "Absence",
           color: "#9CA3AF",
           billable: false,
           systemType: "absence",
