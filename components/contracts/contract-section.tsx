@@ -56,6 +56,7 @@ interface Contract {
   scopeDescription: string | null;
   scopeKeywords: string[];
   exclusions: string[];
+  scopeAdditions: string | null;
   uploadedById: string;
   notes: string | null;
   createdAt: string;
@@ -99,6 +100,11 @@ export function ContractSection({ projectId, userRole }: ContractSectionProps) {
     scopeKeywords: "",
     exclusions: "",
   });
+
+  // Scope additions state
+  const [editingAdditionsId, setEditingAdditionsId] = useState<string | null>(null);
+  const [scopeAdditionsText, setScopeAdditionsText] = useState("");
+  const [savingAdditions, setSavingAdditions] = useState(false);
 
   const fetchContracts = useCallback(async () => {
     try {
@@ -254,6 +260,28 @@ export function ContractSection({ projectId, userRole }: ContractSectionProps) {
       }
     } finally {
       setManualSaving(false);
+    }
+  };
+
+  const handleSaveAdditions = async (contractId: string) => {
+    setSavingAdditions(true);
+    try {
+      const res = await fetch(`/api/contracts/${projectId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contractId,
+          scopeAdditions: scopeAdditionsText || null,
+        }),
+      });
+
+      if (res.ok) {
+        toast.success(t("additionsSaved"));
+        setEditingAdditionsId(null);
+        await fetchContracts();
+      }
+    } finally {
+      setSavingAdditions(false);
     }
   };
 
@@ -614,6 +642,66 @@ export function ContractSection({ projectId, userRole }: ContractSectionProps) {
                             </div>
                           </div>
                         )}
+
+                        {/* Scope Additions */}
+                        <div className="col-span-full flex items-start gap-2">
+                          <PenLine className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                          <div className="flex-1">
+                            <span className="text-xs text-muted-foreground">
+                              {t("scopeAdditions")}:
+                            </span>
+                            {editingAdditionsId === contract.id ? (
+                              <div className="mt-1 space-y-2">
+                                <Textarea
+                                  value={scopeAdditionsText}
+                                  onChange={(e) => setScopeAdditionsText(e.target.value)}
+                                  placeholder={t("scopeAdditionsPlaceholder")}
+                                  rows={3}
+                                  className="text-sm"
+                                />
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleSaveAdditions(contract.id)}
+                                    disabled={savingAdditions}
+                                  >
+                                    {savingAdditions ? (
+                                      <><Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />{t("saving")}</>
+                                    ) : (
+                                      <><Save className="mr-2 h-3.5 w-3.5" />{t("save")}</>
+                                    )}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setEditingAdditionsId(null)}
+                                  >
+                                    {t("cancel")}
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="mt-1">
+                                {contract.scopeAdditions ? (
+                                  <p className="text-sm">{contract.scopeAdditions}</p>
+                                ) : (
+                                  <p className="text-sm text-muted-foreground italic">{t("noAdditions")}</p>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="link"
+                                  className="h-auto p-0 text-xs"
+                                  onClick={() => {
+                                    setEditingAdditionsId(contract.id);
+                                    setScopeAdditionsText(contract.scopeAdditions || "");
+                                  }}
+                                >
+                                  {contract.scopeAdditions ? t("editAdditions") : t("addAdditions")}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
 
                         {contract.scopeKeywords.length > 0 && (
                           <div className="col-span-full flex items-start gap-2">

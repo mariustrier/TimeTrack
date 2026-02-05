@@ -54,7 +54,7 @@ export async function PUT(req: Request) {
     const user = await requireManager();
 
     const body = await req.json();
-    const { contractId, maxHours, maxBudget, budgetCurrency, deadline, scopeDescription, scopeKeywords, exclusions } = body;
+    const { contractId, maxHours, maxBudget, budgetCurrency, deadline, scopeDescription, scopeKeywords, exclusions, scopeAdditions } = body;
 
     if (!contractId) {
       return NextResponse.json({ error: "Contract ID is required" }, { status: 400 });
@@ -67,6 +67,16 @@ export async function PUT(req: Request) {
 
     if (!contract || contract.project.companyId !== user.companyId) {
       return NextResponse.json({ error: "Contract not found" }, { status: 404 });
+    }
+
+    // If only updating scopeAdditions, don't overwrite extracted terms
+    if (scopeAdditions !== undefined && maxHours === undefined && maxBudget === undefined) {
+      const updated = await db.contract.update({
+        where: { id: contractId },
+        data: { scopeAdditions: scopeAdditions || null },
+        include: { uploadedBy: { select: { firstName: true, lastName: true } } },
+      });
+      return NextResponse.json(updated);
     }
 
     const terms = {

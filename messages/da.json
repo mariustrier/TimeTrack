@@ -707,7 +707,14 @@
     "exclusionsPlaceholder": "f.eks. hosting, vedligeholdelse",
     "extractFailed": "Kunne ikke udtrække kontraktvilkår",
     "extractSuccess": "Kontraktvilkår udtrukket",
-    "encryptingMessage": "Krypterer din fil og holder dine data sikre..."
+    "encryptingMessage": "Krypterer din fil og holder dine data sikre...",
+    "scopeAdditions": "Tilføjelser til omfang",
+    "scopeAdditionsPlaceholder": "Tilføj ekstra noter, præciseringer eller ændringer til omfanget...",
+    "noAdditions": "Ingen tilføjelser endnu",
+    "addAdditions": "Tilføj noter",
+    "editAdditions": "Rediger",
+    "additionsSaved": "Tilføjelser gemt",
+    "cancel": "Annuller"
   },
   "superAdmin": {
     "title": "Platform Admin",

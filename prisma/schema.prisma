@@ -224,6 +224,7 @@ model Contract {
   scopeDescription String?
   scopeKeywords    String[]
   exclusions       String[]
+  scopeAdditions   String?
   uploadedById     String
   notes            String?
   createdAt        DateTime  @default(now())

@@ -707,7 +707,14 @@
     "exclusionsPlaceholder": "e.g. hosting, maintenance",
     "extractFailed": "Failed to extract contract terms",
     "extractSuccess": "Contract terms extracted successfully",
-    "encryptingMessage": "Encrypting your file and keeping your data safe..."
+    "encryptingMessage": "Encrypting your file and keeping your data safe...",
+    "scopeAdditions": "Additional scope notes",
+    "scopeAdditionsPlaceholder": "Add any additional notes, clarifications, or amendments to the scope...",
+    "noAdditions": "No additions yet",
+    "addAdditions": "Add notes",
+    "editAdditions": "Edit",
+    "additionsSaved": "Scope additions saved",
+    "cancel": "Cancel"
   },
   "superAdmin": {
     "title": "Platform Admin",
