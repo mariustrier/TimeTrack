@@ -27,12 +27,20 @@ export async function PUT(
     const body = await req.json();
     const result = validate(updateProjectSchema, body);
     if (!result.success) return result.response;
-    const { name, client, color, budgetHours, billable, currency, pricingType, fixedPrice, rateMode, projectRate } = result.data;
+    const { name, client, color, budgetHours, billable, currency, pricingType, fixedPrice, rateMode, projectRate, locked, archived } = result.data;
 
     // Prevent deactivating system-managed projects
     if (project.systemManaged && body.active === false) {
       return NextResponse.json(
         { error: "Cannot deactivate system-managed projects" },
+        { status: 403 }
+      );
+    }
+
+    // Prevent locking/archiving system-managed projects
+    if (project.systemManaged && (locked === true || archived === true)) {
+      return NextResponse.json(
+        { error: "Cannot lock or archive system-managed projects" },
         { status: 403 }
       );
     }
@@ -53,6 +61,18 @@ export async function PUT(
         ...(fixedPrice !== undefined && { fixedPrice: fixedPrice ?? null }),
         ...(rateMode !== undefined && { rateMode }),
         ...(projectRate !== undefined && { projectRate: projectRate ?? null }),
+        // Lock state
+        ...(locked !== undefined && {
+          locked,
+          lockedAt: locked ? new Date() : null,
+          lockedBy: locked ? user.id : null,
+        }),
+        // Archive state
+        ...(archived !== undefined && {
+          archived,
+          archivedAt: archived ? new Date() : null,
+          archivedBy: archived ? user.id : null,
+        }),
       },
     });
 

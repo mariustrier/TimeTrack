@@ -16,6 +16,7 @@ export async function PUT(
 
     const entry = await db.timeEntry.findFirst({
       where: { id: params.id, companyId: user.companyId },
+      include: { project: { select: { locked: true, archived: true } } },
     });
 
     if (!entry) {
@@ -24,6 +25,14 @@ export async function PUT(
 
     if (user.role !== "admin" && entry.userId !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Block edits on locked or archived projects
+    if (entry.project.locked || entry.project.archived) {
+      return NextResponse.json(
+        { error: "Cannot modify entries on locked or archived projects" },
+        { status: 403 }
+      );
     }
 
     const body = await req.json();
@@ -143,6 +152,7 @@ export async function DELETE(
 
     const entry = await db.timeEntry.findFirst({
       where: { id: params.id, companyId: user.companyId },
+      include: { project: { select: { locked: true, archived: true } } },
     });
 
     if (!entry) {
@@ -151,6 +161,14 @@ export async function DELETE(
 
     if (user.role !== "admin" && entry.userId !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Block deletes on locked or archived projects
+    if (entry.project.locked || entry.project.archived) {
+      return NextResponse.json(
+        { error: "Cannot delete entries on locked or archived projects" },
+        { status: 403 }
+      );
     }
 
     // Approval status guards for delete

@@ -23,6 +23,7 @@ model Company {
   aiAnonymization        Boolean @default(true)
   expenseAutoApproveThreshold Float?
   logoUrl                     String?
+  lastActivityAt              DateTime?  // Track when any user from this company was last active
 
   users              User[]
   projects           Project[]
@@ -93,6 +94,14 @@ model Project {
   // System-managed projects (e.g., Absence)
   systemType    String?  // "absence" | null for regular projects
   systemManaged Boolean  @default(false) // Cannot be deleted/archived if true
+
+  // Lock and archive states
+  locked      Boolean   @default(false)  // Employees can't add entries, admins can still approve
+  lockedAt    DateTime?
+  lockedBy    String?
+  archived    Boolean   @default(false)  // Completely hidden from employees
+  archivedAt  DateTime?
+  archivedBy  String?
 
   company     Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
   timeEntries TimeEntry[]

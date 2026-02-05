@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { Building2, Plus, Pencil, Trash2, Paperclip } from "lucide-react";
+import Link from "next/link";
+import { Building2, Plus, Pencil, Trash2, Paperclip, ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -313,7 +314,16 @@ export default function CompanyExpensesPage() {
       <PageGuide pageId="companyExpenses" titleKey="companyExpensesTitle" descKey="companyExpensesDesc" tips={["companyExpensesTip1", "companyExpensesTip2", "companyExpensesTip3"]} />
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin"
+            className="flex items-center justify-center h-8 w-8 rounded-md border border-border bg-background hover:bg-muted transition-colors"
+            title={tc("back")}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
+        </div>
         <Button onClick={openAddDialog}>
           <Plus className="mr-1 h-4 w-4" />
           {t("addExpense")}

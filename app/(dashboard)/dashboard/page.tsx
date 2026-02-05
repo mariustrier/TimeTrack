@@ -75,6 +75,8 @@ interface Project {
   moneyUsed: number;
   systemType: string | null;
   systemManaged: boolean;
+  locked: boolean;
+  archived: boolean;
 }
 
 interface AbsenceReason {
@@ -812,12 +814,13 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {projects.map((project) => (
+                  {projects.filter(p => !p.archived).map((project) => (
                     <tr
                       key={project.id}
                       className={cn(
                         "border-b hover:bg-muted/30",
-                        project.systemType === "absence" && "bg-muted/20 border-t-2 border-t-muted-foreground/20"
+                        project.systemType === "absence" && "bg-muted/20 border-t-2 border-t-muted-foreground/20",
+                        project.locked && "opacity-70"
                       )}
                     >
                       <td className="px-4 py-2">
@@ -832,10 +835,17 @@ export default function DashboardPage() {
                           )}>
                             {project.systemType === "absence" ? t("absenceProject") : project.name}
                           </span>
+                          {project.locked && (
+                            <span title={t("projectLocked")}>
+                              <Lock className="h-3 w-3 text-muted-foreground" />
+                            </span>
+                          )}
                         </div>
                       </td>
                       {weekDays.map((day) => {
                         const entry = getEntryForCell(project.id, day);
+                        const isLocked = project.locked;
+                        const canEdit = isDayEditable(day) && !isLocked;
                         return (
                           <td
                             key={day.toISOString()}
@@ -846,27 +856,31 @@ export default function DashboardPage() {
                           >
                             {entry ? (
                               <button
-                                onClick={() => openModal(day, project.id, entry)}
+                                onClick={() => !isLocked && openModal(day, project.id, entry)}
+                                disabled={isLocked}
                                 className={cn(
                                   "relative mx-auto flex h-10 w-16 items-center justify-center rounded-md border text-sm transition-colors",
-                                  getCellStyle(entry)
+                                  getCellStyle(entry),
+                                  isLocked && "cursor-not-allowed opacity-70"
                                 )}
+                                title={isLocked ? t("projectLockedDesc") : undefined}
                               >
                                 {entry.hours}
                                 {getCellIcon(entry)}
                               </button>
                             ) : (
                               <button
-                                onClick={() => isDayEditable(day) && openModal(day, project.id)}
-                                disabled={!isDayEditable(day)}
+                                onClick={() => canEdit && openModal(day, project.id)}
+                                disabled={!canEdit}
                                 className={cn(
                                   "relative mx-auto flex h-10 w-16 items-center justify-center rounded-md border text-sm transition-colors",
-                                  isDayEditable(day)
+                                  canEdit
                                     ? "border-dashed border-border text-muted-foreground hover:border-muted-foreground hover:bg-muted/50"
                                     : "border-dashed border-border/50 text-muted-foreground/30 cursor-not-allowed"
                                 )}
+                                title={isLocked ? t("projectLockedDesc") : undefined}
                               >
-                                <Plus className="h-3 w-3" />
+                                {isLocked ? <Lock className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
                               </button>
                             )}
                           </td>
@@ -1027,7 +1041,7 @@ export default function DashboardPage() {
                   <SelectValue placeholder={t("selectProject")} />
                 </SelectTrigger>
                 <SelectContent>
-                  {projects.map((p) => (
+                  {projects.filter(p => !p.archived && !p.locked).map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       <div className="flex items-center gap-2">
                         <div

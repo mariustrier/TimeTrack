@@ -32,6 +32,10 @@ import {
   Pencil,
   Plus,
   Calendar,
+  Lock,
+  Unlock,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -94,6 +98,9 @@ interface ProjectStat {
   budgetTotalHours: number | null;
   hoursUsed: number;
   allocations: { userId: string; userName: string; hours: number; hoursUsed: number }[];
+  locked: boolean;
+  archived: boolean;
+  systemManaged: boolean;
 }
 
 interface Stats {
@@ -678,13 +685,15 @@ export default function AdminPage() {
               const noRate = isFixed && !project.budgetTotalHours;
 
               return (
-                <div key={project.id} className="space-y-2">
+                <div key={project.id} className={cn("space-y-2", project.archived && "opacity-50")}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="h-3 w-3 rounded-full" style={{ backgroundColor: project.color }} />
                       <span className="text-sm font-medium">{project.name}</span>
                       {project.client && <span className="text-xs text-muted-foreground">({project.client})</span>}
                       {isFixed && <Badge variant="outline" className="text-xs">{t("fixedPrice")}</Badge>}
+                      {project.locked && <Badge variant="secondary" className="text-xs"><Lock className="h-3 w-3 mr-1" />{t("projectLocked")}</Badge>}
+                      {project.archived && <Badge variant="secondary" className="text-xs"><Archive className="h-3 w-3 mr-1" />{t("projectArchived")}</Badge>}
                     </div>
                     <div className="flex items-center gap-2">
                       {noRate ? (
@@ -693,6 +702,54 @@ export default function AdminPage() {
                         <span className="text-sm text-muted-foreground">
                           {project.hoursUsed} / {totalHours}h ({Math.round(percent)}%)
                         </span>
+                      )}
+                      {!project.systemManaged && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                const res = await fetch(`/api/projects/${project.id}`, {
+                                  method: "PUT",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ locked: !project.locked }),
+                                });
+                                if (res.ok) {
+                                  fetchStats(true);
+                                  toast.success(project.locked ? t("projectUnlocked") : t("projectLockedSuccess"));
+                                }
+                              } catch {
+                                toast.error("Failed to update project");
+                              }
+                            }}
+                            title={project.locked ? t("unlockProject") : t("lockProject")}
+                          >
+                            {project.locked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                const res = await fetch(`/api/projects/${project.id}`, {
+                                  method: "PUT",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ archived: !project.archived }),
+                                });
+                                if (res.ok) {
+                                  fetchStats(true);
+                                  toast.success(project.archived ? t("projectUnarchived") : t("projectArchivedSuccess"));
+                                }
+                              } catch {
+                                toast.error("Failed to update project");
+                              }
+                            }}
+                            title={project.archived ? t("unarchiveProject") : t("archiveProject")}
+                          >
+                            {project.archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                          </Button>
+                        </>
                       )}
                       <Button variant="outline" size="sm" onClick={() => openAllocDialog(project)}>
                         {t("allocate")}
@@ -1535,25 +1592,46 @@ export default function AdminPage() {
                   const isEmployeeRates = allocProject.pricingType === "fixed_price" && allocProject.rateMode === "EMPLOYEE_RATES";
                   const empHours = parseFloat(allocInputs[emp.id] || "0") || 0;
                   const empRate = emp.hourlyRate || stats?.defaultHourlyRate || 0;
+                  // Get used hours from allocations data
+                  const allocData = allocProject.allocations.find(a => a.userId === emp.id);
+                  const usedHours = allocData?.hoursUsed || 0;
+                  const unusedHours = empHours - usedHours;
+                  const belowUsed = empHours > 0 && empHours < usedHours;
                   return (
                     <div key={emp.id} className="flex items-center gap-3">
                       <div className="flex-1 min-w-0">
                         <span className="text-sm truncate block">{emp.name}</span>
-                        {isEmployeeRates && (
-                          <span className="text-xs text-muted-foreground">
-                            {empRate} {masterCurrency}{t("perHour")}
-                            {empHours > 0 && ` = ${convertAndFormat(empHours * empRate, masterCurrency, displayCurrency)}`}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {usedHours > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                              {t("usedHours")}: {usedHours}h
+                            </span>
+                          )}
+                          {isEmployeeRates && (
+                            <span className="text-xs text-muted-foreground">
+                              {empRate} {masterCurrency}{t("perHour")}
+                              {empHours > 0 && ` = ${convertAndFormat(empHours * empRate, masterCurrency, displayCurrency)}`}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <Input
                         type="number"
-                        className="w-24"
+                        className={cn("w-24", belowUsed && "border-red-500")}
                         placeholder="0"
+                        min={usedHours}
                         value={allocInputs[emp.id] || ""}
                         onChange={(e) => setAllocInputs(prev => ({ ...prev, [emp.id]: e.target.value }))}
                       />
-                      <span className="text-xs text-muted-foreground w-6">h</span>
+                      <div className="text-xs text-muted-foreground w-16 text-right">
+                        {empHours > 0 && unusedHours > 0 && (
+                          <span className="text-emerald-600">+{unusedHours}h</span>
+                        )}
+                        {belowUsed && (
+                          <span className="text-red-600">min {usedHours}h</span>
+                        )}
+                        {empHours === 0 && "h"}
+                      </div>
                     </div>
                   );
                 })}

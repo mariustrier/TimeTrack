@@ -127,7 +127,9 @@
     "absenceReason": "Absence Reason",
     "selectAbsenceReason": "Select reason for absence",
     "absenceReasonRequired": "Please select an absence reason",
-    "absenceProject": "Absence"
+    "absenceProject": "Absence",
+    "projectLocked": "This project is locked",
+    "projectLockedDesc": "Contact your admin to make changes"
   },
   "projects": {
     "title": "Projects",
@@ -303,7 +305,18 @@
     "employeesAssigned": "employees assigned",
     "manageEmployees": "Manage Employees",
     "selectEmployeesForReason": "Select which employees can use this absence reason.",
-    "noTeamMembers": "No team members found"
+    "noTeamMembers": "No team members found",
+    "lockProject": "Lock Project",
+    "unlockProject": "Unlock Project",
+    "archiveProject": "Archive Project",
+    "unarchiveProject": "Unarchive Project",
+    "projectLocked": "Locked",
+    "projectArchived": "Archived",
+    "projectLockedSuccess": "Project locked",
+    "projectUnlocked": "Project unlocked",
+    "projectArchivedSuccess": "Project archived",
+    "projectUnarchived": "Project unarchived",
+    "usedHours": "Used"
   },
   "approvals": {
     "title": "Approvals",

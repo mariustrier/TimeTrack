@@ -11,10 +11,15 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Non-admins should not see archived projects
+    const projectWhere = user.role === "admin"
+      ? { companyId: user.companyId }
+      : { companyId: user.companyId, archived: false };
+
     const [projects, hoursUsedAgg, allocations, myHoursUsedAgg, company, users, billableAgg] =
       await Promise.all([
         db.project.findMany({
-          where: { companyId: user.companyId },
+          where: projectWhere,
           include: {
             _count: { select: { timeEntries: true } },
           },

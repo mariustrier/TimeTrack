@@ -30,12 +30,13 @@ export async function GET(
         },
       }),
 
+      // Used hours = submitted + approved + locked (committed time)
       db.timeEntry.groupBy({
         by: ["userId"],
         where: {
           projectId: params.id,
           companyId: user.companyId,
-          billingStatus: { in: ["billable", "included"] },
+          approvalStatus: { in: ["submitted", "approved", "locked"] },
         },
         _sum: { hours: true },
       }),
@@ -97,6 +98,48 @@ export async function PUT(
 
     if (!allocations || !Array.isArray(allocations)) {
       return NextResponse.json({ error: "Allocations array is required" }, { status: 400 });
+    }
+
+    // Get used hours for each user (submitted + approved + locked)
+    const hoursUsedAgg = await db.timeEntry.groupBy({
+      by: ["userId"],
+      where: {
+        projectId: params.id,
+        companyId: user.companyId,
+        approvalStatus: { in: ["submitted", "approved", "locked"] },
+      },
+      _sum: { hours: true },
+    });
+
+    const hoursUsedMap: Record<string, number> = {};
+    for (const entry of hoursUsedAgg) {
+      hoursUsedMap[entry.userId] = entry._sum.hours || 0;
+    }
+
+    // Validate that new allocations are not below used hours
+    for (const alloc of allocations as { userId: string; hours: number }[]) {
+      const usedHours = hoursUsedMap[alloc.userId] || 0;
+      if (alloc.hours > 0 && alloc.hours < usedHours) {
+        return NextResponse.json(
+          {
+            error: `Cannot reduce allocation below used hours (${usedHours}h)`,
+            userId: alloc.userId,
+            usedHours,
+          },
+          { status: 400 }
+        );
+      }
+      // Also check if trying to remove allocation entirely when hours are used
+      if ((!alloc.hours || alloc.hours === 0) && usedHours > 0) {
+        return NextResponse.json(
+          {
+            error: `Cannot remove allocation when ${usedHours}h are already used`,
+            userId: alloc.userId,
+            usedHours,
+          },
+          { status: 400 }
+        );
+      }
     }
 
     const filtered = allocations.filter(

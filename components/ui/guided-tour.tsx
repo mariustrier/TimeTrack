@@ -29,6 +29,7 @@ function TourOverlay({ steps, namespace, tourId, onComplete }: TourOverlayProps)
   const tTour = useTranslations("tour");
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
   const step = steps[currentStep];
@@ -46,6 +47,10 @@ function TourOverlay({ steps, namespace, tourId, onComplete }: TourOverlayProps)
     } else {
       setTargetRect(null);
     }
+
+    // Check if a dialog is currently open
+    const dialog = document.querySelector('[role="dialog"]');
+    setDialogOpen(!!dialog);
   }, [step]);
 
   // Scroll target into view when step changes
@@ -65,9 +70,19 @@ function TourOverlay({ steps, namespace, tourId, onComplete }: TourOverlayProps)
     const handleResize = () => updateTargetRect();
     window.addEventListener("resize", handleResize);
     window.addEventListener("scroll", handleResize, true);
+
+    // Periodic updates to catch element resizing (e.g., when content expands)
+    const interval = setInterval(updateTargetRect, 200);
+
+    // MutationObserver to detect DOM changes (dialogs opening, content expanding)
+    const observer = new MutationObserver(() => updateTargetRect());
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+
     return () => {
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("scroll", handleResize, true);
+      clearInterval(interval);
+      observer.disconnect();
     };
   }, [updateTargetRect]);
 
@@ -152,7 +167,8 @@ function TourOverlay({ steps, namespace, tourId, onComplete }: TourOverlayProps)
       </svg>
 
       {/* Click-blocking: four divs around spotlight so the hole is truly interactive */}
-      {sr ? (
+      {/* When a dialog is open, disable click-blocking to allow interaction with the dialog */}
+      {!dialogOpen && (sr ? (
         <>
           <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: sr.top, pointerEvents: "auto" }} />
           <div style={{ position: "fixed", top: sr.bottom, left: 0, right: 0, bottom: 0, pointerEvents: "auto" }} />
@@ -161,7 +177,7 @@ function TourOverlay({ steps, namespace, tourId, onComplete }: TourOverlayProps)
         </>
       ) : (
         <div style={{ position: "fixed", inset: 0, pointerEvents: "auto" }} />
-      )}
+      ))}
 
       {sr && (
         <div

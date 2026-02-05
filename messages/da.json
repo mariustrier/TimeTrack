@@ -127,7 +127,9 @@
     "absenceReason": "Fraværsårsag",
     "selectAbsenceReason": "Vælg årsag til fravær",
     "absenceReasonRequired": "Vælg venligst en fraværsårsag",
-    "absenceProject": "Fravær"
+    "absenceProject": "Fravær",
+    "projectLocked": "Dette projekt er låst",
+    "projectLockedDesc": "Kontakt din administrator for at foretage ændringer"
   },
   "projects": {
     "title": "Projekter",
@@ -303,7 +305,18 @@
     "employeesAssigned": "medarbejdere tildelt",
     "manageEmployees": "Administrer medarbejdere",
     "selectEmployeesForReason": "Vælg hvilke medarbejdere der kan bruge denne fraværsårsag.",
-    "noTeamMembers": "Ingen holdmedlemmer fundet"
+    "noTeamMembers": "Ingen holdmedlemmer fundet",
+    "lockProject": "Lås projekt",
+    "unlockProject": "Lås projekt op",
+    "archiveProject": "Arkiver projekt",
+    "unarchiveProject": "Gendan projekt",
+    "projectLocked": "Låst",
+    "projectArchived": "Arkiveret",
+    "projectLockedSuccess": "Projekt låst",
+    "projectUnlocked": "Projekt låst op",
+    "projectArchivedSuccess": "Projekt arkiveret",
+    "projectUnarchived": "Projekt genoprettet",
+    "usedHours": "Brugt"
   },
   "approvals": {
     "title": "Godkendelser",

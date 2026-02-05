@@ -94,6 +94,14 @@ export async function POST(req: Request) {
       );
     }
 
+    // Block entries on locked or archived projects
+    if (project.locked || project.archived) {
+      return NextResponse.json(
+        { error: "Cannot add entries to locked or archived projects" },
+        { status: 403 }
+      );
+    }
+
     // Validate absence entries
     const isAbsenceProject = project.systemType === "absence";
     if (isAbsenceProject && !absenceReasonId) {

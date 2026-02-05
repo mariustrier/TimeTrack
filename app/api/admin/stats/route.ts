@@ -113,10 +113,11 @@ export async function GET(req: Request) {
     });
 
     // Fetch ALL time entries for project budgets (no date filter - budgets are cumulative)
+    // Used hours = submitted + approved + locked (committed time)
     const allProjectEntries = await db.timeEntry.findMany({
       where: {
         companyId: user.companyId,
-        billingStatus: { in: ["billable", "included"] },
+        approvalStatus: { in: ["submitted", "approved", "locked"] },
       },
       select: {
         projectId: true,
@@ -183,6 +184,9 @@ export async function GET(req: Request) {
         effectiveRate,
         budgetTotalHours,
         hoursUsed,
+        locked: p.locked,
+        archived: p.archived,
+        systemManaged: p.systemManaged,
         allocations: p.allocations.map((a) => ({
           userId: a.userId,
           userName: `${a.user.firstName || ""} ${a.user.lastName || ""}`.trim() || a.user.email,

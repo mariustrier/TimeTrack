@@ -59,7 +59,11 @@ export const createProjectSchema = z.object({
   projectRate: z.coerce.number().nonnegative().optional().nullable(),
 });
 
-export const updateProjectSchema = createProjectSchema.partial();
+export const updateProjectSchema = createProjectSchema.partial().extend({
+  active: z.boolean().optional(),
+  locked: z.boolean().optional(),
+  archived: z.boolean().optional(),
+});
 
 // --- Team Members ---
 

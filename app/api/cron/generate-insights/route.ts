@@ -9,17 +9,28 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const companies = await db.company.findMany();
+    // Only generate insights for companies with activity in the last 24 hours
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
+    const companies = await db.company.findMany({
+      where: {
+        lastActivityAt: {
+          gte: twentyFourHoursAgo,
+        },
+      },
+    });
+
+    let processed = 0;
     for (const company of companies) {
       try {
         await generateInsights(company.id);
+        processed++;
       } catch (error) {
         console.error(`[CRON_INSIGHTS] Failed for company ${company.id}:`, error);
       }
     }
 
-    return NextResponse.json({ success: true, processed: companies.length });
+    return NextResponse.json({ success: true, processed, skipped: 0 });
   } catch (error) {
     console.error("[CRON_GENERATE_INSIGHTS]", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
