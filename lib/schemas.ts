@@ -17,6 +17,8 @@ export const createTimeEntrySchema = z.object({
   mileageStops: z.array(z.string().max(500)).optional().nullable(),
   mileageRoundTrip: z.boolean().optional().nullable(),
   mileageSource: z.enum(["manual", "calculated"]).optional().nullable(),
+  // Absence tracking
+  absenceReasonId: z.string().optional().nullable(),
 });
 
 export const updateTimeEntrySchema = z.object({
@@ -33,6 +35,8 @@ export const updateTimeEntrySchema = z.object({
   mileageStops: z.array(z.string().max(500)).optional().nullable(),
   mileageRoundTrip: z.boolean().optional().nullable(),
   mileageSource: z.enum(["manual", "calculated"]).optional().nullable(),
+  // Absence tracking
+  absenceReasonId: z.string().optional().nullable(),
 });
 
 // --- Projects ---

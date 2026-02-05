@@ -123,7 +123,10 @@
     "stopPlaceholder": "f.eks. Kundens kontor",
     "addStop": "Tilføj stop",
     "roundTrip": "Tur/retur",
-    "roundTripDescription": "Afstanden fordobles for at medregne hjemturen"
+    "roundTripDescription": "Afstanden fordobles for at medregne hjemturen",
+    "absenceReason": "Fraværsårsag",
+    "selectAbsenceReason": "Vælg årsag til fravær",
+    "absenceReasonRequired": "Vælg venligst en fraværsårsag"
   },
   "projects": {
     "title": "Projekter",
@@ -284,7 +287,22 @@
     "denyReason": "Afvisningsårsag (påkrævet)",
     "denyReasonPlaceholder": "Forklar hvorfor anmodningen afvises...",
     "userDeleted": "Brugerkonto slettet og anonymiseret",
-    "deletionDenied": "Sletningsanmodning afvist"
+    "deletionDenied": "Sletningsanmodning afvist",
+    "absenceReasons": "Fraværsårsager",
+    "absenceReasonsDesc": "Konfigurer de årsager, medarbejdere kan vælge ved registrering af fravær.",
+    "addReason": "Tilføj årsag",
+    "editReason": "Rediger årsag",
+    "reasonName": "Årsagsnavn",
+    "reasonCode": "Kode (valgfrit)",
+    "defaultBadge": "Standard",
+    "reasonSaved": "Fraværsårsag gemt",
+    "reasonDeleted": "Fraværsårsag slettet",
+    "cannotDeleteDefault": "Kan ikke slette systemstandard-årsager",
+    "reasonDeactivated": "Årsag deaktiveret (har eksisterende tidsregistreringer)",
+    "employeesAssigned": "medarbejdere tildelt",
+    "manageEmployees": "Administrer medarbejdere",
+    "selectEmployeesForReason": "Vælg hvilke medarbejdere der kan bruge denne fraværsårsag.",
+    "noTeamMembers": "Ingen holdmedlemmer fundet"
   },
   "approvals": {
     "title": "Godkendelser",

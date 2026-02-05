@@ -123,7 +123,10 @@
     "stopPlaceholder": "e.g. Client office",
     "addStop": "Add Stop",
     "roundTrip": "Round Trip",
-    "roundTripDescription": "Distance will be doubled to account for the return journey"
+    "roundTripDescription": "Distance will be doubled to account for the return journey",
+    "absenceReason": "Absence Reason",
+    "selectAbsenceReason": "Select reason for absence",
+    "absenceReasonRequired": "Please select an absence reason"
   },
   "projects": {
     "title": "Projects",
@@ -284,7 +287,22 @@
     "denyReason": "Denial reason (required)",
     "denyReasonPlaceholder": "Explain why the request is denied...",
     "userDeleted": "User account deleted and anonymized",
-    "deletionDenied": "Deletion request denied"
+    "deletionDenied": "Deletion request denied",
+    "absenceReasons": "Absence Reasons",
+    "absenceReasonsDesc": "Configure the reasons employees can select when registering absence.",
+    "addReason": "Add Reason",
+    "editReason": "Edit Reason",
+    "reasonName": "Reason Name",
+    "reasonCode": "Code (optional)",
+    "defaultBadge": "Default",
+    "reasonSaved": "Absence reason saved",
+    "reasonDeleted": "Absence reason deleted",
+    "cannotDeleteDefault": "Cannot delete system default reasons",
+    "reasonDeactivated": "Reason deactivated (has existing time entries)",
+    "employeesAssigned": "employees assigned",
+    "manageEmployees": "Manage Employees",
+    "selectEmployeesForReason": "Select which employees can use this absence reason.",
+    "noTeamMembers": "No team members found"
   },
   "approvals": {
     "title": "Approvals",

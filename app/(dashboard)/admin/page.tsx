@@ -29,6 +29,9 @@ import {
   ImageIcon,
   Trash2,
   ShieldCheck,
+  Pencil,
+  Plus,
+  Calendar,
 } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -152,6 +155,34 @@ export default function AdminPage() {
   const [logoUploading, setLogoUploading] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
+  // Absence reasons state
+  interface AbsenceReasonUser {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+  }
+  interface AbsenceReason {
+    id: string;
+    name: string;
+    code: string | null;
+    isDefault: boolean;
+    active: boolean;
+    sortOrder: number;
+    users: AbsenceReasonUser[];
+  }
+  const [absenceReasons, setAbsenceReasons] = useState<AbsenceReason[]>([]);
+  const [absenceReasonDialogOpen, setAbsenceReasonDialogOpen] = useState(false);
+  const [editingAbsenceReason, setEditingAbsenceReason] = useState<AbsenceReason | null>(null);
+  const [absenceReasonName, setAbsenceReasonName] = useState("");
+  const [absenceReasonCode, setAbsenceReasonCode] = useState("");
+  const [absenceReasonSaving, setAbsenceReasonSaving] = useState(false);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assigningReason, setAssigningReason] = useState<AbsenceReason | null>(null);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [teamMembers, setTeamMembers] = useState<AbsenceReasonUser[]>([]);
+  const [assignSaving, setAssignSaving] = useState(false);
+
   // Allocation dialog state
   const [allocDialogOpen, setAllocDialogOpen] = useState(false);
   const [allocProject, setAllocProject] = useState<ProjectStat | null>(null);
@@ -216,6 +247,126 @@ export default function AdminPage() {
       })
       .catch(() => {});
   }, []);
+
+  // Load absence reasons and team members
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/admin/absence-reasons").then((res) => res.ok ? res.json() : []),
+      fetch("/api/team").then((res) => res.ok ? res.json() : []),
+    ]).then(([reasons, team]) => {
+      setAbsenceReasons(reasons);
+      setTeamMembers(team.map((m: { id: string; firstName: string | null; lastName: string | null; email: string }) => ({
+        id: m.id,
+        firstName: m.firstName,
+        lastName: m.lastName,
+        email: m.email,
+      })));
+    }).catch(() => {});
+  }, []);
+
+  // Absence reason functions
+  async function handleSaveAbsenceReason() {
+    if (!absenceReasonName.trim()) return;
+    setAbsenceReasonSaving(true);
+    try {
+      if (editingAbsenceReason) {
+        const res = await fetch(`/api/admin/absence-reasons/${editingAbsenceReason.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: absenceReasonName,
+            code: absenceReasonCode || null,
+          }),
+        });
+        if (res.ok) {
+          const updated = await res.json();
+          setAbsenceReasons(prev => prev.map(r => r.id === updated.id ? updated : r));
+          toast.success(t("reasonSaved"));
+        } else {
+          const data = await res.json();
+          toast.error(data.error || "Failed to save");
+        }
+      } else {
+        const res = await fetch("/api/admin/absence-reasons", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: absenceReasonName,
+            code: absenceReasonCode || null,
+          }),
+        });
+        if (res.ok) {
+          const newReason = await res.json();
+          setAbsenceReasons(prev => [...prev, newReason]);
+          toast.success(t("reasonSaved"));
+        } else {
+          const data = await res.json();
+          toast.error(data.error || "Failed to save");
+        }
+      }
+      setAbsenceReasonDialogOpen(false);
+      setEditingAbsenceReason(null);
+      setAbsenceReasonName("");
+      setAbsenceReasonCode("");
+    } catch {
+      toast.error("Failed to save");
+    } finally {
+      setAbsenceReasonSaving(false);
+    }
+  }
+
+  async function handleDeleteAbsenceReason(reason: AbsenceReason) {
+    if (reason.isDefault) {
+      toast.error(t("cannotDeleteDefault"));
+      return;
+    }
+    try {
+      const res = await fetch(`/api/admin/absence-reasons/${reason.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.softDeleted) {
+          // Update the reason to show as inactive
+          setAbsenceReasons(prev => prev.map(r => r.id === reason.id ? { ...r, active: false } : r));
+          toast.success(t("reasonDeactivated"));
+        } else {
+          setAbsenceReasons(prev => prev.filter(r => r.id !== reason.id));
+          toast.success(t("reasonDeleted"));
+        }
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to delete");
+      }
+    } catch {
+      toast.error("Failed to delete");
+    }
+  }
+
+  async function handleSaveUserAssignments() {
+    if (!assigningReason) return;
+    setAssignSaving(true);
+    try {
+      const res = await fetch(`/api/admin/absence-reasons/${assigningReason.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userIds: selectedUserIds }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setAbsenceReasons(prev => prev.map(r => r.id === updated.id ? updated : r));
+        toast.success(t("reasonSaved"));
+        setAssignDialogOpen(false);
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to save");
+      }
+    } catch {
+      toast.error("Failed to save");
+    } finally {
+      setAssignSaving(false);
+    }
+  }
 
   async function handleEcoSave() {
     setEcoSaving(true);
@@ -1017,6 +1168,210 @@ export default function AdminPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Absence Reasons */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground">{t("absenceReasons")}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{t("absenceReasonsDesc")}</p>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditingAbsenceReason(null);
+                setAbsenceReasonName("");
+                setAbsenceReasonCode("");
+                setAbsenceReasonDialogOpen(true);
+              }}
+            >
+              <Plus className="mr-1 h-4 w-4" />
+              {t("addReason")}
+            </Button>
+          </div>
+          <div className="mt-4 space-y-2">
+            {absenceReasons.map((reason) => (
+              <div
+                key={reason.id}
+                className={cn(
+                  "flex items-center justify-between rounded-lg border p-3",
+                  !reason.active && "opacity-50"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{reason.name}</span>
+                      {reason.code && (
+                        <span className="text-xs text-muted-foreground">({reason.code})</span>
+                      )}
+                      {reason.isDefault && (
+                        <Badge variant="secondary" className="text-xs">{t("defaultBadge")}</Badge>
+                      )}
+                      {!reason.active && (
+                        <Badge variant="outline" className="text-xs">{tc("inactive")}</Badge>
+                      )}
+                    </div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">
+                      <Users className="inline-block h-3 w-3 mr-1" />
+                      {reason.users?.length || 0} {t("employeesAssigned")}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setAssigningReason(reason);
+                      setSelectedUserIds(reason.users?.map(u => u.id) || []);
+                      setAssignDialogOpen(true);
+                    }}
+                    title={t("manageEmployees")}
+                  >
+                    <Users className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setEditingAbsenceReason(reason);
+                      setAbsenceReasonName(reason.name);
+                      setAbsenceReasonCode(reason.code || "");
+                      setAbsenceReasonDialogOpen(true);
+                    }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  {!reason.isDefault && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteAbsenceReason(reason)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+            {absenceReasons.length === 0 && (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                No absence reasons configured yet.
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Absence Reason Dialog */}
+      <Dialog open={absenceReasonDialogOpen} onOpenChange={setAbsenceReasonDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {editingAbsenceReason ? t("editReason") : t("addReason")}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>{t("reasonName")}</Label>
+              <Input
+                value={absenceReasonName}
+                onChange={(e) => setAbsenceReasonName(e.target.value)}
+                placeholder="e.g. Sygdom"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t("reasonCode")}</Label>
+              <Input
+                value={absenceReasonCode}
+                onChange={(e) => setAbsenceReasonCode(e.target.value)}
+                placeholder="e.g. SICK"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAbsenceReasonDialogOpen(false)}>
+              {tc("cancel")}
+            </Button>
+            <Button
+              onClick={handleSaveAbsenceReason}
+              disabled={absenceReasonSaving || !absenceReasonName.trim()}
+            >
+              {absenceReasonSaving ? tc("saving") : tc("save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Employee Assignment Dialog */}
+      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {t("manageEmployees")}: {assigningReason?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground mb-4">
+              {t("selectEmployeesForReason")}
+            </p>
+            <div className="max-h-64 overflow-y-auto space-y-2">
+              {teamMembers.map((member) => {
+                const isSelected = selectedUserIds.includes(member.id);
+                const displayName = member.firstName && member.lastName
+                  ? `${member.firstName} ${member.lastName}`
+                  : member.email;
+                return (
+                  <label
+                    key={member.id}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors",
+                      isSelected
+                        ? "border-brand-500 bg-brand-50 dark:bg-brand-950"
+                        : "hover:bg-muted/50"
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedUserIds([...selectedUserIds, member.id]);
+                        } else {
+                          setSelectedUserIds(selectedUserIds.filter(id => id !== member.id));
+                        }
+                      }}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <div>
+                      <div className="font-medium">{displayName}</div>
+                      {member.firstName && (
+                        <div className="text-xs text-muted-foreground">{member.email}</div>
+                      )}
+                    </div>
+                  </label>
+                );
+              })}
+              {teamMembers.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  {t("noTeamMembers")}
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>
+              {tc("cancel")}
+            </Button>
+            <Button onClick={handleSaveUserAssignments} disabled={assignSaving}>
+              {assignSaving ? tc("saving") : tc("save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* e-conomic Export */}
       <Card>

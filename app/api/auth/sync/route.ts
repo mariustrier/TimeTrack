@@ -39,6 +39,39 @@ export async function POST(req: Request) {
       },
     });
 
+    // Create system-managed Absence project
+    await db.project.create({
+      data: {
+        name: "Fravær",
+        color: "#9CA3AF",
+        billable: false,
+        systemType: "absence",
+        systemManaged: true,
+        companyId: company.id,
+      },
+    });
+
+    // Create default absence reasons
+    // Sygdom and Ferie are universal (assigned to all employees)
+    // Barns 1. sygedag and Barsel are only for employees with children
+    const [sygdomReason, ferieReason] = await Promise.all([
+      db.absenceReason.create({
+        data: { name: "Sygdom", code: "SICK", isDefault: true, sortOrder: 1, companyId: company.id },
+      }),
+      db.absenceReason.create({
+        data: { name: "Ferie", code: "VACATION", isDefault: true, sortOrder: 4, companyId: company.id },
+      }),
+    ]);
+
+    // Create child-related reasons (not assigned by default)
+    await db.absenceReason.createMany({
+      data: [
+        { name: "Barns 1. sygedag", code: "CHILD_SICK", isDefault: true, sortOrder: 2, companyId: company.id },
+        { name: "Barsel", code: "PARENTAL", isDefault: true, sortOrder: 3, companyId: company.id },
+      ],
+    });
+
+    // Create user and connect universal absence reasons
     const user = await db.user.create({
       data: {
         clerkId: userId,
@@ -48,6 +81,12 @@ export async function POST(req: Request) {
         imageUrl: clerkUser.imageUrl,
         role: "admin",
         companyId: company.id,
+        absenceReasons: {
+          connect: [
+            { id: sygdomReason.id },
+            { id: ferieReason.id },
+          ],
+        },
       },
     });
 

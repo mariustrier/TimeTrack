@@ -32,6 +32,7 @@ model Company {
   insights           ContractInsight[]
   expenses           Expense[]
   companyExpenses    CompanyExpense[]
+  absenceReasons     AbsenceReason[]
 }
 
 model User {
@@ -66,6 +67,7 @@ model User {
   uploadedContracts  Contract[]
   dismissedInsights  ContractInsight[]    @relation("DismissedInsights")
   expenses           Expense[]
+  absenceReasons     AbsenceReason[]      @relation("UserAbsenceReasons")
 
   @@index([companyId])
   @@index([clerkId])
@@ -87,6 +89,10 @@ model Project {
   companyId   String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  // System-managed projects (e.g., Absence)
+  systemType    String?  // "absence" | null for regular projects
+  systemManaged Boolean  @default(false) // Cannot be deleted/archived if true
 
   company     Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
   timeEntries TimeEntry[]
@@ -131,9 +137,13 @@ model TimeEntry {
   mileageRoundTrip    Boolean   @default(false)
   mileageSource       String?   // "manual" | "calculated"
 
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  // Absence tracking
+  absenceReasonId String?
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  absenceReason AbsenceReason? @relation(fields: [absenceReasonId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([projectId])
@@ -341,4 +351,23 @@ model CompanyExpense {
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId, date])
+}
+
+model AbsenceReason {
+  id        String   @id @default(cuid())
+  name      String   // e.g., "Sygdom", "Ferie"
+  code      String?  // Optional short code
+  isDefault Boolean  @default(false) // System default, cannot be deleted
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  companyId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  timeEntries TimeEntry[]
+  users       User[]      @relation("UserAbsenceReasons")
+
+  @@unique([companyId, name])
+  @@index([companyId])
 }

@@ -73,6 +73,14 @@ interface Project {
   pricingType: string;
   fixedPrice: number | null;
   moneyUsed: number;
+  systemType: string | null;
+  systemManaged: boolean;
+}
+
+interface AbsenceReason {
+  id: string;
+  name: string;
+  code: string | null;
 }
 
 interface TimeEntry {
@@ -172,6 +180,9 @@ export default function DashboardPage() {
   const [endAddressSuggestions, setEndAddressSuggestions] = useState<string[]>([]);
   const [stopSuggestions, setStopSuggestions] = useState<string[]>([]);
   const [activeAddressField, setActiveAddressField] = useState<"start" | "end" | number | null>(null);
+  // Absence state
+  const [absenceReasons, setAbsenceReasons] = useState<AbsenceReason[]>([]);
+  const [selectedAbsenceReasonId, setSelectedAbsenceReasonId] = useState("");
 
   const weekStart = useMemo(() => startOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
   const weekEnd = useMemo(() => endOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
@@ -209,10 +220,11 @@ export default function DashboardPage() {
       const start = format(weekStart, "yyyy-MM-dd");
       const end = format(weekEnd, "yyyy-MM-dd");
 
-      const [entriesRes, projectsRes, vacationsRes] = await Promise.all([
+      const [entriesRes, projectsRes, vacationsRes, absenceReasonsRes] = await Promise.all([
         fetch(`/api/time-entries?startDate=${start}&endDate=${end}`),
         fetch("/api/projects"),
         fetch("/api/vacations"),
+        fetch("/api/absence-reasons"),
       ]);
 
       if (entriesRes.ok) {
@@ -224,7 +236,18 @@ export default function DashboardPage() {
       }
       if (projectsRes.ok) {
         const data = await projectsRes.json();
-        setProjects(data.filter((p: Project & { active?: boolean }) => p.active !== false));
+        // Filter active projects and sort: regular projects first, then system projects (Absence)
+        const activeProjects = data.filter((p: Project & { active?: boolean }) => p.active !== false);
+        activeProjects.sort((a: Project, b: Project) => {
+          if (a.systemType && !b.systemType) return 1;
+          if (!a.systemType && b.systemType) return -1;
+          return 0;
+        });
+        setProjects(activeProjects);
+      }
+      if (absenceReasonsRes.ok) {
+        const data = await absenceReasonsRes.json();
+        setAbsenceReasons(data);
       }
       if (vacationsRes.ok) {
         const vacations = await vacationsRes.json();
@@ -307,6 +330,12 @@ export default function DashboardPage() {
     .reduce((sum, e) => sum + e.hours, 0);
   const timeBalance = grandTotal - weeklyTarget;
 
+  // Helper to check if a project is the Absence project
+  const isAbsenceProject = (projectId: string) => {
+    const proj = projects.find((p) => p.id === projectId);
+    return proj?.systemType === "absence";
+  };
+
   function openModal(date: Date, projectId?: string, entry?: TimeEntry) {
     setSelectedDate(format(date, "yyyy-MM-dd"));
     setSelectedProjectId(projectId || "");
@@ -324,6 +353,8 @@ export default function DashboardPage() {
       setMileageRoundTrip(entry.mileageRoundTrip || false);
       setMileageSource(entry.mileageSource || "");
       setMileageSectionOpen(!!entry.mileageKm);
+      // Absence reason
+      setSelectedAbsenceReasonId((entry as TimeEntry & { absenceReasonId?: string }).absenceReasonId || "");
     } else {
       setEditingEntry(null);
       setHours("");
@@ -340,12 +371,19 @@ export default function DashboardPage() {
       setMileageRoundTrip(false);
       setMileageSource("");
       setMileageSectionOpen(false);
+      // Reset absence reason
+      setSelectedAbsenceReasonId("");
     }
     setModalOpen(true);
   }
 
   async function handleSave() {
     if (!hours || !selectedDate || !selectedProjectId || !comment.trim()) return;
+    // Require absence reason for absence project
+    if (isAbsenceProject(selectedProjectId) && !selectedAbsenceReasonId) {
+      toast.error(t("absenceReasonRequired"));
+      return;
+    }
     setSaving(true);
 
     try {
@@ -365,6 +403,7 @@ export default function DashboardPage() {
             mileageStops: mileageStops.filter((s) => s.trim()),
             mileageRoundTrip,
             mileageSource: mileageSource || null,
+            absenceReasonId: isAbsenceProject(selectedProjectId) ? selectedAbsenceReasonId : null,
           }),
         });
       } else {
@@ -383,6 +422,7 @@ export default function DashboardPage() {
             mileageStops: mileageStops.filter((s) => s.trim()),
             mileageRoundTrip,
             mileageSource: mileageSource || null,
+            absenceReasonId: isAbsenceProject(selectedProjectId) ? selectedAbsenceReasonId : null,
           }),
         });
       }
@@ -773,14 +813,23 @@ export default function DashboardPage() {
                 </thead>
                 <tbody>
                   {projects.map((project) => (
-                    <tr key={project.id} className="border-b hover:bg-muted/30">
+                    <tr
+                      key={project.id}
+                      className={cn(
+                        "border-b hover:bg-muted/30",
+                        project.systemType === "absence" && "bg-muted/20 border-t-2 border-t-muted-foreground/20"
+                      )}
+                    >
                       <td className="px-4 py-2">
                         <div className="flex items-center gap-2">
                           <div
                             className="h-3 w-3 rounded-full"
                             style={{ backgroundColor: project.color }}
                           />
-                          <span className="font-medium text-foreground truncate">
+                          <span className={cn(
+                            "font-medium truncate",
+                            project.systemType === "absence" ? "text-muted-foreground" : "text-foreground"
+                          )}>
                             {project.name}
                           </span>
                         </div>
@@ -992,6 +1041,30 @@ export default function DashboardPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Absence Reason Selector - only shown for Absence project */}
+            {isAbsenceProject(selectedProjectId) && (
+              <div className="space-y-2">
+                <Label>{t("absenceReason")} *</Label>
+                <Select
+                  value={selectedAbsenceReasonId}
+                  onValueChange={setSelectedAbsenceReasonId}
+                  disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("selectAbsenceReason")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {absenceReasons.map((reason) => (
+                      <SelectItem key={reason.id} value={reason.id}>
+                        {reason.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>{tc("date")}</Label>
               <Input

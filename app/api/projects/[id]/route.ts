@@ -29,6 +29,14 @@ export async function PUT(
     if (!result.success) return result.response;
     const { name, client, color, budgetHours, billable, currency, pricingType, fixedPrice, rateMode, projectRate } = result.data;
 
+    // Prevent deactivating system-managed projects
+    if (project.systemManaged && body.active === false) {
+      return NextResponse.json(
+        { error: "Cannot deactivate system-managed projects" },
+        { status: 403 }
+      );
+    }
+
     const updated = await db.project.update({
       where: { id: params.id },
       data: {
@@ -73,6 +81,14 @@ export async function DELETE(
     });
     if (!project) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    // Prevent deleting system-managed projects
+    if (project.systemManaged) {
+      return NextResponse.json(
+        { error: "Cannot delete system-managed projects" },
+        { status: 403 }
+      );
     }
 
     await db.project.delete({ where: { id: params.id } });

@@ -80,6 +80,7 @@ export async function POST(req: Request) {
       mileageStops,
       mileageRoundTrip,
       mileageSource,
+      absenceReasonId,
     } = result.data;
 
     const project = await db.project.findFirst({
@@ -90,6 +91,15 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "Project not found" },
         { status: 404 }
+      );
+    }
+
+    // Validate absence entries
+    const isAbsenceProject = project.systemType === "absence";
+    if (isAbsenceProject && !absenceReasonId) {
+      return NextResponse.json(
+        { error: "Absence reason is required for absence entries" },
+        { status: 400 }
       );
     }
 
@@ -113,7 +123,12 @@ export async function POST(req: Request) {
     }
 
     // Default billing status from project's billable flag
-    const defaultBillingStatus = project.billable ? "billable" : "non_billable";
+    // Absence entries are always non-billable
+    const defaultBillingStatus = isAbsenceProject
+      ? "non_billable"
+      : project.billable
+        ? "billable"
+        : "non_billable";
 
     const entry = await db.timeEntry.create({
       data: {
@@ -123,13 +138,14 @@ export async function POST(req: Request) {
         userId: user.id,
         projectId,
         companyId: user.companyId,
-        billingStatus: billingStatus || defaultBillingStatus,
+        billingStatus: isAbsenceProject ? "non_billable" : (billingStatus || defaultBillingStatus),
         mileageKm: mileageKm ?? null,
         mileageStartAddress: mileageStartAddress ?? null,
         mileageEndAddress: mileageEndAddress ?? null,
         mileageStops: mileageStops ?? [],
         mileageRoundTrip: mileageRoundTrip ?? false,
         mileageSource: mileageSource ?? null,
+        absenceReasonId: isAbsenceProject ? absenceReasonId : null,
       },
       include: {
         project: { select: { id: true, name: true, color: true, billable: true } },
