@@ -185,7 +185,7 @@ export async function gatherInsightData(companyId: string): Promise<InsightDataP
       },
     }),
     db.project.findMany({
-      where: { companyId, active: true },
+      where: { companyId, active: true, systemManaged: false },
       select: {
         id: true,
         name: true,
