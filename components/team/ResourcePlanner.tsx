@@ -216,7 +216,8 @@ export function ResourcePlanner() {
     projectId: string;
     startDate: string;
     endDate: string;
-    hoursPerDay: number;
+    hoursPerDay?: number;
+    totalHours?: number | null;
     status: string;
     notes: string | null;
   }) => {
