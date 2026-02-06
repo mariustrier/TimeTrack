@@ -33,13 +33,13 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { labelKey: "dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { labelKey: "admin", href: "/admin", icon: BarChart3, roles: ["admin"], badge: true },
+  { labelKey: "team", href: "/team", icon: Users, roles: ["admin", "manager"] },
+  { labelKey: "projects", href: "/projects", icon: FolderKanban, roles: ["admin", "manager"] },
+  { labelKey: "aiAssistant", href: "/ai", icon: Sparkles, roles: ["admin", "manager"], badge: true },
+  { labelKey: "analytics", href: "/analytics", icon: TrendingUp, roles: ["admin", "manager"] },
   { labelKey: "expenses", href: "/expenses", icon: Receipt },
   { labelKey: "vacations", href: "/vacations", icon: Palmtree },
-  { labelKey: "projects", href: "/projects", icon: FolderKanban, roles: ["admin", "manager"] },
-  { labelKey: "team", href: "/team", icon: Users, roles: ["admin", "manager"] },
-  { labelKey: "admin", href: "/admin", icon: BarChart3, roles: ["admin"], badge: true },
-  { labelKey: "analytics", href: "/analytics", icon: TrendingUp, roles: ["admin", "manager"] },
-  { labelKey: "aiAssistant", href: "/ai", icon: Sparkles, roles: ["admin", "manager"], badge: true },
   { labelKey: "settings", href: "/settings", icon: Settings },
   { labelKey: "platform", href: "/super-admin", icon: Shield, superAdminOnly: true },
 ];
