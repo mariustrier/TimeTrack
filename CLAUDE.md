@@ -23,17 +23,17 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 
 ## Project Structure
 
-### Pages (9 sidebar items)
-- `app/(dashboard)/dashboard/` - Employee timesheet + stat cards + flex balance
-- `app/(dashboard)/expenses/` - Expense tracking with receipt uploads
-- `app/(dashboard)/vacations/` - Vacation requests + balance
-- `app/(dashboard)/projects/` - **Tabbed**: Projects list | Timeline (with milestones)
-- `app/(dashboard)/team/` - **Tabbed**: Team members | Resource Planner
-- `app/(dashboard)/admin/` - **Tabbed**: Overview | Approvals | Vacations | Backups | Audit Log
-- `app/(dashboard)/analytics/` - **Tabbed**: Employee | Team | Project | Company insights
-- `app/(dashboard)/ai/` - AI-powered business insights
-- `app/(dashboard)/settings/` - Tour replay, data export, account deletion
-- `app/(dashboard)/super-admin/` - Platform-level admin (superAdminOnly)
+### Pages (sidebar order: admin items first, then employee items)
+1. `app/(dashboard)/dashboard/` - Employee timesheet + stat cards + flex balance
+2. `app/(dashboard)/admin/` - **Tabbed**: Overview | Approvals | Vacations | Backups | Audit Log *(admin only)*
+3. `app/(dashboard)/team/` - **Tabbed**: Team members | Resource Planner *(admin/manager)*
+4. `app/(dashboard)/projects/` - **Tabbed**: Projects list | Timeline with milestones *(admin/manager)*
+5. `app/(dashboard)/ai/` - AI-powered business insights *(admin/manager)*
+6. `app/(dashboard)/analytics/` - **Tabbed**: Employee | Team | Project | Company insights *(admin/manager)*
+7. `app/(dashboard)/expenses/` - Expense tracking with receipt uploads
+8. `app/(dashboard)/vacations/` - Vacation requests + balance
+9. `app/(dashboard)/settings/` - Tour replay, data export, account deletion
+10. `app/(dashboard)/super-admin/` - Platform-level admin *(superAdmin only)*
 
 ### API Routes (69 route files across 18 domains)
 - `app/api/` - All scoped by companyId
@@ -81,8 +81,9 @@ Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation,
 - Per-day submit buttons + bulk "Submit Week"
 - Flex calculation: Mon-Thu get rounded daily target, Friday gets remainder (e.g., 37h → 9.25×4 + 0h Fri... actually Mon-Thu=9.5, Fri=7 for 45h)
 - Budget progress bars per project
+- **"Full day" button** in time entry modal: auto-fills hours based on day (Mon-Thu target or Friday target)
 - Mileage tracking in time entry modal (OpenRouteService API)
-- Absence reason selection for absence project entries
+- Absence reason selection for absence project entries (comment optional for absence, required for other projects)
 
 ### Expenses
 - Create with amount, description, category, date, project, receipt upload
