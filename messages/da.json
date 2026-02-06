@@ -130,6 +130,7 @@
     "absenceReason": "Fraværsårsag",
     "selectAbsenceReason": "Vælg årsag til fravær",
     "absenceReasonRequired": "Vælg venligst en fraværsårsag",
+    "fullDay": "Hel dag",
     "absenceProject": "Fravær",
     "projectLocked": "Dette projekt er låst",
     "projectLockedDesc": "Kontakt din administrator for at foretage ændringer"

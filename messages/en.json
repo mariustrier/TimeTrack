@@ -130,6 +130,7 @@
     "absenceReason": "Absence Reason",
     "selectAbsenceReason": "Select reason for absence",
     "absenceReasonRequired": "Please select an absence reason",
+    "fullDay": "Full day",
     "absenceProject": "Absence",
     "projectLocked": "This project is locked",
     "projectLockedDesc": "Contact your admin to make changes"

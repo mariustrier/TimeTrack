@@ -424,7 +424,8 @@ export default function DashboardPage() {
   }
 
   async function handleSave() {
-    if (!hours || !selectedDate || !selectedProjectId || !comment.trim()) return;
+    if (!hours || !selectedDate || !selectedProjectId) return;
+    if (!isAbsenceProject(selectedProjectId) && !comment.trim()) return;
     // Require absence reason for absence project
     if (isAbsenceProject(selectedProjectId) && !selectedAbsenceReasonId) {
       toast.error(t("absenceReasonRequired"));
@@ -1162,16 +1163,32 @@ export default function DashboardPage() {
             </div>
             <div className="space-y-2">
               <Label>{tc("hours")}</Label>
-              <Input
-                type="number"
-                step="0.5"
-                min="0"
-                max="24"
-                value={hours}
-                onChange={(e) => setHours(e.target.value)}
-                placeholder={t("hoursPlaceholder")}
-                disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
-              />
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  max="24"
+                  value={hours}
+                  onChange={(e) => setHours(e.target.value)}
+                  placeholder={t("hoursPlaceholder")}
+                  disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
+                  className="flex-1"
+                />
+                {isAbsenceProject(selectedProjectId) && !(editingEntry && isEntryReadOnly(editingEntry)) && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      if (!selectedDate) return;
+                      const dow = new Date(selectedDate).getDay();
+                      setHours(dow === 5 ? fridayTarget.toString() : monThuTarget.toString());
+                    }}
+                  >
+                    {t("fullDay")}
+                  </Button>
+                )}
+              </div>
             </div>
             <div className="space-y-2">
               <Label>{tc("comment")}</Label>
