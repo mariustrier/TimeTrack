@@ -1175,7 +1175,7 @@ export default function DashboardPage() {
                   disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
                   className="flex-1"
                 />
-                {isAbsenceProject(selectedProjectId) && !(editingEntry && isEntryReadOnly(editingEntry)) && (
+                {!(editingEntry && isEntryReadOnly(editingEntry)) && (
                   <Button
                     type="button"
                     variant="outline"
