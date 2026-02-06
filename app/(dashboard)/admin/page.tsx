@@ -554,8 +554,8 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* Company Stat Cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
+      {/* Company Stat Cards - Row 1: Financial */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -602,6 +602,10 @@ export default function AdminPage() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Company Stat Cards - Row 2: Operations */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
