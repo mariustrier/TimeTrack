@@ -164,3 +164,40 @@ export const calculateDistanceSchema = z.object({
   stops: z.array(z.string().min(3).max(500)).optional(),
   roundTrip: z.boolean().optional(),
 });
+
+// --- Resource Allocations ---
+
+export const createResourceAllocationSchema = z.object({
+  userId: z.string().min(1),
+  projectId: z.string().min(1),
+  startDate: z.string().min(1), // yyyy-MM-dd
+  endDate: z.string().min(1), // yyyy-MM-dd
+  hoursPerDay: z.coerce.number().positive().max(24).optional(),
+  totalHours: z.coerce.number().positive().optional().nullable(), // If set, enables rollover mode
+  status: z.enum(["tentative", "confirmed", "completed"]).optional(),
+  notes: z.string().max(500).optional().nullable(),
+});
+
+export const updateResourceAllocationSchema = z.object({
+  startDate: z.string().min(1).optional(),
+  endDate: z.string().min(1).optional(),
+  hoursPerDay: z.coerce.number().positive().max(24).optional(),
+  totalHours: z.coerce.number().positive().optional().nullable(),
+  status: z.enum(["tentative", "confirmed", "completed"]).optional(),
+  notes: z.string().max(500).optional().nullable(),
+});
+
+// --- Project Milestones ---
+
+export const createMilestoneSchema = z.object({
+  title: z.string().min(1).max(200),
+  dueDate: z.string().min(1), // yyyy-MM-dd
+  sortOrder: z.coerce.number().int().nonnegative().optional(),
+});
+
+export const updateMilestoneSchema = z.object({
+  title: z.string().min(1).max(200).optional(),
+  dueDate: z.string().min(1).optional(),
+  completed: z.boolean().optional(),
+  sortOrder: z.coerce.number().int().nonnegative().optional(),
+});

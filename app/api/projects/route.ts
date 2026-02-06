@@ -26,12 +26,12 @@ export async function GET() {
           orderBy: { name: "asc" },
         }),
 
-        // Total billable/included hours per project
+        // Total committed hours per project (submitted/approved/locked only — matches admin budget view)
         db.timeEntry.groupBy({
           by: ["projectId"],
           where: {
             companyId: user.companyId,
-            billingStatus: { in: ["billable", "included"] },
+            approvalStatus: { in: ["submitted", "approved", "locked"] },
           },
           _sum: { hours: true },
         }),
@@ -42,13 +42,13 @@ export async function GET() {
           select: { projectId: true, hours: true },
         }),
 
-        // Current user's billable/included hours per project
+        // Current user's committed hours per project (submitted/approved/locked only)
         db.timeEntry.groupBy({
           by: ["projectId"],
           where: {
             userId: user.id,
             companyId: user.companyId,
-            billingStatus: { in: ["billable", "included"] },
+            approvalStatus: { in: ["submitted", "approved", "locked"] },
           },
           _sum: { hours: true },
         }),
@@ -65,12 +65,13 @@ export async function GET() {
           select: { id: true, hourlyRate: true, employmentType: true },
         }),
 
-        // Billable hours grouped by project+user (avoids fetching individual rows)
+        // Billable hours grouped by project+user (committed only)
         db.timeEntry.groupBy({
           by: ["projectId", "userId"],
           where: {
             companyId: user.companyId,
             billingStatus: { in: ["billable", "included"] },
+            approvalStatus: { in: ["submitted", "approved", "locked"] },
           },
           _sum: { hours: true },
         }),

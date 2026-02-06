@@ -72,7 +72,7 @@ export async function GET(req: Request) {
           billableHours: 0,
           entryCount: 0,
           submittedAt: entry.submittedAt?.toISOString() || null,
-          approvalStatus: entry.approvalStatus,
+          approvalStatus: "draft",
           entries: [],
         };
       }
@@ -83,6 +83,23 @@ export async function GET(req: Request) {
       }
       groups[key].entryCount++;
       groups[key].entries.push(entry);
+    }
+
+    // Compute approvalStatus per week group from all entries (not just the first)
+    for (const group of Object.values(groups)) {
+      const statuses = new Set(group.entries.map((e) => e.approvalStatus));
+      if (statuses.size === 1) {
+        group.approvalStatus = Array.from(statuses)[0];
+      } else if (statuses.has("locked") && !statuses.has("draft") && !statuses.has("submitted")) {
+        group.approvalStatus = "locked";
+      } else if (statuses.has("approved") && !statuses.has("draft") && !statuses.has("submitted")) {
+        group.approvalStatus = "approved";
+      } else if (statuses.has("submitted")) {
+        // Mixed: has submitted entries that still need attention
+        group.approvalStatus = "submitted";
+      } else {
+        group.approvalStatus = "draft";
+      }
     }
 
     // Filter: only show weeks where Friday (or weekend) is submitted

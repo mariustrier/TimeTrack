@@ -72,6 +72,13 @@ Productivity:
 - High billable week >85% = CELEBRATION
 - Large approval backlog = SUGGESTION
 
+Resource Planning:
+- Overbooked users (allocated > capacity) = HEADS_UP with specific names
+- Available capacity (users with 50%+ free time) = OPPORTUNITY (suggest projects)
+- Understaffed projects (allocation < burn rate) = SUGGESTION (assign more resources)
+- Low team utilization forecast = OPPORTUNITY (capacity for new work)
+- Allocation gaps = SUGGESTION (fill specific days/weeks)
+
 ## Output Format
 
 Return ONLY a JSON array. Each insight:
@@ -176,6 +183,35 @@ ${data.productivity.billablePercentByWeek.length > 0 ? `Billable % trend (last 4
   if (data.contracts.length > 0) {
     sections.push(`## Contracts (${data.contracts.length})
 ${JSON.stringify(data.contracts, null, 2)}`);
+  }
+
+  // Resource Planning
+  const hasResourcePlanningData =
+    data.resourcePlanning.allocations.length > 0 ||
+    data.resourcePlanning.unassignedUsers.length > 0 ||
+    data.resourcePlanning.understaffedProjects.length > 0;
+
+  if (hasResourcePlanningData) {
+    const resourcePlanningParts: string[] = [];
+
+    if (data.resourcePlanning.allocations.length > 0) {
+      resourcePlanningParts.push(`Current allocations (next 4 weeks): ${JSON.stringify(data.resourcePlanning.allocations.slice(0, 20))}`);
+    }
+
+    if (data.resourcePlanning.capacityForecast.length > 0) {
+      resourcePlanningParts.push(`Capacity forecast issues: ${JSON.stringify(data.resourcePlanning.capacityForecast)}`);
+    }
+
+    if (data.resourcePlanning.unassignedUsers.length > 0) {
+      resourcePlanningParts.push(`Users with available capacity this week: ${JSON.stringify(data.resourcePlanning.unassignedUsers)}`);
+    }
+
+    if (data.resourcePlanning.understaffedProjects.length > 0) {
+      resourcePlanningParts.push(`Projects needing more resources: ${JSON.stringify(data.resourcePlanning.understaffedProjects)}`);
+    }
+
+    sections.push(`## Resource Planning
+${resourcePlanningParts.join("\n")}`);
   }
 
   return sections.join("\n\n");

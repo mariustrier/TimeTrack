@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
-import { getWeekBounds } from "@/lib/week-helpers";
+
 import { validate } from "@/lib/validate";
 import { createTimeEntrySchema } from "@/lib/schemas";
 
@@ -43,10 +43,53 @@ export async function GET(req: Request) {
       orderBy: { date: "asc" },
     });
 
+    // Calculate cumulative flex balance prior to the requested week (personal, for logged-in user)
+    let priorFlexBalance: number | null = null;
+    if (startDate) {
+      const weekStartDate = new Date(startDate);
+      const userStart = user.createdAt;
+
+      // Only calculate if the user existed before this week
+      if (userStart < weekStartDate) {
+        // Sum all hours the logged-in user worked before the current week
+        const priorHoursAgg = await db.timeEntry.aggregate({
+          where: {
+            userId: user.id,
+            companyId: user.companyId,
+            date: { gte: userStart, lt: weekStartDate },
+          },
+          _sum: { hours: true },
+        });
+        const totalWorked = priorHoursAgg._sum.hours || 0;
+
+        // Count working days (Mon-Fri) between user start and week start
+        const wt = user.weeklyTarget;
+        const monThuTarget = Math.round(wt / 5 * 2) / 2;
+        const friTarget = wt - monThuTarget * 4;
+
+        let expected = 0;
+        const d = new Date(userStart);
+        d.setHours(0, 0, 0, 0);
+        const end = new Date(weekStartDate);
+        end.setHours(0, 0, 0, 0);
+        while (d < end) {
+          const dow = d.getDay();
+          if (dow >= 1 && dow <= 4) expected += monThuTarget;
+          else if (dow === 5) expected += friTarget;
+          d.setDate(d.getDate() + 1);
+        }
+
+        priorFlexBalance = Math.round((totalWorked - expected) * 100) / 100;
+      } else {
+        priorFlexBalance = 0;
+      }
+    }
+
     return NextResponse.json({
       entries,
       meta: {
         weeklyTarget: user.weeklyTarget,
+        ...(priorFlexBalance !== null && { priorFlexBalance }),
       },
     });
   } catch (error) {
@@ -111,23 +154,32 @@ export async function POST(req: Request) {
       );
     }
 
-    // Block adding entries to weeks that have non-draft entries
+    // Block adding entries to days that are fully approved or locked
     const entryDate = new Date(date);
-    const { weekStart, weekEnd } = getWeekBounds(entryDate);
-    const existingNonDraft = await db.timeEntry.findFirst({
+    const { startOfDay: dayStart, endOfDay: dayEnd } = {
+      startOfDay: new Date(entryDate.getFullYear(), entryDate.getMonth(), entryDate.getDate()),
+      endOfDay: new Date(entryDate.getFullYear(), entryDate.getMonth(), entryDate.getDate(), 23, 59, 59, 999),
+    };
+    const dayEntries = await db.timeEntry.findMany({
       where: {
         userId: user.id,
         companyId: user.companyId,
-        date: { gte: weekStart, lte: weekEnd },
-        approvalStatus: { not: "draft" },
+        date: { gte: dayStart, lte: dayEnd },
       },
+      select: { approvalStatus: true },
     });
 
-    if (existingNonDraft) {
-      return NextResponse.json(
-        { error: "Cannot add entries to a submitted or approved week" },
-        { status: 400 }
+    // Only block if the day has entries and ALL are approved or locked
+    if (dayEntries.length > 0) {
+      const allProcessed = dayEntries.every(
+        (e) => e.approvalStatus === "approved" || e.approvalStatus === "locked"
       );
+      if (allProcessed) {
+        return NextResponse.json(
+          { error: "Cannot add entries to an approved or locked day" },
+          { status: 400 }
+        );
+      }
     }
 
     // Default billing status from project's billable flag

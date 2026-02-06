@@ -46,6 +46,24 @@ export interface ContractSummary {
   hoursUsed: number;
 }
 
+export interface ResourceAllocationSummary {
+  userName: string;
+  projectName: string;
+  startDate: string;
+  endDate: string;
+  hoursPerDay: number;
+  status: string;
+}
+
+export interface CapacityForecast {
+  date: string;
+  totalAllocatedHours: number;
+  totalCapacityHours: number;
+  utilizationPercent: number;
+  overbookedUsers: string[];
+  underbookedUsers: string[];
+}
+
 export interface InsightDataPackage {
   company: {
     id: string;
@@ -76,6 +94,12 @@ export interface InsightDataPackage {
     usersWithEntryGaps: { name: string; missedDays: number }[];
   };
   contracts: ContractSummary[];
+  resourcePlanning: {
+    allocations: ResourceAllocationSummary[];
+    capacityForecast: CapacityForecast[];
+    unassignedUsers: { name: string; weeklyTarget: number; availableHours: number }[];
+    understaffedProjects: { projectName: string; allocatedHours: number; estimatedNeed: number }[];
+  };
 }
 
 // Helper functions
@@ -119,6 +143,9 @@ export async function gatherInsightData(companyId: string): Promise<InsightDataP
   const twoWeeksAhead = new Date(now);
   twoWeeksAhead.setDate(twoWeeksAhead.getDate() + 14);
 
+  const fourWeeksAhead = new Date(now);
+  fourWeeksAhead.setDate(fourWeeksAhead.getDate() + 28);
+
   // Parallel queries for all data
   const [
     company,
@@ -130,6 +157,7 @@ export async function gatherInsightData(companyId: string): Promise<InsightDataP
     projectTotalHours,
     contracts,
     pendingApprovals,
+    resourceAllocations,
   ] = await Promise.all([
     db.company.findUnique({
       where: { id: companyId },
@@ -229,6 +257,18 @@ export async function gatherInsightData(companyId: string): Promise<InsightDataP
     }),
     db.timeEntry.count({
       where: { companyId, approvalStatus: "submitted" },
+    }),
+    // Resource allocations for next 4 weeks
+    db.resourceAllocation.findMany({
+      where: {
+        companyId,
+        endDate: { gte: now },
+        startDate: { lte: fourWeeksAhead },
+      },
+      include: {
+        user: { select: { id: true, firstName: true, lastName: true, weeklyTarget: true } },
+        project: { select: { id: true, name: true } },
+      },
     }),
   ]);
 
@@ -493,6 +533,137 @@ export async function gatherInsightData(companyId: string): Promise<InsightDataP
     hoursUsed: 0, // Hours are already tracked in projects.active
   }));
 
+  // Process resource allocations
+  const allocationSummaries: ResourceAllocationSummary[] = resourceAllocations.map((a) => ({
+    userName: `${a.user.firstName || ""} ${a.user.lastName || ""}`.trim() || "Unknown",
+    projectName: a.project.name,
+    startDate: a.startDate.toISOString().split("T")[0],
+    endDate: a.endDate.toISOString().split("T")[0],
+    hoursPerDay: a.hoursPerDay,
+    status: a.status,
+  }));
+
+  // Calculate capacity forecast for next 2 weeks
+  const capacityForecast: CapacityForecast[] = [];
+  const forecastDate = new Date(now);
+  while (forecastDate <= twoWeeksAhead) {
+    if (!isWeekend(forecastDate)) {
+      const dateStr = forecastDate.toISOString().split("T")[0];
+      const dateObj = new Date(forecastDate);
+
+      // Calculate hours allocated per user on this day
+      const userAllocations = new Map<string, { name: string; allocated: number; target: number }>();
+      for (const user of users) {
+        userAllocations.set(user.id, {
+          name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Unknown",
+          allocated: 0,
+          target: user.weeklyTarget / 5, // Daily target
+        });
+      }
+
+      for (const alloc of resourceAllocations) {
+        if (alloc.startDate <= dateObj && alloc.endDate >= dateObj) {
+          const userAlloc = userAllocations.get(alloc.userId);
+          if (userAlloc) {
+            userAlloc.allocated += alloc.hoursPerDay;
+          }
+        }
+      }
+
+      let totalAllocated = 0;
+      let totalCapacity = 0;
+      const overbookedUsers: string[] = [];
+      const underbookedUsers: string[] = [];
+
+      for (const [, data] of Array.from(userAllocations.entries())) {
+        totalAllocated += data.allocated;
+        totalCapacity += data.target;
+        if (data.allocated > data.target) {
+          overbookedUsers.push(data.name);
+        } else if (data.allocated < data.target * 0.5 && data.target > 0) {
+          underbookedUsers.push(data.name);
+        }
+      }
+
+      const utilizationPercent = totalCapacity > 0
+        ? Math.round((totalAllocated / totalCapacity) * 100)
+        : 0;
+
+      // Only include days with notable data
+      if (overbookedUsers.length > 0 || underbookedUsers.length > 0 || utilizationPercent < 50 || utilizationPercent > 100) {
+        capacityForecast.push({
+          date: dateStr,
+          totalAllocatedHours: Math.round(totalAllocated * 10) / 10,
+          totalCapacityHours: Math.round(totalCapacity * 10) / 10,
+          utilizationPercent,
+          overbookedUsers,
+          underbookedUsers,
+        });
+      }
+    }
+    forecastDate.setDate(forecastDate.getDate() + 1);
+  }
+
+  // Find users with low allocation (available capacity)
+  const unassignedUsers: { name: string; weeklyTarget: number; availableHours: number }[] = [];
+  for (const user of users) {
+    const userName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Unknown";
+    let allocatedThisWeek = 0;
+
+    // Sum allocations for current week
+    const weekStart = new Date(now);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1); // Monday
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 4); // Friday
+
+    for (const alloc of resourceAllocations) {
+      if (alloc.userId === user.id) {
+        // Count overlapping days this week
+        const allocStart = new Date(alloc.startDate);
+        const allocEnd = new Date(alloc.endDate);
+        const overlapStart = allocStart > weekStart ? allocStart : weekStart;
+        const overlapEnd = allocEnd < weekEnd ? allocEnd : weekEnd;
+
+        if (overlapStart <= overlapEnd) {
+          const days = getBusinessDaysBetween(overlapStart, overlapEnd);
+          allocatedThisWeek += days * alloc.hoursPerDay;
+        }
+      }
+    }
+
+    const availableHours = user.weeklyTarget - allocatedThisWeek;
+    if (availableHours > user.weeklyTarget * 0.5) { // More than 50% capacity available
+      unassignedUsers.push({
+        name: userName,
+        weeklyTarget: user.weeklyTarget,
+        availableHours: Math.round(availableHours * 10) / 10,
+      });
+    }
+  }
+
+  // Find projects that might need more resources (based on burn rate vs allocation)
+  const understaffedProjects: { projectName: string; allocatedHours: number; estimatedNeed: number }[] = [];
+  for (const project of activeProjects) {
+    if (project.weeklyBurnRate > 0) {
+      // Calculate current weekly allocation for this project
+      let weeklyAllocation = 0;
+      for (const alloc of resourceAllocations) {
+        if (alloc.projectId === project.id) {
+          weeklyAllocation += alloc.hoursPerDay * 5; // Assuming 5 work days
+        }
+      }
+
+      // If allocation is less than 70% of burn rate, flag it
+      if (weeklyAllocation < project.weeklyBurnRate * 0.7 && project.weeklyBurnRate > 10) {
+        understaffedProjects.push({
+          projectName: project.name,
+          allocatedHours: Math.round(weeklyAllocation * 10) / 10,
+          estimatedNeed: Math.round(project.weeklyBurnRate * 10) / 10,
+        });
+      }
+    }
+  }
+
   return {
     company: {
       id: company.id,
@@ -523,5 +694,11 @@ export async function gatherInsightData(companyId: string): Promise<InsightDataP
       usersWithEntryGaps,
     },
     contracts: contractSummaries,
+    resourcePlanning: {
+      allocations: allocationSummaries,
+      capacityForecast,
+      unassignedUsers,
+      understaffedProjects,
+    },
   };
 }

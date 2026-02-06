@@ -165,6 +165,7 @@ export default function DashboardPage() {
   const [vacationDaysUsed, setVacationDaysUsed] = useState(0);
   const [vacationDaysTotal, setVacationDaysTotal] = useState(25);
   const [weeklyTarget, setWeeklyTarget] = useState(40);
+  const [priorFlexBalance, setPriorFlexBalance] = useState(0);
   const [weekNote, setWeekNote] = useState<{ action: string; reason: string | null; createdAt: string } | null>(null);
   const [weekNoteDismissed, setWeekNoteDismissed] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -191,21 +192,35 @@ export default function DashboardPage() {
   const weekDays = useMemo(() => eachDayOfInterval({ start: weekStart, end: weekEnd }), [weekStart, weekEnd]);
 
   // Compute week approval status (for banners)
+  // Must handle mixed states: e.g. Mon approved + Tue-Fri draft = "mixed" not "approved"
   const weekStatus = useMemo(() => {
     if (entries.length === 0) return "empty";
     const statuses = new Set(entries.map((e) => e.approvalStatus));
-    if (statuses.has("locked")) return "locked";
-    if (statuses.has("approved")) return "approved";
-    if (statuses.has("submitted")) return "submitted";
+    if (statuses.size === 1) {
+      return statuses.has("locked") ? "locked"
+        : statuses.has("approved") ? "approved"
+        : statuses.has("submitted") ? "submitted"
+        : "draft";
+    }
+    // Mixed states: only show "locked"/"approved" banner when ALL entries have that status
+    if (statuses.has("locked") && !statuses.has("draft") && !statuses.has("submitted")) return "locked";
+    if (statuses.has("approved") && !statuses.has("draft") && !statuses.has("submitted")) return "approved";
+    if (statuses.has("submitted") && !statuses.has("draft")) return "submitted";
     return "draft";
   }, [entries]);
 
-  // Check if a specific day is editable (all entries are draft or no entries)
+  // Check if a specific day allows adding/editing entries
+  // A day is editable if it has no entries, has draft entries, or can accept new entries
+  // Only fully locked/approved days (no draft entries and all locked/approved) block new entries
   function isDayEditable(day: Date): boolean {
     const dateStr = format(day, "yyyy-MM-dd");
     const dayEntries = entries.filter((e) => e.date.split("T")[0] === dateStr);
     if (dayEntries.length === 0) return true;
-    return dayEntries.every((e) => e.approvalStatus === "draft");
+    // Allow editing if there are any draft entries or if user can still add new ones
+    // Only block if ALL entries are locked or approved (fully processed)
+    const allLocked = dayEntries.every((e) => e.approvalStatus === "locked");
+    const allApproved = dayEntries.every((e) => e.approvalStatus === "approved" || e.approvalStatus === "locked");
+    return !allLocked && !allApproved;
   }
 
   // Check if there are any draft entries in the week (for Submit Week button)
@@ -234,6 +249,9 @@ export default function DashboardPage() {
         setEntries(data.entries);
         if (data.meta?.weeklyTarget !== undefined) {
           setWeeklyTarget(data.meta.weeklyTarget);
+        }
+        if (data.meta?.priorFlexBalance !== undefined) {
+          setPriorFlexBalance(data.meta.priorFlexBalance);
         }
       }
       if (projectsRes.ok) {
@@ -331,6 +349,32 @@ export default function DashboardPage() {
     .filter((e) => e.billingStatus === "billable")
     .reduce((sum, e) => sum + e.hours, 0);
   const timeBalance = grandTotal - weeklyTarget;
+
+  // Daily flex balance: running cumulative (target - worked) through the week
+  // Mon-Thu get rounded target, Friday gets the remainder to match weekly total
+  const monThuTarget = Math.round(weeklyTarget / 5 * 2) / 2; // round to nearest 0.5
+  const fridayTarget = weeklyTarget - monThuTarget * 4;
+  const flexBalances = useMemo(() => {
+    let cumulative = priorFlexBalance;
+    return weekDays.map((day) => {
+      const dayOfWeek = day.getDay(); // 0=Sun, 1=Mon, ..., 5=Fri, 6=Sat
+      const dateStr = format(day, "yyyy-MM-dd");
+      const worked = entries
+        .filter((e) => e.date.split("T")[0] === dateStr)
+        .reduce((sum, e) => sum + e.hours, 0);
+      if (dayOfWeek >= 1 && dayOfWeek <= 4) {
+        // Mon-Thu
+        cumulative += worked - monThuTarget;
+      } else if (dayOfWeek === 5) {
+        // Friday
+        cumulative += worked - fridayTarget;
+      } else {
+        // Weekend: overtime only (no target to subtract)
+        cumulative += worked;
+      }
+      return cumulative;
+    });
+  }, [weekDays, entries, monThuTarget, fridayTarget, priorFlexBalance]);
 
   // Helper to check if a project is the Absence project
   const isAbsenceProject = (projectId: string) => {
@@ -948,6 +992,34 @@ export default function DashboardPage() {
                     )}
                     <td className="px-4 py-3 text-center font-bold text-brand-600">
                       {grandTotal.toFixed(1)}
+                    </td>
+                  </tr>
+                  {/* Flex Balance row */}
+                  <tr className="bg-muted/30 border-t border-dashed">
+                    <td className="px-4 py-2 text-sm text-muted-foreground">{t("flexBalance")}</td>
+                    {weekDays.map((day, i) => {
+                      const balance = flexBalances[i];
+                      return (
+                        <td
+                          key={`flex-${day.toISOString()}`}
+                          className={cn(
+                            "px-2 py-2 text-center text-xs font-medium",
+                            isToday(day) && "bg-brand-50/30",
+                            balance > 0 ? "text-emerald-600 dark:text-emerald-400" : balance < 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground"
+                          )}
+                        >
+                          {balance >= 0 ? "+" : ""}{balance.toFixed(1)}
+                        </td>
+                      );
+                    })}
+                    {projects.some((p) => p.myAllocation != null || p.budgetTotalHours != null) && (
+                      <td className="px-2 py-2" />
+                    )}
+                    <td className={cn(
+                      "px-4 py-2 text-center text-xs font-bold",
+                      timeBalance > 0 ? "text-emerald-600 dark:text-emerald-400" : timeBalance < 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground"
+                    )}>
+                      {timeBalance >= 0 ? "+" : ""}{timeBalance.toFixed(1)}
                     </td>
                   </tr>
                   {/* Daily Submit Buttons row */}

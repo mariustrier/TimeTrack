@@ -10,8 +10,6 @@ import {
   FolderKanban,
   Users,
   BarChart3,
-  CheckSquare,
-  HardDrive,
   TrendingUp,
   Sparkles,
   Shield,
@@ -39,40 +37,11 @@ const navItems: NavItem[] = [
   { labelKey: "vacations", href: "/vacations", icon: Palmtree },
   { labelKey: "projects", href: "/projects", icon: FolderKanban, roles: ["admin", "manager"] },
   { labelKey: "team", href: "/team", icon: Users, roles: ["admin", "manager"] },
-  { labelKey: "admin", href: "/admin", icon: BarChart3, roles: ["admin"] },
+  { labelKey: "admin", href: "/admin", icon: BarChart3, roles: ["admin"], badge: true },
   { labelKey: "analytics", href: "/analytics", icon: TrendingUp, roles: ["admin", "manager"] },
   { labelKey: "aiAssistant", href: "/ai", icon: Sparkles, roles: ["admin", "manager"], badge: true },
-  {
-    labelKey: "approvals",
-    href: "/admin/approvals",
-    icon: CheckSquare,
-    roles: ["admin"],
-    badge: true,
-  },
-  {
-    labelKey: "vacationManagement",
-    href: "/admin/vacations",
-    icon: Palmtree,
-    roles: ["admin"],
-    badge: true,
-  },
-  {
-    labelKey: "backups",
-    href: "/admin/backups",
-    icon: HardDrive,
-    roles: ["admin"],
-  },
-  {
-    labelKey: "settings",
-    href: "/settings",
-    icon: Settings,
-  },
-  {
-    labelKey: "platform",
-    href: "/super-admin",
-    icon: Shield,
-    superAdminOnly: true,
-  },
+  { labelKey: "settings", href: "/settings", icon: Settings },
+  { labelKey: "platform", href: "/super-admin", icon: Shield, superAdminOnly: true },
 ];
 
 interface SidebarProps {
@@ -95,7 +64,12 @@ export function Sidebar({ userRole, isSuperAdmin: superAdmin }: SidebarProps) {
       const fetchCounts = () => {
         fetch("/api/admin/pending-counts")
           .then((res) => (res.ok ? res.json() : { counts: {} }))
-          .then((data) => setBadgeCounts(data.counts || {}))
+          .then((data) => {
+            const counts = data.counts || {};
+            // Aggregate approvals + vacation counts into admin badge
+            const adminCount = (counts.approvals || 0) + (counts.expenseApprovals || 0) + (counts.vacationManagement || 0);
+            setBadgeCounts({ ...counts, admin: adminCount });
+          })
           .catch(() => {});
       };
       fetchCounts();

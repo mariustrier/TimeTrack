@@ -14,6 +14,9 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { weekStart, date } = body;
 
+    console.log("[SUBMIT] Received body:", JSON.stringify(body));
+    console.log("[SUBMIT] weekStart:", weekStart, "date:", date);
+
     // Must have exactly one of weekStart or date
     if ((!weekStart && !date) || (weekStart && date)) {
       return NextResponse.json(
@@ -40,6 +43,8 @@ export async function POST(req: Request) {
       isDay = true;
     }
 
+    console.log("[SUBMIT] Date range:", { start: start.toISOString(), end: end.toISOString(), isDay });
+
     // Find all draft entries for this user+week
     const draftEntries = await db.timeEntry.findMany({
       where: {
@@ -49,6 +54,11 @@ export async function POST(req: Request) {
         approvalStatus: "draft",
       },
     });
+
+    console.log("[SUBMIT] Found draft entries:", draftEntries.length, "entries");
+    if (draftEntries.length > 0) {
+      console.log("[SUBMIT] Entry dates:", draftEntries.map(e => e.date.toISOString().split('T')[0]));
+    }
 
     if (draftEntries.length === 0) {
       return NextResponse.json(

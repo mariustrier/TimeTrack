@@ -6,7 +6,7 @@ import { isSuperAdmin } from "@/lib/auth";
 import { Toaster } from "sonner";
 import { LocaleProvider } from "@/lib/i18n";
 import { CookieConsent } from "@/components/ui/cookie-consent";
-import { GuidedTour, AdminSetupTour } from "@/components/ui/guided-tour";
+import { GuidedTour, AdminSetupTour, ProjectsTour, TeamTour } from "@/components/ui/guided-tour";
 import { GuideProvider } from "@/components/ui/guide-context";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CompanyProvider } from "@/lib/company-context";
@@ -53,6 +53,8 @@ export default async function DashboardLayout({
           <CookieConsent />
           <GuidedTour showTour={!user.tourCompletedAt} userRole={user.role} />
           <AdminSetupTour showTour={!user.setupTourCompletedAt && !!user.tourCompletedAt} userRole={user.role} />
+          <ProjectsTour />
+          <TeamTour />
         </div>
       </GuideProvider>
       </CompanyProvider>
