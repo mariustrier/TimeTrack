@@ -75,6 +75,33 @@ Sentry is configured (client/server/edge). DSN is set via `SENTRY_DSN` and `NEXT
 - Database fields on TimeEntry: `mileageKm`, `mileageStartAddress`, `mileageEndAddress`, `mileageStops`, `mileageRoundTrip`, `mileageSource`
 - Environment variable: `OPENROUTESERVICE_API_KEY`
 
+### Project Lock & Archive
+- **Locked projects**: Employees can't add/edit time entries, admins can still approve existing submissions
+- **Archived projects**: Completely hidden from employees, only visible to admins
+- Lock/Archive buttons in Admin → Project Budgets section
+- Database fields on Project: `locked`, `lockedAt`, `lockedBy`, `archived`, `archivedAt`, `archivedBy`
+- System-managed projects (e.g., Absence) cannot be locked or archived
+- Time entry API routes return 403 when attempting to modify entries on locked/archived projects
+
+### Project Allocation Improvements
+- Used hours calculation based on submitted/approved/locked entries only (not drafts)
+- Cannot reduce employee allocation below their used hours
+- Admin UI shows used hours per employee in allocation dialog
+- Validation error returned with specific used hours count
+
+### AI Insights Optimization
+- Insights only generated for companies with activity in last 24 hours
+- `lastActivityAt` field on Company model, updated via `/api/auth/me`
+- Cron job (`/api/cron/generate-insights`) filters by recent activity
+- System-managed projects excluded from AI analysis (prevents bad suggestions about Absence project)
+- Reduces unnecessary AI API costs for inactive companies
+
+### Guided Tour Improvements
+- Tour detects when dialogs open and disables click-blocking
+- Allows interaction with dialogs during tour (e.g., change currency)
+- Periodic rect updates catch element resizing (e.g., universal rate toggle expansion)
+- MutationObserver for DOM changes
+
 ## Development Roadmap
 
 ### Phase 1: Foundation & Quality - COMPLETE
