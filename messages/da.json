@@ -199,7 +199,7 @@
     "billRateLabel": "Fakturasats ({currency}/t)",
     "costRateLabel": "Omkostningssats ({currency}/t)",
     "weeklyTargetLabel": "Ugentligt mål (t)",
-    "vacationDays": "Feriedage",
+    "vacationDays": "Ekstra feriedage",
     "invite": "Inviter",
     "removeMember": "Fjern holdmedlem",
     "removeMemberConfirm": "Er du sikker på, at du vil fjerne {name}? Dette vil også slette alle deres tidsregistreringer.",
@@ -410,7 +410,12 @@
     "typeVacation": "Ferie",
     "typeSick": "Sygdom",
     "typePersonal": "Personlig",
-    "more": "mere"
+    "more": "mere",
+    "planner": "Planlægger",
+    "months": "md",
+    "extraDays": "ekstra dage",
+    "earned": "Optjent",
+    "used": "Brugt"
   },
   "adminVacations": {
     "title": "Ferieanmodninger",

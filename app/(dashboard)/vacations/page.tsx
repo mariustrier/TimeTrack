@@ -28,6 +28,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTranslations, useDateLocale } from "@/lib/i18n";
 import { PageGuide } from "@/components/ui/page-guide";
 import { VacationCalendar } from "@/components/vacations/VacationCalendar";
+import { VacationPlanner } from "@/components/vacations/VacationPlanner";
+
+const MONTHLY_ACCRUAL = 2.08;
 
 interface VacationRequest {
   id: string;
@@ -82,7 +85,10 @@ export default function VacationsPage() {
   const [type, setType] = useState("vacation");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
-  const [totalAllowance, setTotalAllowance] = useState(25);
+  const [bonusDays, setBonusDays] = useState(0);
+
+  const currentMonth = new Date().getMonth() + 1; // 1-indexed
+  const totalAllowance = Math.round((MONTHLY_ACCRUAL * currentMonth + bonusDays) * 100) / 100;
 
   const fetchRequests = useCallback(async () => {
     setLoading(true);
@@ -100,10 +106,10 @@ export default function VacationsPage() {
 
   useEffect(() => {
     fetchRequests();
-    // Fetch user's vacation allowance
-    fetch("/api/time-entries?startDate=2000-01-01&endDate=2000-01-02")
-      .then(() => {
-        // We'll use the default 25 days; in a real setup this would come from user profile
+    fetch("/api/user/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.vacationDays != null) setBonusDays(data.vacationDays);
       })
       .catch(() => {});
   }, [fetchRequests]);
@@ -112,7 +118,7 @@ export default function VacationsPage() {
     .filter((r) => r.status === "approved")
     .reduce((sum, r) => sum + countBusinessDays(r.startDate, r.endDate), 0);
 
-  const remainingDays = totalAllowance - approvedDays;
+  const remainingDays = Math.round((totalAllowance - approvedDays) * 100) / 100;
 
   async function handleSubmit() {
     if (!startDate || !endDate) return;
@@ -178,6 +184,7 @@ export default function VacationsPage() {
       <Tabs defaultValue="requests">
         <TabsList>
           <TabsTrigger value="requests">{t("myRequests")}</TabsTrigger>
+          <TabsTrigger value="planner">{t("planner")}</TabsTrigger>
           <TabsTrigger value="calendar">{t("teamCalendar")}</TabsTrigger>
         </TabsList>
 
@@ -188,7 +195,10 @@ export default function VacationsPage() {
         <Card>
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">{t("totalAllowance")}</p>
-            <p className="mt-1 text-2xl font-bold">{totalAllowance} {t("days")}</p>
+            <p className="mt-1 text-2xl font-bold">{totalAllowance.toFixed(1)} {t("days")}</p>
+            <p className="text-xs text-muted-foreground">
+              {MONTHLY_ACCRUAL} &times; {currentMonth} {t("months")}{bonusDays > 0 ? ` + ${bonusDays}` : ""}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -200,7 +210,7 @@ export default function VacationsPage() {
         <Card>
           <CardContent className="p-4">
             <p className="text-sm text-muted-foreground">{t("remainingDays")}</p>
-            <p className="mt-1 text-2xl font-bold">{remainingDays} {t("days")}</p>
+            <p className="mt-1 text-2xl font-bold">{remainingDays.toFixed(1)} {t("days")}</p>
           </CardContent>
         </Card>
       </div>
@@ -259,6 +269,10 @@ export default function VacationsPage() {
         </CardContent>
       </Card>
 
+        </TabsContent>
+
+        <TabsContent value="planner" className="mt-4">
+          <VacationPlanner requests={requests} bonusDays={bonusDays} />
         </TabsContent>
 
         <TabsContent value="calendar" className="mt-4">

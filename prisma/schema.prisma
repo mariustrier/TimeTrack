@@ -53,7 +53,7 @@ model User {
   hourlyRate     Float    @default(0)
   costRate      Float    @default(0)
   weeklyTarget  Float    @default(37)
-  vacationDays  Int      @default(25)
+  vacationDays  Int      @default(0)
   companyId     String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

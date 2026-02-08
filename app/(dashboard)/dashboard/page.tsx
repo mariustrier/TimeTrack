@@ -165,7 +165,8 @@ export default function DashboardPage() {
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const [saving, setSaving] = useState(false);
   const [vacationDaysUsed, setVacationDaysUsed] = useState(0);
-  const [vacationDaysTotal, setVacationDaysTotal] = useState(25);
+  const [bonusVacationDays, setBonusVacationDays] = useState(0);
+  const vacationDaysTotal = Math.round((2.08 * (new Date().getMonth() + 1) + bonusVacationDays) * 100) / 100;
   const [weeklyTarget, setWeeklyTarget] = useState(40);
   const [priorFlexBalance, setPriorFlexBalance] = useState(0);
   const [weekNote, setWeekNote] = useState<{ action: string; reason: string | null; createdAt: string } | null>(null);
@@ -243,12 +244,13 @@ export default function DashboardPage() {
       const start = format(weekStart, "yyyy-MM-dd");
       const end = format(weekEnd, "yyyy-MM-dd");
 
-      const [entriesRes, projectsRes, vacationsRes, absenceReasonsRes, holidaysRes] = await Promise.all([
+      const [entriesRes, projectsRes, vacationsRes, absenceReasonsRes, holidaysRes, userMeRes] = await Promise.all([
         fetch(`/api/time-entries?startDate=${start}&endDate=${end}`),
         fetch("/api/projects"),
         fetch("/api/vacations"),
         fetch("/api/absence-reasons"),
         fetch("/api/admin/holidays"),
+        fetch("/api/user/me"),
       ]);
 
       if (entriesRes.ok) {
@@ -296,6 +298,10 @@ export default function DashboardPage() {
             year: ch.year,
           })),
         );
+      }
+      if (userMeRes.ok) {
+        const meData = await userMeRes.json();
+        if (meData.vacationDays != null) setBonusVacationDays(meData.vacationDays);
       }
       setLastUpdated(new Date());
     } catch (error) {

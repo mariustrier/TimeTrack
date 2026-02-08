@@ -199,7 +199,7 @@
     "billRateLabel": "Bill Rate ({currency}/h)",
     "costRateLabel": "Cost Rate ({currency}/h)",
     "weeklyTargetLabel": "Weekly Target (h)",
-    "vacationDays": "Vacation Days",
+    "vacationDays": "Extra Vacation Days",
     "invite": "Invite",
     "removeMember": "Remove Team Member",
     "removeMemberConfirm": "Are you sure you want to remove {name}? This will also delete all their time entries.",
@@ -410,7 +410,12 @@
     "typeVacation": "Vacation",
     "typeSick": "Sick leave",
     "typePersonal": "Personal",
-    "more": "more"
+    "more": "more",
+    "planner": "Planner",
+    "months": "mo",
+    "extraDays": "extra days",
+    "earned": "Earned",
+    "used": "Used"
   },
   "adminVacations": {
     "title": "Vacation Requests",
