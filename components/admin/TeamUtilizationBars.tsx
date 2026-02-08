@@ -59,7 +59,7 @@ export function TeamUtilizationBars({ employees }: TeamUtilizationBarsProps) {
                   "text-xs px-1.5 py-0.5 rounded",
                   getUtilizationBg(emp.utilization)
                 )}>
-                  {emp.utilization}%
+                  {emp.utilization.toFixed(1)}%
                 </span>
               </div>
               <div className="h-2 rounded-full bg-muted overflow-hidden">
