@@ -41,7 +41,8 @@
     "lastUpdated": "Opdateret {time}",
     "error": "Fejl",
     "holiday": "Helligdag",
-    "loading": "Indlæser..."
+    "loading": "Indlæser...",
+    "cancelled": "Annulleret"
   },
   "nav": {
     "timetrack": "Cloud Timer",
@@ -417,6 +418,7 @@
     "pendingRequests": "Afventende anmodninger",
     "approvedRequests": "Godkendte anmodninger",
     "rejectedRequests": "Afviste anmodninger",
+    "cancelledRequests": "Annullerede anmodninger",
     "noRequestsTitle": "Ingen anmodninger",
     "noRequestsDescription": "Ingen {status} ferieanmodninger fundet.",
     "employee": "Medarbejder",

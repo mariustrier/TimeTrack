@@ -56,6 +56,8 @@ export default function VacationsPage() {
         return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900 dark:text-emerald-300 dark:hover:bg-emerald-900">{tc("approved")}</Badge>;
       case "rejected":
         return <Badge className="bg-red-100 text-red-700 hover:bg-red-100 dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-900">{tc("rejected")}</Badge>;
+      case "cancelled":
+        return <Badge className="bg-gray-100 text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-800">{tc("cancelled")}</Badge>;
       default:
         return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 dark:bg-amber-900 dark:text-amber-300 dark:hover:bg-amber-900">{tc("pending")}</Badge>;
     }
@@ -240,7 +242,7 @@ export default function VacationsPage() {
                       <p className="text-sm text-muted-foreground">{req.note}</p>
                     )}
                   </div>
-                  {req.status === "pending" && (
+                  {(req.status === "pending" || req.status === "approved") && (
                     <Button
                       variant="ghost"
                       size="icon"

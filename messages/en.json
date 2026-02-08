@@ -41,7 +41,8 @@
     "lastUpdated": "Updated {time}",
     "error": "Error",
     "holiday": "Holiday",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "cancelled": "Cancelled"
   },
   "nav": {
     "timetrack": "Cloud Timer",
@@ -417,6 +418,7 @@
     "pendingRequests": "Pending Requests",
     "approvedRequests": "Approved Requests",
     "rejectedRequests": "Rejected Requests",
+    "cancelledRequests": "Cancelled Requests",
     "noRequestsTitle": "No Requests",
     "noRequestsDescription": "No {status} vacation requests found.",
     "employee": "Employee",

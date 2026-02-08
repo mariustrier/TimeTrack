@@ -58,19 +58,22 @@ export async function GET() {
         }
       }
 
-      const [expenseCount, vacationCount] = await Promise.all([
+      const [expenseCount, vacationCount, cancelledVacationCount] = await Promise.all([
         db.expense.count({
           where: { companyId: user.companyId, approvalStatus: "submitted" },
         }),
         db.vacationRequest.count({
           where: { companyId: user.companyId, status: "pending" },
         }),
+        db.vacationRequest.count({
+          where: { companyId: user.companyId, status: "cancelled" },
+        }),
       ]);
 
       counts.approvals = timeEntryCount + expenseCount;
       counts.timeEntryApprovals = timeEntryCount;
       counts.expenseApprovals = expenseCount;
-      counts.vacationManagement = vacationCount;
+      counts.vacationManagement = vacationCount + cancelledVacationCount;
     }
 
     if (user.role === "admin" || user.role === "manager") {

@@ -55,6 +55,8 @@ export function AdminVacations() {
         return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900 dark:text-emerald-300 dark:hover:bg-emerald-900">{tc("approved")}</Badge>;
       case "rejected":
         return <Badge className="bg-red-100 text-red-700 hover:bg-red-100 dark:bg-red-900 dark:text-red-300 dark:hover:bg-red-900">{tc("rejected")}</Badge>;
+      case "cancelled":
+        return <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100 dark:bg-orange-900 dark:text-orange-300 dark:hover:bg-orange-900">{tc("cancelled")}</Badge>;
       default:
         return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 dark:bg-amber-900 dark:text-amber-300 dark:hover:bg-amber-900">{tc("pending")}</Badge>;
     }
@@ -133,6 +135,7 @@ export function AdminVacations() {
             <SelectItem value="pending">{tc("pending")}</SelectItem>
             <SelectItem value="approved">{tc("approved")}</SelectItem>
             <SelectItem value="rejected">{tc("rejected")}</SelectItem>
+            <SelectItem value="cancelled">{tc("cancelled")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -141,7 +144,7 @@ export function AdminVacations() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">
-            {statusFilter === "all" ? t("allRequests") : statusFilter === "pending" ? t("pendingRequests") : statusFilter === "approved" ? t("approvedRequests") : t("rejectedRequests")}
+            {statusFilter === "all" ? t("allRequests") : statusFilter === "pending" ? t("pendingRequests") : statusFilter === "approved" ? t("approvedRequests") : statusFilter === "cancelled" ? t("cancelledRequests") : t("rejectedRequests")}
             <span className="ml-2 text-sm font-normal text-muted-foreground">
               ({filteredRequests.length})
             </span>
