@@ -31,16 +31,16 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 5. `app/(dashboard)/ai/` - AI-powered business insights *(admin/manager)*
 6. `app/(dashboard)/analytics/` - **Tabbed**: Employee | Team | Project | Company insights *(admin/manager)*
 7. `app/(dashboard)/expenses/` - Expense tracking with receipt uploads
-8. `app/(dashboard)/vacations/` - Vacation requests + balance
+8. `app/(dashboard)/vacations/` - **Tabbed**: My Requests | Planner | Team Calendar
 9. `app/(dashboard)/settings/` - Tour replay, data export, account deletion
 10. `app/(dashboard)/super-admin/` - Platform-level admin *(superAdmin only)*
 
-### API Routes (69 route files across 18 domains)
+### API Routes (70 route files across 18 domains)
 - `app/api/` - All scoped by companyId
 - Key domains: `time-entries`, `projects`, `team`, `admin`, `expenses`, `vacations`, `contracts`, `resource-allocations`, `analytics`, `ai`, `insights`, `mileage`, `auth`, `cron`, `super-admin`, `user`, `upload`, `absence-reasons`
 
 ### Components
-- `components/admin/` - AdminOverview, AdminApprovals, AdminVacations, AdminBackups, AdminAuditLog
+- `components/admin/` - AdminOverview, AdminApprovals, AdminVacations, AdminBackups, AdminAuditLog, TeamUtilizationBars
 - `components/approvals/` - TimeEntryApprovals, ExpenseApprovals (nested tabs within admin)
 - `components/analytics/` - EmployeeInsights, TeamInsights, ProjectInsights, CompanyInsights
 - `components/contracts/` - ContractSection (upload, AI extraction, manual entry)
@@ -48,6 +48,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `components/project-timeline/` - TimelineGrid, MilestoneDialog
 - `components/resource-planner/` - ResourceGrid, AllocationDialog, ViewControls, CapacitySummary
 - `components/team/` - TeamList, ResourcePlanner
+- `components/vacations/` - VacationCalendar, VacationPlanner
 - `components/layout/` - Sidebar (role-based nav with badge counts)
 - `components/ui/` - shadcn/ui primitives, guided-tour, page-guide, info-tooltip, theme/locale toggles
 
@@ -61,7 +62,9 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `lib/i18n.ts` - useTranslations, useDateLocale hooks
 - `lib/currency.ts` - convertAndFormat with SUPPORTED_CURRENCIES
 - `lib/week-helpers.ts` - Week date utilities
-- `lib/calculations.ts` - Flex balance, daily target calculations
+- `lib/calculations.ts` - Flex balance, daily target calculations (getDailyTarget)
+- `lib/holidays.ts` - Danish holidays, company holidays, isCompanyHoliday/isDanishHoliday
+- `lib/seed-holidays.ts` - ensureHolidayAbsenceReason helper
 - `lib/expense-utils.ts` - Expense formatting helpers
 - `lib/analytics-utils.ts` - Analytics data processing
 
@@ -80,7 +83,7 @@ Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation,
 - Daily flex balance row showing running overtime/undertime
 - Per-day submit buttons + bulk "Submit Week"
 - Flex calculation: Mon-Thu get rounded daily target, Friday gets remainder (e.g., 37h → 9.25×4 + 0h Fri... actually Mon-Thu=9.5, Fri=7 for 45h)
-- Budget progress bars per project
+- Budget progress bars per project (includes draft/unsubmitted hours)
 - **"Full day" button** in time entry modal: auto-fills hours based on day (Mon-Thu target or Friday target)
 - Mileage tracking in time entry modal (OpenRouteService API)
 - Absence reason selection for absence project entries (comment optional for absence, required for other projects)
@@ -95,8 +98,16 @@ Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation,
 ### Vacations
 - Request with start/end date, type (vacation/sick/personal), note
 - Business day calculation (weekdays only)
-- Balance tracking: used vs remaining
+- **Accrual system**: Employees earn 2.08 vacation days/month (Danish standard, ~25/year)
+- `User.vacationDays` field = admin-added **bonus days** on top of accrual (default 0)
+- Total allowance = `2.08 × current month number + bonusDays`
 - Admin approval/rejection workflow
+- **Auto-fill on approval**: When admin approves a vacation, absence time entries are automatically created for each business day (skipping weekends/holidays), using the employee's daily target hours, under the Absence project with matching absence reason (vacation→VACATION, sick→SICK)
+- **Auto-cleanup on rejection/cancellation**: System-created entries are deleted when vacation is rejected or cancelled
+- **Employee can cancel approved vacations**: Status set to "cancelled" (soft delete), admin notified via sidebar badge, auto-created entries cleaned up, vacation days restored
+- **Cancelled status**: Visible in admin vacation tab with filter, counted in sidebar badge alongside pending
+- **Planner tab**: Monthly grid (Jan–Dec) showing cumulative vacation balance per month — earned days stack, planned vacations deduct, balance carries forward. Current month highlighted, green/red balance indicators.
+- **Team Calendar tab**: Month view of all approved vacations across the company
 
 ### Projects
 - **Projects tab**: CRUD, client assignment, color coding, budget hours, employee allocations
@@ -113,7 +124,7 @@ Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation,
   - Budget health indicators (green/yellow/red)
 
 ### Team
-- **Team tab**: Member list with roles, bill/cost rates, weekly targets, vacation days, employment type (employee/freelancer)
+- **Team tab**: Member list with roles, bill/cost rates, weekly targets, extra vacation days, employment type (employee/freelancer)
 - Currency conversion display with master currency setting
 - **Resource Planner tab**: Week/2-week/month grid view
   - Drag allocations across employees and dates
@@ -122,9 +133,9 @@ Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation,
   - Tentative/confirmed/completed status
 
 ### Admin
-- **Overview tab**: Financial stats (revenue, costs, margins), team utilization, project budgets with allocations, absence reason management, e-conomic CSV export, company settings (currency, universal bill rate, expense threshold, AI anonymization, logo)
+- **Overview tab**: Financial stats (revenue, costs, margins), team utilization (1 decimal place), project budgets with allocations, absence reason management, e-conomic CSV export, company settings (currency, universal bill rate, expense threshold, AI anonymization, logo)
 - **Approvals tab**: Nested Time Entry + Expense sub-tabs with per-day approve/reject, bulk actions
-- **Vacations tab**: Approve/reject vacation requests with status filtering
+- **Vacations tab**: Approve/reject vacation requests with status filtering (pending/approved/rejected/cancelled)
 - **Backups tab**: Full data export as ZIP (users.csv, projects.csv, time-entries.csv, metadata.json)
 - **Audit Log tab**: Paginated viewer of all audit events (submit, approve, reject, lock, reopen, billing edits, expense amend/void) with action/entity/actor filters and color-coded badges
 
@@ -177,7 +188,6 @@ Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation,
 - **Settings page** — Skeleton only (tour replay, data export, account deletion). Missing: notification preferences, language persistence, timezone, default project, profile management.
 
 ### Medium Value
-- **Vacation calendar view** — No visual calendar showing team vacation overlap
 - **Expense reports** — No grouped view by month/project/category
 - **AI usage dashboard** — AIApiUsage model tracks costs but no admin UI
 - **Public holidays** — Not factored into vacation day calculations
