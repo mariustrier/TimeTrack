@@ -31,6 +31,8 @@ import { ResourceGrid } from "@/components/resource-planner/ResourceGrid";
 import { AllocationDialog } from "@/components/resource-planner/AllocationDialog";
 import { ViewControls } from "@/components/resource-planner/ViewControls";
 import { CapacitySummary } from "@/components/resource-planner/CapacitySummary";
+import { getDailyTarget } from "@/lib/calculations";
+import { isCompanyHoliday, type CustomHoliday } from "@/lib/holidays";
 
 export interface Employee {
   id: string;
@@ -69,6 +71,15 @@ export interface TimeEntryForAllocation {
   hours: number;
 }
 
+export interface VacationPeriod {
+  id: string;
+  userId: string;
+  startDate: string;
+  endDate: string;
+  type: string;
+  user: { firstName: string | null; lastName: string | null };
+}
+
 type ViewMode = "week" | "twoWeeks" | "month";
 
 export function ResourcePlanner() {
@@ -81,6 +92,9 @@ export function ResourcePlanner() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [allocations, setAllocations] = useState<ResourceAllocation[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntryForAllocation[]>([]);
+  const [vacations, setVacations] = useState<VacationPeriod[]>([]);
+  const [disabledHolidayCodes, setDisabledHolidayCodes] = useState<string[]>([]);
+  const [customHolidays, setCustomHolidays] = useState<CustomHoliday[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Dialog state
@@ -124,11 +138,13 @@ export function ResourcePlanner() {
     try {
       setLoading(true);
 
-      const [employeesRes, projectsRes, allocationsRes, timeEntriesRes] = await Promise.all([
+      const [employeesRes, projectsRes, allocationsRes, timeEntriesRes, vacationsRes, holidaysRes] = await Promise.all([
         fetch("/api/team"),
         fetch("/api/projects"),
         fetch(`/api/resource-allocations?startDate=${startStr}&endDate=${endStr}`),
         fetch(`/api/time-entries/for-allocations?startDate=${startStr}&endDate=${endStr}`),
+        fetch(`/api/vacations?status=approved&startDate=${startStr}&endDate=${endStr}`),
+        fetch("/api/admin/holidays"),
       ]);
 
       if (!employeesRes.ok || !projectsRes.ok || !allocationsRes.ok) {
@@ -145,6 +161,22 @@ export function ResourcePlanner() {
       let timeEntriesData: TimeEntryForAllocation[] = [];
       if (timeEntriesRes.ok) {
         timeEntriesData = await timeEntriesRes.json();
+      }
+
+      // Vacations
+      if (vacationsRes.ok) {
+        setVacations(await vacationsRes.json());
+      }
+
+      // Holidays config
+      if (holidaysRes.ok) {
+        const hData = await holidaysRes.json();
+        setDisabledHolidayCodes(hData.disabledHolidays ?? []);
+        setCustomHolidays(
+          (hData.customHolidays ?? []).map((ch: { name: string; month: number; day: number; year?: number | null }) => ({
+            name: ch.name, month: ch.month, day: ch.day, year: ch.year,
+          })),
+        );
       }
 
       setEmployees(employeesData);
@@ -265,21 +297,15 @@ export function ResourcePlanner() {
     }
   };
 
-  // Danish work schedule: 7.5h Mon-Thu, 7h Friday = 37h/week
-  const getDailyTarget = (date: Date): number => {
-    const dayOfWeek = date.getDay();
-    if (dayOfWeek === 0 || dayOfWeek === 6) return 0; // Weekend
-    if (dayOfWeek === 5) return 7; // Friday
-    return 7.5; // Mon-Thu
-  };
-
-  // Calculate utilization for capacity summary
+  // Calculate utilization for capacity summary (holiday-aware)
   const calculateUtilization = () => {
     const utilizationMap: Record<string, { allocated: number; target: number }> = {};
 
     employees.forEach((emp) => {
-      // Calculate target using actual daily targets for each day
-      const target = days.reduce((sum, day) => sum + getDailyTarget(day), 0);
+      const target = days.reduce(
+        (sum, day) => sum + getDailyTarget(day, emp.weeklyTarget, disabledHolidayCodes, customHolidays),
+        0,
+      );
       utilizationMap[emp.id] = {
         allocated: 0,
         target,
@@ -292,6 +318,7 @@ export function ResourcePlanner() {
 
       days.forEach((day) => {
         if (isWeekend(day)) return;
+        if (isCompanyHoliday(day, disabledHolidayCodes, customHolidays)) return;
         if (day >= allocStart && day <= allocEnd) {
           if (utilizationMap[alloc.userId]) {
             utilizationMap[alloc.userId].allocated += alloc.hoursPerDay;
@@ -359,6 +386,9 @@ export function ResourcePlanner() {
             projects={projects}
             allocations={allocations}
             timeEntries={timeEntries}
+            vacations={vacations}
+            disabledHolidayCodes={disabledHolidayCodes}
+            customHolidays={customHolidays}
             days={days}
             onCellClick={handleCellClick}
             onAllocationClick={handleAllocationClick}

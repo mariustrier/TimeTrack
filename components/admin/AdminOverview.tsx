@@ -64,10 +64,11 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { formatHours, formatPercentage } from "@/lib/calculations";
 import { SUPPORTED_CURRENCIES, convertAndFormat, convertAndFormatBudget } from "@/lib/currency";
-import { useTranslations, useDateLocale } from "@/lib/i18n";
+import { useTranslations, useDateLocale, useLocale } from "@/lib/i18n";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { TeamUtilizationBars } from "@/components/admin/TeamUtilizationBars";
 import { AtRiskProjects } from "@/components/admin/AtRiskProjects";
+import { Switch } from "@/components/ui/switch";
 
 interface EmployeeStat {
   id: string;
@@ -197,6 +198,31 @@ export function AdminOverview() {
   const [allocInputs, setAllocInputs] = useState<Record<string, string>>({});
   const [allocSaving, setAllocSaving] = useState(false);
 
+  // Holiday settings state
+  interface DanishHolidayInfo {
+    code: string;
+    nameEn: string;
+    nameDa: string;
+    date: string;
+    enabled: boolean;
+  }
+  interface CustomHolidayInfo {
+    id: string;
+    name: string;
+    month: number;
+    day: number;
+    year: number | null;
+  }
+  const { locale } = useLocale();
+  const [danishHolidays, setDanishHolidays] = useState<DanishHolidayInfo[]>([]);
+  const [customCompanyHolidays, setCustomCompanyHolidays] = useState<CustomHolidayInfo[]>([]);
+  const [holidayDialogOpen, setHolidayDialogOpen] = useState(false);
+  const [newHolidayName, setNewHolidayName] = useState("");
+  const [newHolidayDate, setNewHolidayDate] = useState("");
+  const [newHolidayRecurring, setNewHolidayRecurring] = useState(true);
+  const [holidaySaving, setHolidaySaving] = useState(false);
+  const [fillingHolidays, setFillingHolidays] = useState(false);
+
   const weekStart = useMemo(() => startOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
   const weekEnd = useMemo(() => endOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
 
@@ -256,13 +282,18 @@ export function AdminOverview() {
       .catch(() => {});
   }, []);
 
-  // Load absence reasons and team members
+  // Load absence reasons, team members, and holidays
   useEffect(() => {
     Promise.all([
       fetch("/api/admin/absence-reasons").then((res) => res.ok ? res.json() : []),
       fetch("/api/team").then((res) => res.ok ? res.json() : []),
-    ]).then(([reasons, team]) => {
+      fetch("/api/admin/holidays").then((res) => res.ok ? res.json() : null),
+    ]).then(([reasons, team, holidays]) => {
       setAbsenceReasons(reasons);
+      if (holidays) {
+        setDanishHolidays(holidays.danishHolidays ?? []);
+        setCustomCompanyHolidays(holidays.customHolidays ?? []);
+      }
       setTeamMembers(team.map((m: { id: string; firstName: string | null; lastName: string | null; email: string }) => ({
         id: m.id,
         firstName: m.firstName,
@@ -271,6 +302,79 @@ export function AdminOverview() {
       })));
     }).catch(() => {});
   }, []);
+
+  // Holiday functions
+  async function handleToggleDanishHoliday(code: string, enabled: boolean) {
+    try {
+      const res = await fetch("/api/admin/holidays", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "toggleDanish", code, enabled }),
+      });
+      if (!res.ok) throw new Error();
+      setDanishHolidays((prev) =>
+        prev.map((h) => (h.code === code ? { ...h, enabled } : h))
+      );
+    } catch {
+      toast.error(tc("error"));
+    }
+  }
+
+  async function handleAddCustomHoliday() {
+    if (!newHolidayName.trim() || !newHolidayDate) return;
+    setHolidaySaving(true);
+    try {
+      const d = new Date(newHolidayDate);
+      const res = await fetch("/api/admin/holidays", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "addCustom",
+          name: newHolidayName.trim(),
+          month: d.getMonth() + 1,
+          day: d.getDate(),
+          year: newHolidayRecurring ? null : d.getFullYear(),
+        }),
+      });
+      if (!res.ok) throw new Error();
+      const holiday = await res.json();
+      setCustomCompanyHolidays((prev) => [...prev, holiday]);
+      setHolidayDialogOpen(false);
+      setNewHolidayName("");
+      setNewHolidayDate("");
+      setNewHolidayRecurring(true);
+      toast.success(t("holidayAdded"));
+    } catch {
+      toast.error(tc("error"));
+    } finally {
+      setHolidaySaving(false);
+    }
+  }
+
+  async function handleDeleteCustomHoliday(id: string) {
+    try {
+      const res = await fetch(`/api/admin/holidays?id=${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      setCustomCompanyHolidays((prev) => prev.filter((h) => h.id !== id));
+      toast.success(t("holidayDeleted"));
+    } catch {
+      toast.error(tc("error"));
+    }
+  }
+
+  async function handleFillHolidays() {
+    setFillingHolidays(true);
+    try {
+      const res = await fetch("/api/admin/fill-holiday-entries", { method: "POST" });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      toast.success(t("holidayEntriesFilled").replace("{count}", data.entriesCreated.toString()));
+    } catch {
+      toast.error(tc("error"));
+    } finally {
+      setFillingHolidays(false);
+    }
+  }
 
   // Absence reason functions
   async function handleSaveAbsenceReason() {
@@ -1249,6 +1353,144 @@ export function AdminOverview() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Holidays */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground">{t("holidays")}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{t("holidaysDesc")}</p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleFillHolidays}
+                disabled={fillingHolidays}
+              >
+                <Calendar className="mr-1 h-4 w-4" />
+                {fillingHolidays ? tc("processing") : t("fillHolidayEntries")}
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setNewHolidayName("");
+                  setNewHolidayDate("");
+                  setNewHolidayRecurring(true);
+                  setHolidayDialogOpen(true);
+                }}
+              >
+                <Plus className="mr-1 h-4 w-4" />
+                {t("addCustomHoliday")}
+              </Button>
+            </div>
+          </div>
+
+          {/* Danish Holidays */}
+          <div className="mt-4">
+            <h4 className="text-sm font-medium text-muted-foreground mb-2">{t("danishHolidays")}</h4>
+            <div className="space-y-1">
+              {danishHolidays.map((holiday) => (
+                <div
+                  key={holiday.code}
+                  className="flex items-center justify-between rounded-lg border p-2.5"
+                >
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-amber-500" />
+                    <span className="text-sm font-medium">
+                      {locale === "da" ? holiday.nameDa : holiday.nameEn}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {format(new Date(holiday.date), "d. MMM")}
+                    </span>
+                  </div>
+                  <Switch
+                    checked={holiday.enabled}
+                    onCheckedChange={(checked) => handleToggleDanishHoliday(holiday.code, checked)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Custom Holidays */}
+          {customCompanyHolidays.length > 0 && (
+            <div className="mt-4">
+              <h4 className="text-sm font-medium text-muted-foreground mb-2">{t("customHolidays")}</h4>
+              <div className="space-y-1">
+                {customCompanyHolidays.map((holiday) => (
+                  <div
+                    key={holiday.id}
+                    className="flex items-center justify-between rounded-lg border p-2.5"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-brand-500" />
+                      <span className="text-sm font-medium">{holiday.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {holiday.day}/{holiday.month}
+                        {holiday.year ? ` ${holiday.year}` : ` (${t("recurring")})`}
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteCustomHoliday(holiday.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Custom Holiday Dialog */}
+      <Dialog open={holidayDialogOpen} onOpenChange={setHolidayDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("addCustomHoliday")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>{t("holidayName")}</Label>
+              <Input
+                value={newHolidayName}
+                onChange={(e) => setNewHolidayName(e.target.value)}
+                placeholder={t("holidayNamePlaceholder")}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t("holidayDate")}</Label>
+              <Input
+                type="date"
+                value={newHolidayDate}
+                onChange={(e) => setNewHolidayDate(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={newHolidayRecurring}
+                onCheckedChange={setNewHolidayRecurring}
+              />
+              <Label>{t("recurringYearly")}</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setHolidayDialogOpen(false)}>
+              {tc("cancel")}
+            </Button>
+            <Button
+              onClick={handleAddCustomHoliday}
+              disabled={holidaySaving || !newHolidayName.trim() || !newHolidayDate}
+            >
+              {holidaySaving ? tc("saving") : tc("save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Absence Reasons */}
       <Card>

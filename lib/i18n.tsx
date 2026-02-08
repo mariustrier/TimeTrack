@@ -25,11 +25,23 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // Start with localStorage value for instant load
     const stored = localStorage.getItem("locale") as Locale | null;
     if (stored === "en" || stored === "da") {
       setLocaleState(stored);
     }
     setMounted(true);
+
+    // Then fetch from API for persistence across devices
+    fetch("/api/user/preferences")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((prefs) => {
+        if (prefs?.locale && (prefs.locale === "en" || prefs.locale === "da")) {
+          setLocaleState(prefs.locale);
+          localStorage.setItem("locale", prefs.locale);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const setLocale = useCallback((newLocale: Locale) => {

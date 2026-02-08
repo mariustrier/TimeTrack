@@ -25,6 +25,9 @@ model Company {
   logoUrl                     String?
   lastActivityAt              DateTime?  // Track when any user from this company was last active
 
+  // Holiday configuration
+  disabledHolidays String[] @default([]) // Danish holiday codes that are disabled for this company
+
   users               User[]
   projects            Project[]
   timeEntries         TimeEntry[]
@@ -35,6 +38,7 @@ model Company {
   expenses            Expense[]
   companyExpenses     CompanyExpense[]
   absenceReasons      AbsenceReason[]
+  companyHolidays     CompanyHoliday[]
 }
 
 model User {
@@ -61,6 +65,12 @@ model User {
   deletionRequestedAt  DateTime?
   deletionReason       String?
   deletedAt            DateTime?
+
+  // User preferences
+  locale              String   @default("en")    // "en" | "da"
+  notifyApprovals     Boolean  @default(true)
+  notifyVacations     Boolean  @default(true)
+  notifyWeeklyDigest  Boolean  @default(true)
 
   company             Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
   timeEntries         TimeEntry[]
@@ -429,4 +439,21 @@ model ProjectMilestone {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
+}
+
+// ─── COMPANY HOLIDAYS ───
+// Custom company-specific holidays (in addition to Danish national holidays)
+model CompanyHoliday {
+  id        String   @id @default(cuid())
+  companyId String
+  name      String
+  month     Int      // 1-12
+  day       Int      // 1-31
+  year      Int?     // null = recurring annually, set = one-time
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, month, day, year])
+  @@index([companyId])
 }

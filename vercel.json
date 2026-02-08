@@ -5,6 +5,10 @@
     {
       "path": "/api/cron/generate-insights",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/fill-holiday-entries",
+      "schedule": "0 1 * * *"
     }
   ]
 }

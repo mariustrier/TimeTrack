@@ -24,8 +24,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTranslations, useDateLocale } from "@/lib/i18n";
 import { PageGuide } from "@/components/ui/page-guide";
+import { VacationCalendar } from "@/components/vacations/VacationCalendar";
 
 interface VacationRequest {
   id: string;
@@ -171,6 +173,14 @@ export default function VacationsPage() {
         </Button>
       </div>
 
+      <Tabs defaultValue="requests">
+        <TabsList>
+          <TabsTrigger value="requests">{t("myRequests")}</TabsTrigger>
+          <TabsTrigger value="calendar">{t("teamCalendar")}</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="requests" className="space-y-6 mt-4">
+
       {/* Summary Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card>
@@ -246,6 +256,13 @@ export default function VacationsPage() {
           )}
         </CardContent>
       </Card>
+
+        </TabsContent>
+
+        <TabsContent value="calendar" className="mt-4">
+          <VacationCalendar />
+        </TabsContent>
+      </Tabs>
 
       {/* Request Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>

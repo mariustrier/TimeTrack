@@ -38,7 +38,10 @@
     "processing": "Processing...",
     "currency": "Currency",
     "refresh": "Refresh",
-    "lastUpdated": "Updated {time}"
+    "lastUpdated": "Updated {time}",
+    "error": "Error",
+    "holiday": "Holiday",
+    "loading": "Loading..."
   },
   "nav": {
     "timetrack": "Cloud Timer",
@@ -334,7 +337,21 @@
     "noEmployees": "No employee data",
     "projectHealth": "Project Health",
     "allProjectsHealthy": "All projects on track",
-    "noBudgetConcerns": "No budget concerns"
+    "noBudgetConcerns": "No budget concerns",
+    "holidays": "Holidays",
+    "holidaysDesc": "Manage public holidays for your company.",
+    "danishHolidays": "Danish Holidays",
+    "customHolidays": "Custom Holidays",
+    "addCustomHoliday": "Add Custom Holiday",
+    "holidayName": "Holiday Name",
+    "holidayNamePlaceholder": "e.g. Company Day",
+    "holidayDate": "Date",
+    "recurringYearly": "Recurring every year",
+    "recurring": "Recurring",
+    "fillHolidayEntries": "Fill Holiday Entries",
+    "holidayAdded": "Custom holiday added",
+    "holidayDeleted": "Custom holiday deleted",
+    "holidayEntriesFilled": "{count} holiday entries created"
   },
   "approvals": {
     "title": "Approvals",
@@ -387,7 +404,12 @@
     "businessDays": "business day(s)",
     "noteOptional": "Note (optional)",
     "notePlaceholder": "Reason for request...",
-    "submitRequest": "Submit Request"
+    "submitRequest": "Submit Request",
+    "teamCalendar": "Team Calendar",
+    "typeVacation": "Vacation",
+    "typeSick": "Sick leave",
+    "typePersonal": "Personal",
+    "more": "more"
   },
   "adminVacations": {
     "title": "Vacation Requests",
@@ -779,7 +801,11 @@
     "workingDays": "working days",
     "day": "day",
     "enterTotalHours": "Enter total hours for period",
-    "rolloverNote": "Unlogged hours will roll over to remaining days"
+    "rolloverNote": "Unlogged hours will roll over to remaining days",
+    "vacation": "Vacation",
+    "holidayLabel": "Holiday",
+    "sick": "Sick",
+    "personal": "Personal"
   },
   "timeline": {
     "title": "Project Timeline",
@@ -981,6 +1007,22 @@
     "deletionDeniedDesc": "Your admin denied your deletion request. Reason: {reason}",
     "financialDataNotice": "Financial data (expenses, receipts) will be anonymized but retained for 5 years per Danish law (Bogføringsloven).",
     "submitting": "Submitting...",
+    "profile": "Profile",
+    "profileDesc": "Update your display name.",
+    "profileSaved": "Profile saved!",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "language": "Language",
+    "languageDesc": "Choose your preferred language.",
+    "notifications": "Notifications",
+    "notificationsDesc": "Choose which notifications you want to receive.",
+    "notifyApprovals": "Approvals",
+    "notifyApprovalsDesc": "When your time entries are approved or rejected.",
+    "notifyVacations": "Vacation requests",
+    "notifyVacationsDesc": "When your vacation requests are approved or rejected.",
+    "notifyWeeklyDigest": "Weekly digest",
+    "notifyWeeklyDigestDesc": "Receive a weekly summary of your hours and balance.",
+    "notificationsSaved": "Notification preferences saved!",
     "replayTour": "Replay Guided Tour",
     "replayTourDesc": "Take the guided tour again to discover features.",
     "replaying": "Starting tour..."

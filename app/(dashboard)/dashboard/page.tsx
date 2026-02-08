@@ -56,9 +56,11 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { convertAndFormatBudget } from "@/lib/currency";
-import { useTranslations, useDateLocale } from "@/lib/i18n";
+import { useTranslations, useDateLocale, useLocale } from "@/lib/i18n";
 import { PageGuide } from "@/components/ui/page-guide";
 import { useCompanyLogo } from "@/lib/company-context";
+import { isCompanyHoliday, getCompanyHolidayName, type CustomHoliday } from "@/lib/holidays";
+import { getDailyTarget } from "@/lib/calculations";
 
 interface Project {
   id: string;
@@ -186,6 +188,10 @@ export default function DashboardPage() {
   // Absence state
   const [absenceReasons, setAbsenceReasons] = useState<AbsenceReason[]>([]);
   const [selectedAbsenceReasonId, setSelectedAbsenceReasonId] = useState("");
+  // Holiday config
+  const [disabledHolidayCodes, setDisabledHolidayCodes] = useState<string[]>([]);
+  const [customHolidays, setCustomHolidays] = useState<CustomHoliday[]>([]);
+  const { locale } = useLocale();
 
   const weekStart = useMemo(() => startOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
   const weekEnd = useMemo(() => endOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
@@ -237,11 +243,12 @@ export default function DashboardPage() {
       const start = format(weekStart, "yyyy-MM-dd");
       const end = format(weekEnd, "yyyy-MM-dd");
 
-      const [entriesRes, projectsRes, vacationsRes, absenceReasonsRes] = await Promise.all([
+      const [entriesRes, projectsRes, vacationsRes, absenceReasonsRes, holidaysRes] = await Promise.all([
         fetch(`/api/time-entries?startDate=${start}&endDate=${end}`),
         fetch("/api/projects"),
         fetch("/api/vacations"),
         fetch("/api/absence-reasons"),
+        fetch("/api/admin/holidays"),
       ]);
 
       if (entriesRes.ok) {
@@ -277,6 +284,18 @@ export default function DashboardPage() {
           return sum + Math.max(days, 1);
         }, 0);
         setVacationDaysUsed(usedDays);
+      }
+      if (holidaysRes.ok) {
+        const data = await holidaysRes.json();
+        setDisabledHolidayCodes(data.disabledHolidays ?? []);
+        setCustomHolidays(
+          (data.customHolidays ?? []).map((ch: { name: string; month: number; day: number; year?: number | null }) => ({
+            name: ch.name,
+            month: ch.month,
+            day: ch.day,
+            year: ch.year,
+          })),
+        );
       }
       setLastUpdated(new Date());
     } catch (error) {
@@ -352,29 +371,21 @@ export default function DashboardPage() {
 
   // Daily flex balance: running cumulative (target - worked) through the week
   // Mon-Thu get rounded target, Friday gets the remainder to match weekly total
+  // Holidays are treated like weekends (0h target)
   const monThuTarget = Math.round(weeklyTarget / 5 * 2) / 2; // round to nearest 0.5
   const fridayTarget = weeklyTarget - monThuTarget * 4;
   const flexBalances = useMemo(() => {
     let cumulative = priorFlexBalance;
     return weekDays.map((day) => {
-      const dayOfWeek = day.getDay(); // 0=Sun, 1=Mon, ..., 5=Fri, 6=Sat
       const dateStr = format(day, "yyyy-MM-dd");
       const worked = entries
         .filter((e) => e.date.split("T")[0] === dateStr)
         .reduce((sum, e) => sum + e.hours, 0);
-      if (dayOfWeek >= 1 && dayOfWeek <= 4) {
-        // Mon-Thu
-        cumulative += worked - monThuTarget;
-      } else if (dayOfWeek === 5) {
-        // Friday
-        cumulative += worked - fridayTarget;
-      } else {
-        // Weekend: overtime only (no target to subtract)
-        cumulative += worked;
-      }
+      const target = getDailyTarget(day, weeklyTarget, disabledHolidayCodes, customHolidays);
+      cumulative += worked - target;
       return cumulative;
     });
-  }, [weekDays, entries, monThuTarget, fridayTarget, priorFlexBalance]);
+  }, [weekDays, entries, weeklyTarget, priorFlexBalance, disabledHolidayCodes, customHolidays]);
 
   // Helper to check if a project is the Absence project
   const isAbsenceProject = (projectId: string) => {
@@ -836,18 +847,27 @@ export default function DashboardPage() {
                     <th className="px-4 py-3 text-left font-medium text-muted-foreground w-48">
                       {tc("project")}
                     </th>
-                    {weekDays.map((day) => (
-                      <th
-                        key={day.toISOString()}
-                        className={cn(
-                          "px-2 py-3 text-center font-medium w-20",
-                          isToday(day) ? "text-brand-600 bg-brand-50/50" : "text-muted-foreground"
-                        )}
-                      >
-                        <div>{format(day, "EEE", formatOpts)}</div>
-                        <div className="text-xs">{format(day, "MMM d", formatOpts)}</div>
-                      </th>
-                    ))}
+                    {weekDays.map((day) => {
+                      const holidayName = getCompanyHolidayName(day, locale as "en" | "da", disabledHolidayCodes, customHolidays);
+                      return (
+                        <th
+                          key={day.toISOString()}
+                          className={cn(
+                            "px-2 py-3 text-center font-medium w-20",
+                            isToday(day) ? "text-brand-600 bg-brand-50/50" : "text-muted-foreground",
+                            holidayName && "bg-amber-50 dark:bg-amber-950/30"
+                          )}
+                        >
+                          <div>{format(day, "EEE", formatOpts)}</div>
+                          <div className="text-xs">{format(day, "MMM d", formatOpts)}</div>
+                          {holidayName && (
+                            <div className="text-[10px] text-amber-600 dark:text-amber-400 truncate mt-0.5" title={holidayName}>
+                              {holidayName}
+                            </div>
+                          )}
+                        </th>
+                      );
+                    })}
                     {projects.some((p) => p.myAllocation != null || p.budgetTotalHours != null) && (
                       <th className="px-2 py-3 text-center font-medium text-muted-foreground w-24">
                         {t("budget")}
@@ -1181,8 +1201,8 @@ export default function DashboardPage() {
                     variant="outline"
                     onClick={() => {
                       if (!selectedDate) return;
-                      const dow = new Date(selectedDate).getDay();
-                      setHours(dow === 5 ? fridayTarget.toString() : monThuTarget.toString());
+                      const target = getDailyTarget(new Date(selectedDate), weeklyTarget, disabledHolidayCodes, customHolidays);
+                      setHours(target.toString());
                     }}
                   >
                     {t("fullDay")}

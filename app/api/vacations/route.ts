@@ -4,27 +4,46 @@ import { getAuthUser } from "@/lib/auth";
 import { validate } from "@/lib/validate";
 import { createVacationSchema } from "@/lib/schemas";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const user = await getAuthUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { searchParams } = new URL(req.url);
+    const status = searchParams.get("status");
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+
     const where: Record<string, unknown> = {
       companyId: user.companyId,
     };
 
-    if (user.role !== "admin") {
+    // Admins/managers see all; employees see only their own unless calendar mode
+    if (user.role !== "admin" && user.role !== "manager" && !status) {
       where.userId = user.id;
+    }
+
+    // Filter by status
+    if (status) {
+      where.status = status;
+    }
+
+    // Filter by date range (overlapping)
+    if (startDate && endDate) {
+      where.AND = [
+        { startDate: { lte: new Date(endDate) } },
+        { endDate: { gte: new Date(startDate) } },
+      ];
     }
 
     const requests = await db.vacationRequest.findMany({
       where,
       include: {
-        user: { select: { id: true, firstName: true, lastName: true, email: true } },
+        user: { select: { id: true, firstName: true, lastName: true, email: true, imageUrl: true } },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { startDate: "asc" },
     });
 
     return NextResponse.json(requests);

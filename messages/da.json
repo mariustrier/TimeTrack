@@ -38,7 +38,10 @@
     "processing": "Behandler...",
     "currency": "Valuta",
     "refresh": "Opdater",
-    "lastUpdated": "Opdateret {time}"
+    "lastUpdated": "Opdateret {time}",
+    "error": "Fejl",
+    "holiday": "Helligdag",
+    "loading": "Indlæser..."
   },
   "nav": {
     "timetrack": "Cloud Timer",
@@ -334,7 +337,21 @@
     "noEmployees": "Ingen medarbejderdata",
     "projectHealth": "Projektsundhed",
     "allProjectsHealthy": "Alle projekter på sporet",
-    "noBudgetConcerns": "Ingen budgetbekymringer"
+    "noBudgetConcerns": "Ingen budgetbekymringer",
+    "holidays": "Helligdage",
+    "holidaysDesc": "Administrer helligdage for din virksomhed.",
+    "danishHolidays": "Danske helligdage",
+    "customHolidays": "Egne helligdage",
+    "addCustomHoliday": "Tilføj helligdag",
+    "holidayName": "Navn",
+    "holidayNamePlaceholder": "f.eks. Firmadag",
+    "holidayDate": "Dato",
+    "recurringYearly": "Gentages hvert år",
+    "recurring": "Gentages",
+    "fillHolidayEntries": "Udfyld helligdagsregistreringer",
+    "holidayAdded": "Helligdag tilføjet",
+    "holidayDeleted": "Helligdag slettet",
+    "holidayEntriesFilled": "{count} helligdagsregistreringer oprettet"
   },
   "approvals": {
     "title": "Godkendelser",
@@ -387,7 +404,12 @@
     "businessDays": "arbejdsdag(e)",
     "noteOptional": "Note (valgfrit)",
     "notePlaceholder": "Årsag til anmodning...",
-    "submitRequest": "Indsend anmodning"
+    "submitRequest": "Indsend anmodning",
+    "teamCalendar": "Holdkalender",
+    "typeVacation": "Ferie",
+    "typeSick": "Sygdom",
+    "typePersonal": "Personlig",
+    "more": "mere"
   },
   "adminVacations": {
     "title": "Ferieanmodninger",
@@ -779,7 +801,11 @@
     "workingDays": "arbejdsdage",
     "day": "dag",
     "enterTotalHours": "Indtast timer i alt for perioden",
-    "rolloverNote": "Ikke-registrerede timer overføres til resterende dage"
+    "rolloverNote": "Ikke-registrerede timer overføres til resterende dage",
+    "vacation": "Ferie",
+    "holidayLabel": "Helligdag",
+    "sick": "Syg",
+    "personal": "Personlig"
   },
   "timeline": {
     "title": "Projekt Tidslinje",
@@ -981,6 +1007,22 @@
     "deletionDeniedDesc": "Din admin afviste din sletningsanmodning. Årsag: {reason}",
     "financialDataNotice": "Finansielle data (udgifter, kvitteringer) anonymiseres men opbevares i 5 år iht. dansk lov (Bogføringsloven).",
     "submitting": "Indsender...",
+    "profile": "Profil",
+    "profileDesc": "Opdater dit visningsnavn.",
+    "profileSaved": "Profil gemt!",
+    "firstName": "Fornavn",
+    "lastName": "Efternavn",
+    "language": "Sprog",
+    "languageDesc": "Vælg dit foretrukne sprog.",
+    "notifications": "Notifikationer",
+    "notificationsDesc": "Vælg hvilke notifikationer du vil modtage.",
+    "notifyApprovals": "Godkendelser",
+    "notifyApprovalsDesc": "Når dine tidsregistreringer godkendes eller afvises.",
+    "notifyVacations": "Ferieanmodninger",
+    "notifyVacationsDesc": "Når dine ferieanmodninger godkendes eller afvises.",
+    "notifyWeeklyDigest": "Ugentlig opsummering",
+    "notifyWeeklyDigestDesc": "Modtag en ugentlig opsummering af dine timer og saldo.",
+    "notificationsSaved": "Notifikationsindstillinger gemt!",
     "replayTour": "Genafspil rundtur",
     "replayTourDesc": "Tag rundturen igen for at opdage funktioner.",
     "replaying": "Starter rundtur..."

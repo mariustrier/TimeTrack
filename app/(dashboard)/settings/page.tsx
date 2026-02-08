@@ -1,15 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Download, Trash2, AlertTriangle, Clock, RotateCcw } from "lucide-react";
-import { useTranslations } from "@/lib/i18n";
+import { Download, Trash2, AlertTriangle, Clock, RotateCcw, User, Globe, Bell, Save } from "lucide-react";
+import { useTranslations, useLocale } from "@/lib/i18n";
 import { PageGuide } from "@/components/ui/page-guide";
 import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 export default function SettingsPage() {
   const t = useTranslations("settings");
   const tl = useTranslations("legal");
   const tc = useTranslations("common");
+  const { locale, setLocale } = useLocale();
   const [downloading, setDownloading] = useState(false);
   const [deletionStatus, setDeletionStatus] = useState<any>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -17,11 +22,34 @@ export default function SettingsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [replaying, setReplaying] = useState(false);
 
+  // Profile state
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
+
+  // Notification state
+  const [notifyApprovals, setNotifyApprovals] = useState(true);
+  const [notifyVacations, setNotifyVacations] = useState(true);
+  const [notifyWeeklyDigest, setNotifyWeeklyDigest] = useState(true);
+  const [notifySaving, setNotifySaving] = useState(false);
+
   useEffect(() => {
-    fetch("/api/user/deletion-status")
-      .then((r) => r.json())
-      .then(setDeletionStatus)
-      .catch(() => {});
+    // Fetch user preferences
+    Promise.all([
+      fetch("/api/user/deletion-status").then((r) => r.ok ? r.json() : null),
+      fetch("/api/user/preferences").then((r) => r.ok ? r.json() : null),
+    ]).then(([deletion, prefs]) => {
+      if (deletion) setDeletionStatus(deletion);
+      if (prefs) {
+        setFirstName(prefs.firstName || "");
+        setLastName(prefs.lastName || "");
+        setEmail(prefs.email || "");
+        setNotifyApprovals(prefs.notifyApprovals ?? true);
+        setNotifyVacations(prefs.notifyVacations ?? true);
+        setNotifyWeeklyDigest(prefs.notifyWeeklyDigest ?? true);
+      }
+    }).catch(() => {});
   }, []);
 
   const handleExport = async () => {
@@ -77,10 +105,173 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSaveProfile = async () => {
+    setProfileSaving(true);
+    try {
+      const res = await fetch("/api/user/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firstName, lastName }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success(t("profileSaved"));
+    } catch {
+      toast.error(tc("error"));
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const handleLanguageChange = async (newLocale: string) => {
+    setLocale(newLocale as "en" | "da");
+    try {
+      await fetch("/api/user/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locale: newLocale }),
+      });
+    } catch {
+      // localStorage already updated via setLocale
+    }
+  };
+
+  const handleSaveNotifications = async () => {
+    setNotifySaving(true);
+    try {
+      const res = await fetch("/api/user/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notifyApprovals, notifyVacations, notifyWeeklyDigest }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success(t("notificationsSaved"));
+    } catch {
+      toast.error(tc("error"));
+    } finally {
+      setNotifySaving(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <PageGuide pageId="settings" titleKey="settingsTitle" descKey="settingsDesc" tips={["settingsTip1", "settingsTip2", "settingsTip3"]} />
       <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
+
+      {/* Profile Section */}
+      <div className="rounded-xl border border-border bg-card p-6">
+        <div className="flex items-start gap-4">
+          <User className="h-6 w-6 text-brand-500 mt-0.5" />
+          <div className="flex-1">
+            <h2 className="text-lg font-semibold text-foreground">{t("profile")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("profileDesc")}</p>
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 max-w-lg">
+              <div className="space-y-2">
+                <Label>{t("firstName")}</Label>
+                <Input
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("lastName")}</Label>
+                <Input
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                />
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">{email}</p>
+            <Button
+              onClick={handleSaveProfile}
+              disabled={profileSaving}
+              className="mt-4"
+              size="sm"
+            >
+              <Save className="mr-2 h-4 w-4" />
+              {profileSaving ? tc("saving") : tc("save")}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Language Section */}
+      <div className="rounded-xl border border-border bg-card p-6">
+        <div className="flex items-start gap-4">
+          <Globe className="h-6 w-6 text-brand-500 mt-0.5" />
+          <div className="flex-1">
+            <h2 className="text-lg font-semibold text-foreground">{t("language")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("languageDesc")}</p>
+            <div className="mt-4 flex gap-2">
+              <Button
+                variant={locale === "en" ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleLanguageChange("en")}
+              >
+                English
+              </Button>
+              <Button
+                variant={locale === "da" ? "default" : "outline"}
+                size="sm"
+                onClick={() => handleLanguageChange("da")}
+              >
+                Dansk
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Notification Preferences Section */}
+      <div className="rounded-xl border border-border bg-card p-6">
+        <div className="flex items-start gap-4">
+          <Bell className="h-6 w-6 text-brand-500 mt-0.5" />
+          <div className="flex-1">
+            <h2 className="text-lg font-semibold text-foreground">{t("notifications")}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t("notificationsDesc")}</p>
+            <div className="mt-4 space-y-4">
+              <div className="flex items-center justify-between max-w-lg">
+                <div>
+                  <p className="text-sm font-medium">{t("notifyApprovals")}</p>
+                  <p className="text-xs text-muted-foreground">{t("notifyApprovalsDesc")}</p>
+                </div>
+                <Switch
+                  checked={notifyApprovals}
+                  onCheckedChange={setNotifyApprovals}
+                />
+              </div>
+              <div className="flex items-center justify-between max-w-lg">
+                <div>
+                  <p className="text-sm font-medium">{t("notifyVacations")}</p>
+                  <p className="text-xs text-muted-foreground">{t("notifyVacationsDesc")}</p>
+                </div>
+                <Switch
+                  checked={notifyVacations}
+                  onCheckedChange={setNotifyVacations}
+                />
+              </div>
+              <div className="flex items-center justify-between max-w-lg">
+                <div>
+                  <p className="text-sm font-medium">{t("notifyWeeklyDigest")}</p>
+                  <p className="text-xs text-muted-foreground">{t("notifyWeeklyDigestDesc")}</p>
+                </div>
+                <Switch
+                  checked={notifyWeeklyDigest}
+                  onCheckedChange={setNotifyWeeklyDigest}
+                />
+              </div>
+            </div>
+            <Button
+              onClick={handleSaveNotifications}
+              disabled={notifySaving}
+              className="mt-4"
+              size="sm"
+            >
+              <Save className="mr-2 h-4 w-4" />
+              {notifySaving ? tc("saving") : tc("save")}
+            </Button>
+          </div>
+        </div>
+      </div>
 
       {/* Replay Tour Section */}
       <div className="rounded-xl border border-border bg-card p-6">

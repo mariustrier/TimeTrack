@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
+import { getDailyTarget } from "@/lib/calculations";
+import type { CustomHoliday } from "@/lib/holidays";
 
 import { validate } from "@/lib/validate";
 import { createTimeEntrySchema } from "@/lib/schemas";
@@ -62,20 +64,31 @@ export async function GET(req: Request) {
         });
         const totalWorked = priorHoursAgg._sum.hours || 0;
 
-        // Count working days (Mon-Fri) between user start and week start
-        const wt = user.weeklyTarget;
-        const monThuTarget = Math.round(wt / 5 * 2) / 2;
-        const friTarget = wt - monThuTarget * 4;
+        // Fetch company holiday config for holiday-aware flex calculation
+        const company = await db.company.findUnique({
+          where: { id: user.companyId },
+          select: { disabledHolidays: true },
+        });
+        const companyCustomHolidays = await db.companyHoliday.findMany({
+          where: { companyId: user.companyId },
+        });
+        const disabledCodes = company?.disabledHolidays ?? [];
+        const customHols: CustomHoliday[] = companyCustomHolidays.map((ch) => ({
+          name: ch.name,
+          month: ch.month,
+          day: ch.day,
+          year: ch.year,
+        }));
 
+        // Count expected hours (Mon-Fri minus holidays)
+        const wt = user.weeklyTarget;
         let expected = 0;
         const d = new Date(userStart);
         d.setHours(0, 0, 0, 0);
         const end = new Date(weekStartDate);
         end.setHours(0, 0, 0, 0);
         while (d < end) {
-          const dow = d.getDay();
-          if (dow >= 1 && dow <= 4) expected += monThuTarget;
-          else if (dow === 5) expected += friTarget;
+          expected += getDailyTarget(d, wt, disabledCodes, customHols);
           d.setDate(d.getDate() + 1);
         }
 
