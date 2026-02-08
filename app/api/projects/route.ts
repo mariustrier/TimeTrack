@@ -26,12 +26,11 @@ export async function GET() {
           orderBy: { name: "asc" },
         }),
 
-        // Total committed hours per project (submitted/approved/locked only — matches admin budget view)
+        // Total hours per project (including drafts so budget bars reflect real usage)
         db.timeEntry.groupBy({
           by: ["projectId"],
           where: {
             companyId: user.companyId,
-            approvalStatus: { in: ["submitted", "approved", "locked"] },
           },
           _sum: { hours: true },
         }),
@@ -42,13 +41,12 @@ export async function GET() {
           select: { projectId: true, hours: true },
         }),
 
-        // Current user's committed hours per project (submitted/approved/locked only)
+        // Current user's hours per project (including drafts)
         db.timeEntry.groupBy({
           by: ["projectId"],
           where: {
             userId: user.id,
             companyId: user.companyId,
-            approvalStatus: { in: ["submitted", "approved", "locked"] },
           },
           _sum: { hours: true },
         }),
