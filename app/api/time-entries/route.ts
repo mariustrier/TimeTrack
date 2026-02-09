@@ -249,8 +249,6 @@ export async function POST(req: Request) {
         mileageRoundTrip: mileageRoundTrip ?? false,
         mileageSource: mileageSource ?? null,
         absenceReasonId: isAbsenceProject ? absenceReasonId : null,
-        // Admin-created entries on behalf are auto-approved
-        ...(isOnBehalf && { approvalStatus: "approved" }),
       },
       include: {
         project: { select: { id: true, name: true, color: true, billable: true } },
