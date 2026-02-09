@@ -163,7 +163,7 @@ export function ProjectTimeline() {
       if (!projectsRes.ok) throw new Error("Failed to fetch projects");
 
       const projectsData = await projectsRes.json();
-      const activeProjects = projectsData.filter((p: Project) => !p.archived);
+      const activeProjects = projectsData.filter((p: Project & { systemManaged?: boolean }) => !p.archived && !p.systemManaged);
       setProjects(activeProjects);
 
       // Fetch milestones for all projects
