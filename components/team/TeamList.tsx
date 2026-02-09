@@ -67,8 +67,8 @@ export function TeamList() {
   const [employmentType, setEmploymentType] = useState("employee");
   const [hourlyRate, setHourlyRate] = useState("");
   const [costRate, setCostRate] = useState("");
-  const [weeklyTarget, setWeeklyTarget] = useState("40");
-  const [vacationDays, setVacationDays] = useState("25");
+  const [weeklyTarget, setWeeklyTarget] = useState("37");
+  const [vacationDays, setVacationDays] = useState("0");
 
   async function fetchTeam() {
     setLoading(true);
@@ -104,8 +104,8 @@ export function TeamList() {
     setEmploymentType("employee");
     setHourlyRate("");
     setCostRate("");
-    setWeeklyTarget("40");
-    setVacationDays("25");
+    setWeeklyTarget("37");
+    setVacationDays("0");
     setModalOpen(true);
   }
 
