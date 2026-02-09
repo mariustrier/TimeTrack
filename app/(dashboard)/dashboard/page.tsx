@@ -961,12 +961,12 @@ export default function DashboardPage() {
                           )}>
                             {project.systemType === "absence" ? t("absenceProject") : project.name}
                           </span>
-                          {project.phasesEnabled && project.currentPhase && (
+                          {project.phasesEnabled && !project.systemManaged && project.currentPhase && (
                             <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                               {project.currentPhase.name}
                             </span>
                           )}
-                          {project.phasesEnabled && project.phaseCompleted && (
+                          {project.phasesEnabled && !project.systemManaged && project.phaseCompleted && (
                             <span className="text-xs text-green-600 bg-green-50 dark:bg-green-900/30 dark:text-green-400 px-1.5 py-0.5 rounded">
                               ✓
                             </span>
