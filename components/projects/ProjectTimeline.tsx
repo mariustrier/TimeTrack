@@ -7,27 +7,27 @@ import {
   subMonths,
   startOfMonth,
   endOfMonth,
+  startOfWeek,
+  endOfWeek,
   eachDayOfInterval,
+  eachWeekOfInterval,
+  eachMonthOfInterval,
   isToday,
-  differenceInDays,
-  isBefore,
-  isAfter,
+  isWithinInterval,
+  getISOWeek,
 } from "date-fns";
 import {
   ChevronLeft,
   ChevronRight,
-  Plus,
-  Calendar,
-  GanttChart,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import { useTranslations, useDateLocale } from "@/lib/i18n";
 import { TimelineGrid } from "@/components/project-timeline/TimelineGrid";
 import { MilestoneDialog } from "@/components/project-timeline/MilestoneDialog";
+import { TimelineViewControls, type TimelineViewMode } from "@/components/project-timeline/TimelineViewControls";
 
 export interface Project {
   id: string;
@@ -51,6 +51,15 @@ export interface Milestone {
   sortOrder: number;
 }
 
+export interface TimelineColumn {
+  key: string;
+  label: string;
+  start: Date;
+  end: Date;
+  containsToday: boolean;
+  month: Date;
+}
+
 export function ProjectTimeline() {
   const t = useTranslations("timeline");
   const dateLocale = useDateLocale();
@@ -59,22 +68,77 @@ export function ProjectTimeline() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<TimelineViewMode>("day");
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null);
 
-  // Calculate visible date range (3 months centered on current)
+  // Calculate visible date range based on view mode
   const dateRange = useMemo(() => {
-    const start = startOfMonth(subMonths(currentDate, 1));
-    const end = endOfMonth(addMonths(currentDate, 1));
-    return { start, end };
-  }, [currentDate]);
+    switch (viewMode) {
+      case "day":
+        return {
+          start: startOfMonth(subMonths(currentDate, 1)),
+          end: endOfMonth(addMonths(currentDate, 1)),
+        };
+      case "week":
+        return {
+          start: startOfWeek(subMonths(currentDate, 3), { weekStartsOn: 1 }),
+          end: endOfWeek(addMonths(currentDate, 3), { weekStartsOn: 1 }),
+        };
+      case "month":
+        return {
+          start: startOfMonth(subMonths(currentDate, 6)),
+          end: endOfMonth(addMonths(currentDate, 6)),
+        };
+    }
+  }, [currentDate, viewMode]);
 
-  const days = useMemo(() => {
-    return eachDayOfInterval({ start: dateRange.start, end: dateRange.end });
-  }, [dateRange]);
+  // Generate columns based on view mode
+  const columns = useMemo((): TimelineColumn[] => {
+    const today = new Date();
+
+    switch (viewMode) {
+      case "day":
+        return eachDayOfInterval({ start: dateRange.start, end: dateRange.end }).map((day) => ({
+          key: format(day, "yyyy-MM-dd"),
+          label: format(day, "d"),
+          start: day,
+          end: day,
+          containsToday: isToday(day),
+          month: startOfMonth(day),
+        }));
+      case "week":
+        return eachWeekOfInterval(
+          { start: dateRange.start, end: dateRange.end },
+          { weekStartsOn: 1 }
+        ).map((weekStart) => {
+          const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+          return {
+            key: format(weekStart, "yyyy") + "-W" + getISOWeek(weekStart),
+            label: "W" + getISOWeek(weekStart),
+            start: weekStart,
+            end: weekEnd,
+            containsToday: isWithinInterval(today, { start: weekStart, end: weekEnd }),
+            month: startOfMonth(weekStart),
+          };
+        });
+      case "month":
+        return eachMonthOfInterval({ start: dateRange.start, end: dateRange.end }).map((monthStart) => {
+          const monthEnd = endOfMonth(monthStart);
+          return {
+            key: format(monthStart, "yyyy-MM"),
+            label: format(monthStart, "MMM", { locale: dateLocale }),
+            start: monthStart,
+            end: monthEnd,
+            containsToday: isWithinInterval(today, { start: monthStart, end: monthEnd }),
+            month: monthStart,
+          };
+        });
+    }
+  }, [dateRange, viewMode, dateLocale]);
 
   // Fetch data
   const fetchData = useCallback(async () => {
@@ -106,9 +170,21 @@ export function ProjectTimeline() {
     fetchData();
   }, [fetchData]);
 
-  // Navigation
-  const goToPrevious = () => setCurrentDate((d) => subMonths(d, 1));
-  const goToNext = () => setCurrentDate((d) => addMonths(d, 1));
+  // Navigation - step size depends on view mode
+  const goToPrevious = () => {
+    switch (viewMode) {
+      case "day":   setCurrentDate((d) => subMonths(d, 1)); break;
+      case "week":  setCurrentDate((d) => subMonths(d, 3)); break;
+      case "month": setCurrentDate((d) => subMonths(d, 6)); break;
+    }
+  };
+  const goToNext = () => {
+    switch (viewMode) {
+      case "day":   setCurrentDate((d) => addMonths(d, 1)); break;
+      case "week":  setCurrentDate((d) => addMonths(d, 3)); break;
+      case "month": setCurrentDate((d) => addMonths(d, 6)); break;
+    }
+  };
   const goToToday = () => setCurrentDate(new Date());
 
   // Milestone handlers
@@ -219,6 +295,7 @@ export function ProjectTimeline() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
+          <TimelineViewControls viewMode={viewMode} onViewModeChange={setViewMode} />
         </div>
 
         <div className="flex items-center gap-4">
@@ -246,7 +323,8 @@ export function ProjectTimeline() {
           <TimelineGrid
             projects={projects}
             milestones={milestones}
-            days={days}
+            columns={columns}
+            viewMode={viewMode}
             dateRange={dateRange}
             onAddMilestone={handleAddMilestone}
             onEditMilestone={handleEditMilestone}

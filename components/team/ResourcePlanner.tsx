@@ -6,6 +6,8 @@ import {
   endOfWeek,
   addWeeks,
   subWeeks,
+  addMonths,
+  subMonths,
   addDays,
   format,
   eachDayOfInterval,
@@ -120,8 +122,8 @@ export function ResourcePlanner() {
         };
       case "month":
         return {
-          start: weekStart,
-          end: addDays(weekStart, 27), // 4 weeks
+          start: startOfWeek(subMonths(currentDate, 1), { weekStartsOn: 1 }),
+          end: endOfWeek(addMonths(currentDate, 2), { weekStartsOn: 1 }),
         };
     }
   }, [currentDate, viewMode]);
@@ -205,7 +207,7 @@ export function ResourcePlanner() {
         setCurrentDate((d) => subWeeks(d, 2));
         break;
       case "month":
-        setCurrentDate((d) => subWeeks(d, 4));
+        setCurrentDate((d) => subMonths(d, 1));
         break;
     }
   };
@@ -219,7 +221,7 @@ export function ResourcePlanner() {
         setCurrentDate((d) => addWeeks(d, 2));
         break;
       case "month":
-        setCurrentDate((d) => addWeeks(d, 4));
+        setCurrentDate((d) => addMonths(d, 1));
         break;
     }
   };
@@ -390,6 +392,7 @@ export function ResourcePlanner() {
             disabledHolidayCodes={disabledHolidayCodes}
             customHolidays={customHolidays}
             days={days}
+            viewMode={viewMode}
             onCellClick={handleCellClick}
             onAllocationClick={handleAllocationClick}
           />

@@ -840,7 +840,10 @@
     "fetchError": "Failed to load data",
     "saveError": "Failed to save milestone",
     "deleteError": "Failed to delete milestone",
-    "updateError": "Failed to update project"
+    "updateError": "Failed to update project",
+    "viewDay": "Day",
+    "viewWeek": "Week",
+    "viewMonth": "Month"
   },
   "ai": {
     "title": "AI Assistant",

@@ -4,19 +4,19 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "@/lib/i18n";
 
-export type ViewMode = "week" | "twoWeeks" | "month";
+export type TimelineViewMode = "day" | "week" | "month";
 
-interface ViewControlsProps {
-  viewMode: ViewMode;
-  onViewModeChange: (mode: ViewMode) => void;
+interface TimelineViewControlsProps {
+  viewMode: TimelineViewMode;
+  onViewModeChange: (mode: TimelineViewMode) => void;
 }
 
-export function ViewControls({ viewMode, onViewModeChange }: ViewControlsProps) {
-  const t = useTranslations("resourcePlanner");
+export function TimelineViewControls({ viewMode, onViewModeChange }: TimelineViewControlsProps) {
+  const t = useTranslations("timeline");
 
-  const options: { value: ViewMode; label: string }[] = [
+  const options: { value: TimelineViewMode; label: string }[] = [
+    { value: "day", label: t("viewDay") || "Day" },
     { value: "week", label: t("viewWeek") || "Week" },
-    { value: "twoWeeks", label: t("viewTwoWeeks") || "2 Weeks" },
     { value: "month", label: t("viewMonth") || "Month" },
   ];
 

@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo } from "react";
-import { format, isToday, isSameMonth, isSameDay, differenceInDays, isBefore, isAfter } from "date-fns";
+import { format, isSameMonth, isSameYear } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useDateLocale, useTranslations } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Plus, Diamond, CheckCircle } from "lucide-react";
+import type { TimelineViewMode } from "@/components/project-timeline/TimelineViewControls";
 
 interface Project {
   id: string;
@@ -29,10 +30,20 @@ interface Milestone {
   sortOrder: number;
 }
 
+interface TimelineColumn {
+  key: string;
+  label: string;
+  start: Date;
+  end: Date;
+  containsToday: boolean;
+  month: Date;
+}
+
 interface TimelineGridProps {
   projects: Project[];
   milestones: Milestone[];
-  days: Date[];
+  columns: TimelineColumn[];
+  viewMode: TimelineViewMode;
   dateRange: { start: Date; end: Date };
   onAddMilestone: (project: Project) => void;
   onEditMilestone: (milestone: Milestone) => void;
@@ -42,7 +53,8 @@ interface TimelineGridProps {
 export function TimelineGrid({
   projects,
   milestones,
-  days,
+  columns,
+  viewMode,
   dateRange,
   onAddMilestone,
   onEditMilestone,
@@ -61,7 +73,7 @@ export function TimelineGrid({
     return map;
   }, [milestones]);
 
-  // Calculate budget health (percentage used)
+  // Budget health
   const getBudgetHealth = (project: Project) => {
     if (!project.budgetHours || project.budgetHours === 0) return null;
     const percentage = (project.hoursUsed / project.budgetHours) * 100;
@@ -70,103 +82,138 @@ export function TimelineGrid({
     return "green";
   };
 
-  // Check if a day is within project date range
-  const isDayInProject = (project: Project, day: Date) => {
+  // Check if column overlaps with project date range
+  const isColumnInProject = (project: Project, col: TimelineColumn) => {
     if (!project.startDate && !project.endDate) return false;
     const start = project.startDate ? new Date(project.startDate) : null;
     const end = project.endDate ? new Date(project.endDate) : null;
 
     if (start && end) {
-      return day >= start && day <= end;
+      return col.start <= end && col.end >= start;
     } else if (start) {
-      return day >= start;
+      return col.end >= start;
     } else if (end) {
-      return day <= end;
+      return col.start <= end;
     }
     return false;
   };
 
-  // Check if this is project start/end day
-  const isProjectStart = (project: Project, day: Date) => {
+  // Check if project starts/ends within this column
+  const isProjectStartCol = (project: Project, col: TimelineColumn) => {
     if (!project.startDate) return false;
-    return isSameDay(new Date(project.startDate), day);
+    const start = new Date(project.startDate);
+    return start >= col.start && start <= col.end;
   };
 
-  const isProjectEnd = (project: Project, day: Date) => {
+  const isProjectEndCol = (project: Project, col: TimelineColumn) => {
     if (!project.endDate) return false;
-    return isSameDay(new Date(project.endDate), day);
+    const end = new Date(project.endDate);
+    return end >= col.start && end <= col.end;
   };
 
-  // Get milestone for a specific day
-  const getMilestoneForDay = (projectId: string, day: Date) => {
+  // Get milestones that fall within a column
+  const getMilestonesForColumn = (projectId: string, col: TimelineColumn) => {
     const projectMilestones = milestonesByProject[projectId] || [];
-    return projectMilestones.find((m) => isSameDay(new Date(m.dueDate), day));
+    return projectMilestones.filter((m) => {
+      const due = new Date(m.dueDate);
+      return due >= col.start && due <= col.end;
+    });
   };
 
-  // Generate month headers
-  const monthHeaders = useMemo(() => {
-    const months: { month: Date; colSpan: number; startIndex: number }[] = [];
+  // Column width class per view mode
+  const columnWidthClass = viewMode === "day"
+    ? "min-w-[24px] max-w-[24px]"
+    : viewMode === "week"
+    ? "min-w-[48px] max-w-[48px]"
+    : "min-w-[64px] max-w-[64px]";
+
+  // Generate group headers (months for day/week, years for month view)
+  const groupHeaders = useMemo(() => {
+    if (viewMode === "month") {
+      // Group by year
+      const groups: { label: string; colSpan: number }[] = [];
+      let currentYear: number | null = null;
+      let count = 0;
+
+      columns.forEach((col) => {
+        const year = col.start.getFullYear();
+        if (currentYear !== year) {
+          if (currentYear !== null) groups.push({ label: String(currentYear), colSpan: count });
+          currentYear = year;
+          count = 1;
+        } else {
+          count++;
+        }
+      });
+      if (currentYear !== null) groups.push({ label: String(currentYear), colSpan: count });
+      return groups;
+    }
+
+    // Group by month for day/week views
+    const groups: { label: string; colSpan: number }[] = [];
     let currentMonth: Date | null = null;
     let count = 0;
-    let startIndex = 0;
 
-    days.forEach((day, index) => {
-      if (!currentMonth || !isSameMonth(day, currentMonth)) {
+    columns.forEach((col) => {
+      if (!currentMonth || !isSameMonth(col.start, currentMonth)) {
         if (currentMonth) {
-          months.push({ month: currentMonth, colSpan: count, startIndex });
+          groups.push({
+            label: format(currentMonth, "MMMM yyyy", { locale: dateLocale }),
+            colSpan: count,
+          });
         }
-        currentMonth = day;
+        currentMonth = col.start;
         count = 1;
-        startIndex = index;
       } else {
         count++;
       }
     });
-
     if (currentMonth) {
-      months.push({ month: currentMonth, colSpan: count, startIndex });
+      groups.push({
+        label: format(currentMonth, "MMMM yyyy", { locale: dateLocale }),
+        colSpan: count,
+      });
     }
-
-    return months;
-  }, [days]);
+    return groups;
+  }, [columns, viewMode, dateLocale]);
 
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse min-w-[1000px]">
-        {/* Month Headers */}
+        {/* Group Headers + Column Headers */}
         <thead>
           <tr>
             <th className="sticky left-0 z-20 bg-card border-b border-r border-border p-3 text-left min-w-[200px]" rowSpan={2}>
               <span className="text-sm font-medium text-muted-foreground">{t("project") || "Project"}</span>
             </th>
-            {monthHeaders.map(({ month, colSpan }, idx) => (
+            {groupHeaders.map(({ label, colSpan }, idx) => (
               <th
                 key={idx}
                 colSpan={colSpan}
                 className="border-b border-r border-border p-2 text-center bg-muted/30"
               >
-                <span className="text-sm font-semibold">
-                  {format(month, "MMMM yyyy", { locale: dateLocale })}
-                </span>
+                <span className="text-sm font-semibold">{label}</span>
               </th>
             ))}
           </tr>
 
-          {/* Day Headers */}
+          {/* Column Headers */}
           <tr>
-            {days.map((day) => (
+            {columns.map((col) => (
               <th
-                key={day.toISOString()}
+                key={col.key}
                 className={cn(
-                  "border-b border-r border-border p-1 text-center min-w-[24px] max-w-[24px]",
-                  isToday(day) && "bg-brand-50 dark:bg-brand-950"
+                  "border-b border-r border-border p-1 text-center",
+                  columnWidthClass,
+                  col.containsToday && "bg-brand-50 dark:bg-brand-950"
                 )}
               >
                 <span className={cn(
                   "text-[10px] font-medium",
-                  isToday(day) ? "text-brand-600 dark:text-brand-400" : "text-muted-foreground"
+                  viewMode !== "day" && "text-xs",
+                  col.containsToday ? "text-brand-600 dark:text-brand-400" : "text-muted-foreground"
                 )}>
-                  {format(day, "d")}
+                  {col.label}
                 </span>
               </th>
             ))}
@@ -214,19 +261,19 @@ export function TimelineGrid({
                   </div>
                 </td>
 
-                {/* Day Cells */}
-                {days.map((day) => {
-                  const inProject = isDayInProject(project, day);
-                  const isStart = isProjectStart(project, day);
-                  const isEnd = isProjectEnd(project, day);
-                  const milestone = getMilestoneForDay(project.id, day);
+                {/* Column Cells */}
+                {columns.map((col) => {
+                  const inProject = isColumnInProject(project, col);
+                  const isStart = isProjectStartCol(project, col);
+                  const isEnd = isProjectEndCol(project, col);
+                  const colMilestones = getMilestonesForColumn(project.id, col);
 
                   return (
                     <td
-                      key={day.toISOString()}
+                      key={col.key}
                       className={cn(
                         "border-b border-r border-border p-0 h-[40px] relative",
-                        isToday(day) && "bg-brand-50/30 dark:bg-brand-950/30"
+                        col.containsToday && "bg-brand-50/30 dark:bg-brand-950/30"
                       )}
                     >
                       {/* Project Bar */}
@@ -241,14 +288,14 @@ export function TimelineGrid({
                         />
                       )}
 
-                      {/* Milestone Marker */}
-                      {milestone && (
+                      {/* Milestone Markers */}
+                      {colMilestones.length === 1 && (
                         <button
                           className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10"
-                          onClick={() => onEditMilestone(milestone)}
-                          title={milestone.title}
+                          onClick={() => onEditMilestone(colMilestones[0])}
+                          title={colMilestones[0].title}
                         >
-                          {milestone.completed ? (
+                          {colMilestones[0].completed ? (
                             <CheckCircle
                               className="h-4 w-4 text-green-600 dark:text-green-400"
                               fill="currentColor"
@@ -262,9 +309,23 @@ export function TimelineGrid({
                           )}
                         </button>
                       )}
+                      {colMilestones.length > 1 && (
+                        <button
+                          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center gap-0.5"
+                          onClick={() => onEditMilestone(colMilestones[0])}
+                          title={colMilestones.map((m) => m.title).join(", ")}
+                        >
+                          <Diamond
+                            className="h-4 w-4"
+                            style={{ color: project.color }}
+                            fill="currentColor"
+                          />
+                          <span className="text-[9px] font-bold text-muted-foreground">+{colMilestones.length - 1}</span>
+                        </button>
+                      )}
 
                       {/* Today Line */}
-                      {isToday(day) && (
+                      {col.containsToday && (
                         <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-red-500 z-5" />
                       )}
                     </td>
@@ -276,7 +337,7 @@ export function TimelineGrid({
 
           {projects.length === 0 && (
             <tr>
-              <td colSpan={days.length + 1} className="text-center py-12 text-muted-foreground">
+              <td colSpan={columns.length + 1} className="text-center py-12 text-muted-foreground">
                 {t("noProjects") || "No projects found"}
               </td>
             </tr>

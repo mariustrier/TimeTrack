@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo } from "react";
-import { format, isWeekend, isSameDay, isToday } from "date-fns";
+import { format, isWeekend, isSameDay, isToday, isSameMonth, startOfMonth, startOfWeek, endOfWeek, getISOWeek } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useDateLocale, useLocale, useTranslations } from "@/lib/i18n";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { isCompanyHoliday, getCompanyHolidayName, type CustomHoliday } from "@/lib/holidays";
 import { getDailyTarget } from "@/lib/calculations";
+import type { ViewMode } from "@/components/resource-planner/ViewControls";
 
 interface Employee {
   id: string;
@@ -63,8 +64,17 @@ interface ResourceGridProps {
   disabledHolidayCodes?: string[];
   customHolidays?: CustomHoliday[];
   days: Date[];
+  viewMode: ViewMode;
   onCellClick: (employee: Employee, date: Date) => void;
   onAllocationClick: (allocation: ResourceAllocation) => void;
+}
+
+interface WeekColumn {
+  key: string;
+  label: string;
+  days: Date[];
+  containsToday: boolean;
+  month: Date;
 }
 
 export function ResourceGrid({
@@ -76,6 +86,7 @@ export function ResourceGrid({
   disabledHolidayCodes = [],
   customHolidays = [],
   days,
+  viewMode,
   onCellClick,
   onAllocationClick,
 }: ResourceGridProps) {
@@ -85,44 +96,13 @@ export function ResourceGrid({
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  const isMonthView = viewMode === "month";
+
   const getTarget = (date: Date): number => {
     return getDailyTarget(date, 37, disabledHolidayCodes, customHolidays);
   };
 
-  // Check if employee is on vacation on a given day
-  const getVacationForCell = (userId: string, date: Date): VacationPeriod | undefined => {
-    const dateStr = format(date, "yyyy-MM-dd");
-    return vacations.find((v) => {
-      if (v.userId !== userId) return false;
-      const start = v.startDate.split("T")[0];
-      const end = v.endDate.split("T")[0];
-      return dateStr >= start && dateStr <= end;
-    });
-  };
-
-  // Check if this is the first visible day of a vacation
-  const isVacationStart = (vacation: VacationPeriod, date: Date): boolean => {
-    const vacStart = new Date(vacation.startDate);
-    if (isSameDay(vacStart, date)) return true;
-    // If vacation starts before visible range, first visible day is the start
-    return days[0] && date <= days[0] && isSameDay(date, days[0]);
-  };
-
-  // Get vacation span (visible days)
-  const getVacationSpan = (vacation: VacationPeriod, fromDate: Date): number => {
-    const end = new Date(vacation.endDate);
-    let span = 0;
-    let current = new Date(fromDate);
-    while (current <= end) {
-      const idx = days.findIndex((d) => isSameDay(d, current));
-      if (idx === -1) break;
-      span++;
-      current.setDate(current.getDate() + 1);
-    }
-    return span;
-  };
-
-  // Group allocations by user
+  // Group milestones by project
   const allocationsByUser = useMemo(() => {
     const map: Record<string, ResourceAllocation[]> = {};
     allocations.forEach((alloc) => {
@@ -133,7 +113,6 @@ export function ResourceGrid({
   }, [allocations]);
 
   // Calculate rollover for allocations with totalHours
-  // Returns adjusted hoursPerDay based on logged hours and remaining days
   const allocationRollover = useMemo(() => {
     const rolloverMap: Record<string, {
       logged: number;
@@ -143,12 +122,11 @@ export function ResourceGrid({
     }> = {};
 
     allocations.forEach((alloc) => {
-      if (!alloc.totalHours) return; // Skip if not in totalHours mode
+      if (!alloc.totalHours) return;
 
       const allocStart = new Date(alloc.startDate);
       const allocEnd = new Date(alloc.endDate);
 
-      // Sum logged hours for this allocation
       let logged = 0;
       timeEntries.forEach((entry) => {
         if (entry.userId === alloc.userId && entry.projectId === alloc.projectId) {
@@ -159,7 +137,6 @@ export function ResourceGrid({
         }
       });
 
-      // Count remaining working days (from today onwards)
       let remainingDays = 0;
       const checkDate = new Date(Math.max(today.getTime(), allocStart.getTime()));
       while (checkDate <= allocEnd) {
@@ -173,19 +150,129 @@ export function ResourceGrid({
       const remaining = Math.max(0, alloc.totalHours - logged);
       const adjustedPerDay = remainingDays > 0 ? remaining / remainingDays : 0;
 
-      rolloverMap[alloc.id] = {
-        logged,
-        remaining,
-        adjustedPerDay,
-        remainingDays,
-      };
+      rolloverMap[alloc.id] = { logged, remaining, adjustedPerDay, remainingDays };
     });
 
     return rolloverMap;
   }, [allocations, timeEntries, today]);
 
-  // Calculate daily utilization per employee
+  // Get initials for avatar
+  const getInitials = (employee: Employee) => {
+    if (employee.firstName && employee.lastName) {
+      return `${employee.firstName[0]}${employee.lastName[0]}`.toUpperCase();
+    }
+    return employee.email.substring(0, 2).toUpperCase();
+  };
+
+  // Get display name
+  const getDisplayName = (employee: Employee) => {
+    if (employee.firstName && employee.lastName) {
+      return `${employee.firstName} ${employee.lastName}`;
+    }
+    return employee.email.split("@")[0];
+  };
+
+  // ──────────────────────────────────────────────
+  // MONTH VIEW: Week-level columns
+  // ──────────────────────────────────────────────
+
+  // Group days into week columns for month view
+  const weekColumns = useMemo((): WeekColumn[] => {
+    if (!isMonthView) return [];
+
+    const weeks: WeekColumn[] = [];
+    let currentWeekDays: Date[] = [];
+
+    days.forEach((day, i) => {
+      currentWeekDays.push(day);
+      // End of week (Sunday) or last day
+      if (day.getDay() === 0 || i === days.length - 1) {
+        const weekStart = currentWeekDays[0];
+        weeks.push({
+          key: format(weekStart, "yyyy") + "-W" + getISOWeek(weekStart),
+          label: "W" + getISOWeek(weekStart),
+          days: [...currentWeekDays],
+          containsToday: currentWeekDays.some((d) => isToday(d)),
+          month: startOfMonth(weekStart),
+        });
+        currentWeekDays = [];
+      }
+    });
+
+    return weeks;
+  }, [days, isMonthView]);
+
+  // Month group headers for month view
+  const monthGroupHeaders = useMemo(() => {
+    if (!isMonthView) return [];
+
+    const groups: { label: string; colSpan: number }[] = [];
+    let currentMonth: Date | null = null;
+    let count = 0;
+
+    weekColumns.forEach((col) => {
+      if (!currentMonth || !isSameMonth(col.month, currentMonth)) {
+        if (currentMonth) {
+          groups.push({
+            label: format(currentMonth, "MMMM yyyy", { locale: dateLocale }),
+            colSpan: count,
+          });
+        }
+        currentMonth = col.month;
+        count = 1;
+      } else {
+        count++;
+      }
+    });
+    if (currentMonth) {
+      groups.push({
+        label: format(currentMonth, "MMMM yyyy", { locale: dateLocale }),
+        colSpan: count,
+      });
+    }
+    return groups;
+  }, [weekColumns, isMonthView, dateLocale]);
+
+  // Get allocations for an employee in a week
+  const getAllocationsForWeek = (employeeId: string, weekDays: Date[]) => {
+    const userAllocations = allocationsByUser[employeeId] || [];
+    return userAllocations.filter((alloc) => {
+      const start = new Date(alloc.startDate);
+      const end = new Date(alloc.endDate);
+      return weekDays.some((day) => day >= start && day <= end && !isWeekend(day));
+    });
+  };
+
+  // Get total allocated hours for an employee in a week
+  const getWeekAllocatedHours = (employeeId: string, weekDays: Date[]) => {
+    const userAllocations = allocationsByUser[employeeId] || [];
+    let total = 0;
+    weekDays.forEach((day) => {
+      if (isWeekend(day)) return;
+      userAllocations.forEach((alloc) => {
+        const start = new Date(alloc.startDate);
+        const end = new Date(alloc.endDate);
+        if (day >= start && day <= end) {
+          total += alloc.hoursPerDay;
+        }
+      });
+    });
+    return total;
+  };
+
+  // Check if employee has vacation in a week
+  const getVacationsForWeek = (employeeId: string, weekDays: Date[]) => {
+    return vacations.filter((v) => {
+      if (v.userId !== employeeId) return false;
+      const start = new Date(v.startDate);
+      const end = new Date(v.endDate);
+      return weekDays.some((day) => day >= start && day <= end);
+    });
+  };
+
+  // Calculate daily utilization per employee (must be before conditional return)
   const dailyUtilization = useMemo(() => {
+    if (isMonthView) return {};
     const map: Record<string, Record<string, number>> = {};
 
     employees.forEach((emp) => {
@@ -210,22 +297,188 @@ export function ResourceGrid({
     });
 
     return map;
-  }, [employees, allocations, days]);
+  }, [employees, allocations, days, isMonthView]);
 
-  // Get initials for avatar
-  const getInitials = (employee: Employee) => {
-    if (employee.firstName && employee.lastName) {
-      return `${employee.firstName[0]}${employee.lastName[0]}`.toUpperCase();
-    }
-    return employee.email.substring(0, 2).toUpperCase();
+  if (isMonthView) {
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse min-w-[800px]">
+          <thead>
+            <tr>
+              <th className="sticky left-0 z-20 bg-card border-b border-r border-border p-3 text-left min-w-[200px]" rowSpan={2}>
+                <span className="text-sm font-medium text-muted-foreground">Team Member</span>
+              </th>
+              {monthGroupHeaders.map(({ label, colSpan }, idx) => (
+                <th
+                  key={idx}
+                  colSpan={colSpan}
+                  className="border-b border-r border-border p-2 text-center bg-muted/30"
+                >
+                  <span className="text-sm font-semibold">{label}</span>
+                </th>
+              ))}
+            </tr>
+            <tr>
+              {weekColumns.map((col) => (
+                <th
+                  key={col.key}
+                  className={cn(
+                    "border-b border-r border-border p-1 text-center min-w-[72px] max-w-[72px]",
+                    col.containsToday && "bg-brand-50 dark:bg-brand-950"
+                  )}
+                >
+                  <span className={cn(
+                    "text-xs font-medium",
+                    col.containsToday ? "text-brand-600 dark:text-brand-400" : "text-muted-foreground"
+                  )}>
+                    {col.label}
+                  </span>
+                </th>
+              ))}
+            </tr>
+          </thead>
+
+          <tbody>
+            {employees.map((employee) => (
+              <tr key={employee.id} className="group">
+                <td className="sticky left-0 z-10 bg-card border-b border-r border-border p-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={employee.imageUrl || undefined} />
+                      <AvatarFallback className="text-xs">
+                        {getInitials(employee)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{getDisplayName(employee)}</p>
+                      <p className="text-xs text-muted-foreground">{employee.weeklyTarget}h/week</p>
+                    </div>
+                  </div>
+                </td>
+
+                {weekColumns.map((col) => {
+                  const weekAllocs = getAllocationsForWeek(employee.id, col.days);
+                  const weekVacations = getVacationsForWeek(employee.id, col.days);
+                  const totalHours = getWeekAllocatedHours(employee.id, col.days);
+                  const weekMonday = col.days.find((d) => d.getDay() === 1) || col.days[0];
+
+                  return (
+                    <td
+                      key={col.key}
+                      className={cn(
+                        "border-b border-r border-border p-1 h-[60px] relative cursor-pointer hover:bg-accent/50 transition-colors",
+                        col.containsToday && "bg-brand-50/30 dark:bg-brand-950/30"
+                      )}
+                      onClick={() => {
+                        if (weekAllocs.length > 0) {
+                          onAllocationClick(weekAllocs[0]);
+                        } else {
+                          onCellClick(employee, weekMonday);
+                        }
+                      }}
+                    >
+                      <div className="flex flex-col gap-0.5 h-full justify-center">
+                        {weekVacations.length > 0 && weekAllocs.length === 0 && (
+                          <div
+                            className="h-3 rounded-sm px-1 flex items-center opacity-80"
+                            style={{ backgroundColor: "#8B5CF6" }}
+                          >
+                            <span className="text-[9px] text-white truncate">
+                              {weekVacations[0].type === "sick" ? t("sick") : weekVacations[0].type === "personal" ? t("personal") : t("vacation")}
+                            </span>
+                          </div>
+                        )}
+                        {weekAllocs.slice(0, 3).map((alloc) => (
+                          <div
+                            key={alloc.id}
+                            className={cn(
+                              "h-3 rounded-sm px-1 flex items-center",
+                              alloc.status === "tentative" && "opacity-70 bg-stripes"
+                            )}
+                            style={{ backgroundColor: alloc.project.color + (alloc.status === "tentative" ? "99" : "CC") }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onAllocationClick(alloc);
+                            }}
+                          >
+                            <span className="text-[9px] text-white truncate drop-shadow-sm">{alloc.project.name}</span>
+                          </div>
+                        ))}
+                        {weekAllocs.length > 3 && (
+                          <span className="text-[9px] text-muted-foreground text-center">+{weekAllocs.length - 3}</span>
+                        )}
+                      </div>
+                      {totalHours > 0 && (
+                        <div className="absolute bottom-0.5 right-1 text-[10px] text-muted-foreground">
+                          {totalHours.toFixed(0)}h
+                        </div>
+                      )}
+
+                      {/* Today Line */}
+                      {col.containsToday && (
+                        <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-red-500 z-5" />
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {/* Legend */}
+        <div className="flex items-center gap-6 p-4 border-t border-border text-sm flex-wrap">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-brand-500" />
+            <span className="text-muted-foreground">Confirmed</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-brand-500/70 bg-stripes" />
+            <span className="text-muted-foreground">Tentative</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: "#8B5CF6" }} />
+            <span className="text-muted-foreground">{t("vacation")}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ──────────────────────────────────────────────
+  // DAY VIEW: Week / 2-Week (existing logic)
+  // ──────────────────────────────────────────────
+
+  // Check if employee is on vacation on a given day
+  const getVacationForCell = (userId: string, date: Date): VacationPeriod | undefined => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    return vacations.find((v) => {
+      if (v.userId !== userId) return false;
+      const start = v.startDate.split("T")[0];
+      const end = v.endDate.split("T")[0];
+      return dateStr >= start && dateStr <= end;
+    });
   };
 
-  // Get display name
-  const getDisplayName = (employee: Employee) => {
-    if (employee.firstName && employee.lastName) {
-      return `${employee.firstName} ${employee.lastName}`;
+  // Check if this is the first visible day of a vacation
+  const isVacationStart = (vacation: VacationPeriod, date: Date): boolean => {
+    const vacStart = new Date(vacation.startDate);
+    if (isSameDay(vacStart, date)) return true;
+    return days[0] && date <= days[0] && isSameDay(date, days[0]);
+  };
+
+  // Get vacation span (visible days)
+  const getVacationSpan = (vacation: VacationPeriod, fromDate: Date): number => {
+    const end = new Date(vacation.endDate);
+    let span = 0;
+    let current = new Date(fromDate);
+    while (current <= end) {
+      const idx = days.findIndex((d) => isSameDay(d, current));
+      if (idx === -1) break;
+      span++;
+      current.setDate(current.getDate() + 1);
     }
-    return employee.email.split("@")[0];
+    return span;
   };
 
   // Find allocation for a specific cell

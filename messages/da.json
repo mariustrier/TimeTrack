@@ -840,7 +840,10 @@
     "fetchError": "Kunne ikke hente data",
     "saveError": "Kunne ikke gemme milepæl",
     "deleteError": "Kunne ikke slette milepæl",
-    "updateError": "Kunne ikke opdatere projekt"
+    "updateError": "Kunne ikke opdatere projekt",
+    "viewDay": "Dag",
+    "viewWeek": "Uge",
+    "viewMonth": "Måned"
   },
   "ai": {
     "title": "AI Assistent",
