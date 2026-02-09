@@ -203,6 +203,8 @@
     "weeklyTargetLabel": "Weekly Target (h)",
     "vacationDays": "Extra Vacation Days",
     "invite": "Invite",
+    "invitationSent": "Invitation sent to {email}",
+    "invitationFailed": "Member added but invitation email could not be sent",
     "removeMember": "Remove Team Member",
     "removeMemberConfirm": "Are you sure you want to remove {name}? This will also delete all their time entries.",
     "managerRole": "Manager",

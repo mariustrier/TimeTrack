@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Users, Plus, Pencil, Trash2, UserPlus } from "lucide-react";
+import { toast } from "sonner";
 import { convertAndFormat, SUPPORTED_CURRENCIES } from "@/lib/currency";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -139,17 +140,33 @@ export function TeamList() {
       };
 
       if (editingMember) {
-        await fetch(`/api/team/${editingMember.id}`, {
+        const res = await fetch(`/api/team/${editingMember.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         });
+        if (!res.ok) {
+          const data = await res.json();
+          toast.error(data.error || "Failed to update member");
+          return;
+        }
       } else {
-        await fetch("/api/team", {
+        const res = await fetch("/api/team", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         });
+        if (!res.ok) {
+          const data = await res.json();
+          toast.error(data.error || "Failed to invite member");
+          return;
+        }
+        const data = await res.json();
+        if (data.emailSent) {
+          toast.success(t("invitationSent", { email }));
+        } else {
+          toast.warning(t("invitationFailed"));
+        }
       }
       setModalOpen(false);
       fetchTeam();

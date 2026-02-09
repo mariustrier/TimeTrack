@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getAuthUser, isAdminOrManager } from "@/lib/auth";
 import { validate } from "@/lib/validate";
 import { createTeamMemberSchema } from "@/lib/schemas";
+import { sendInvitationEmail } from "@/lib/email";
 
 export async function GET() {
   try {
@@ -56,8 +57,9 @@ export async function POST(req: Request) {
     if (!result.success) return result.response;
     const { email, firstName, lastName, role, employmentType, hourlyRate, costRate, weeklyTarget } = result.data;
 
+    const normalizedEmail = email.toLowerCase();
     const existing = await db.user.findFirst({
-      where: { email, companyId: user.companyId },
+      where: { email: normalizedEmail, companyId: user.companyId },
     });
     if (existing) {
       return NextResponse.json({ error: "User already exists" }, { status: 409 });
@@ -66,7 +68,7 @@ export async function POST(req: Request) {
     const member = await db.user.create({
       data: {
         clerkId: `pending_${Date.now()}`,
-        email,
+        email: normalizedEmail,
         firstName: firstName || null,
         lastName: lastName || null,
         role: role || "employee",
@@ -78,7 +80,24 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json(member, { status: 201 });
+    // Send invitation email
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://cloudtimer.dk";
+    const inviterName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
+
+    let emailSent = false;
+    try {
+      await sendInvitationEmail({
+        to: normalizedEmail,
+        inviterName,
+        companyName: user.company.name,
+        signUpUrl: `${appUrl}/sign-up`,
+      });
+      emailSent = true;
+    } catch (emailError) {
+      console.error("[TEAM_POST] Failed to send invitation email:", emailError);
+    }
+
+    return NextResponse.json({ ...member, emailSent }, { status: 201 });
   } catch (error) {
     console.error("[TEAM_POST]", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

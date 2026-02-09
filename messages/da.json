@@ -203,6 +203,8 @@
     "weeklyTargetLabel": "Ugentligt mål (t)",
     "vacationDays": "Ekstra feriedage",
     "invite": "Inviter",
+    "invitationSent": "Invitation sendt til {email}",
+    "invitationFailed": "Medlem tilføjet, men invitationsmail kunne ikke sendes",
     "removeMember": "Fjern holdmedlem",
     "removeMemberConfirm": "Er du sikker på, at du vil fjerne {name}? Dette vil også slette alle deres tidsregistreringer.",
     "managerRole": "Manager",

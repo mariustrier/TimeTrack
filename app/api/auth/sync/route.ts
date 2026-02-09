@@ -14,6 +14,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    // 1. Check if user already exists with this Clerk ID
     const existingUser = await db.user.findUnique({
       where: { clerkId: userId },
     });
@@ -22,6 +23,33 @@ export async function POST(req: Request) {
       return NextResponse.json({ user: existingUser });
     }
 
+    // 2. Check if there's a pending invitation for this email
+    const email = (clerkUser.emailAddresses[0]?.emailAddress || "").toLowerCase();
+    if (email) {
+      const pendingUser = await db.user.findFirst({
+        where: {
+          email,
+          clerkId: { startsWith: "pending_" },
+        },
+      });
+
+      if (pendingUser) {
+        // Claim the pending user record
+        const updatedUser = await db.user.update({
+          where: { id: pendingUser.id },
+          data: {
+            clerkId: userId,
+            firstName: clerkUser.firstName || pendingUser.firstName,
+            lastName: clerkUser.lastName || pendingUser.lastName,
+            imageUrl: clerkUser.imageUrl || null,
+          },
+        });
+
+        return NextResponse.json({ user: updatedUser, wasPending: true });
+      }
+    }
+
+    // 3. No existing user and no pending invitation — create new company
     const body = await req.json();
     const { companyName, currency } = body;
 
@@ -52,8 +80,6 @@ export async function POST(req: Request) {
     });
 
     // Create default absence reasons
-    // Sygdom and Ferie are universal (assigned to all employees)
-    // Barns 1. sygedag and Barsel are only for employees with children
     const [sygdomReason, ferieReason] = await Promise.all([
       db.absenceReason.create({
         data: { name: "Sygdom", code: "SICK", isDefault: true, sortOrder: 1, companyId: company.id },
@@ -63,7 +89,6 @@ export async function POST(req: Request) {
       }),
     ]);
 
-    // Create child-related reasons (not assigned by default)
     await db.absenceReason.createMany({
       data: [
         { name: "Barns 1. sygedag", code: "CHILD_SICK", isDefault: true, sortOrder: 2, companyId: company.id },
@@ -71,7 +96,6 @@ export async function POST(req: Request) {
       ],
     });
 
-    // Create user and connect universal absence reasons
     const user = await db.user.create({
       data: {
         clerkId: userId,

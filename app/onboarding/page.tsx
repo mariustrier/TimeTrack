@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { LocaleProvider, useTranslations } from "@/lib/i18n";
@@ -20,7 +20,37 @@ function OnboardingForm() {
   const [companyName, setCompanyName] = useState("");
   const [currency, setCurrency] = useState("USD");
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
   const [error, setError] = useState("");
+
+  // On mount, check if user has a pending invitation
+  useEffect(() => {
+    async function checkPendingInvitation() {
+      try {
+        const res = await fetch("/api/auth/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.user) {
+            // User was linked to pending invite or already exists
+            router.replace("/dashboard");
+            return;
+          }
+        }
+        // 400 = company name required = new user, show form
+      } catch {
+        // Network error, show form anyway
+      } finally {
+        setChecking(false);
+      }
+    }
+
+    checkPendingInvitation();
+  }, [router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -46,6 +76,14 @@ function OnboardingForm() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (checking) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
   }
 
   return (

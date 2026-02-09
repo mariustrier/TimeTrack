@@ -14,6 +14,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - SEO metadata and `<html lang>` set to Danish (da) — targeting Danish market
 - Sentry error monitoring (client/server/edge) with error boundaries at root, app, and dashboard levels
 - Vercel Blob for file storage (contract PDFs, receipts, company logos)
+- Resend for transactional emails (team invitations)
 
 ## Key Commands
 
@@ -66,6 +67,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `lib/calculations.ts` - Flex balance, daily target calculations (getDailyTarget)
 - `lib/holidays.ts` - Danish holidays, company holidays, isCompanyHoliday/isDanishHoliday
 - `lib/seed-holidays.ts` - ensureHolidayAbsenceReason helper
+- `lib/email.ts` - Resend email client (lazy-init), sendInvitationEmail
 - `lib/expense-utils.ts` - Expense formatting helpers
 - `lib/analytics-utils.ts` - Analytics data processing
 
@@ -128,6 +130,7 @@ Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation,
 
 ### Team
 - **Team tab**: Member list with roles, bill/cost rates, weekly targets, extra vacation days, employment type (employee/freelancer)
+- **Email invitations**: Admin invites create a pending user (`clerkId: "pending_*"`) and send a Resend email with sign-up link. When invited user signs up via Clerk, `/api/auth/sync` matches by email and links them to the existing company (bypasses onboarding form).
 - Currency conversion display with master currency setting
 - **Resource Planner tab**: Week/2-week/month grid view with **period span slider** (Week/2-week: 1-4wk, Month: 2-6mo)
   - Week & 2-week: daily columns with allocation bars spanning days
@@ -183,11 +186,13 @@ Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation,
 - `ANTHROPIC_API_KEY` - Claude AI for contract extraction + insights
 - `OPENROUTESERVICE_API_KEY` - Mileage distance/autocomplete
 - `BLOB_READ_WRITE_TOKEN` - Vercel Blob storage
+- `RESEND_API_KEY` - Resend email service
+- `RESEND_FROM_EMAIL` - Sender address (e.g., `Cloud Timer <noreply@cloudtimer.dk>`)
 
 ## Known Gaps (potential future work)
 
 ### High Value
-- **Email notifications** — No notification system at all (no SMTP/SendGrid). Admins must manually check for pending approvals. Employees don't know when entries are approved/rejected.
+- **Email notifications** — Only team invitation emails (via Resend). No notifications for approvals, rejections, or status changes. Admins must manually check for pending approvals.
 - **In-app notification center** — Only badge counts on sidebar, no notification list
 - **Settings page** — Skeleton only (tour replay, data export, account deletion). Missing: notification preferences, language persistence, timezone, default project, profile management.
 
