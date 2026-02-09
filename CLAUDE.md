@@ -78,7 +78,7 @@ Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation,
 
 ### Time Tracking (Dashboard)
 - Weekly timesheet grid with per-cell time entry creation/editing
-- 6 stat cards: Target, Billable Hours, Vacation Used, Total Hours, Flex Balance, Remaining Vacation
+- 6 stat cards: Target, Billable Hours, Vacation Used, Total Hours, Flex Balance, Remaining Vacation (all numeric values use `.toFixed(1)` for clean display)
 - **Cumulative flex balance**: Carries over from all prior weeks since user creation (not just current week)
 - Daily flex balance row showing running overtime/undertime
 - Per-day submit buttons + bulk "Submit Week"
