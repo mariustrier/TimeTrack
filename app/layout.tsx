@@ -9,32 +9,35 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   metadataBase: new URL("https://cloudtimer.dk"),
   title: {
-    default: "Cloud Timer - Modern Time Tracking for Teams",
+    default: "Cloud Timer - Moderne tidsregistrering for teams",
     template: "%s | Cloud Timer",
   },
   description:
-    "Track time, manage projects, and boost team profitability with Cloud Timer. Built for agencies and consultancies.",
+    "Registrer tid, styr projekter og øg teamets indtjening med Cloud Timer. Bygget til bureauer og konsulentvirksomheder.",
   keywords: [
+    "tidsregistrering",
+    "projektstyring",
+    "team produktivitet",
+    "timeseddel",
+    "fakturering",
+    "bureau",
     "time tracking",
     "project management",
-    "team productivity",
-    "timesheet",
-    "billing",
-    "agency",
   ],
   openGraph: {
     type: "website",
     siteName: "Cloud Timer",
-    title: "Cloud Timer - Modern Time Tracking for Teams",
+    title: "Cloud Timer - Moderne tidsregistrering for teams",
     description:
-      "Track time, manage projects, and boost team profitability.",
+      "Registrer tid, styr projekter og øg teamets indtjening med Cloud Timer.",
     url: "https://cloudtimer.dk",
+    locale: "da_DK",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Cloud Timer - Modern Time Tracking for Teams",
+    title: "Cloud Timer - Moderne tidsregistrering for teams",
     description:
-      "Track time, manage projects, and boost team profitability.",
+      "Registrer tid, styr projekter og øg teamets indtjening med Cloud Timer.",
   },
   manifest: "/manifest.json",
 };
@@ -46,7 +49,7 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider>
-      <html lang="en" suppressHydrationWarning>
+      <html lang="da" suppressHydrationWarning>
         <body className={inter.className}>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             {children}

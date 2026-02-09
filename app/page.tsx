@@ -312,11 +312,11 @@ export default function LandingPage() {
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web",
     description:
-      "Track time, manage projects, and boost team profitability with Cloud Timer. Built for agencies and consultancies.",
+      "Registrer tid, styr projekter og øg teamets indtjening med Cloud Timer. Bygget til bureauer og konsulentvirksomheder.",
     offers: {
       "@type": "Offer",
       price: "0",
-      priceCurrency: "USD",
+      priceCurrency: "DKK",
     },
     publisher: {
       "@type": "Organization",
