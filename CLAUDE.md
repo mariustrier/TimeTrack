@@ -11,6 +11,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - Tailwind CSS, Radix UI (shadcn/ui), Lucide icons, Sonner toasts
 - All dashboard pages are "use client" components
 - Bilingual: English + Danish via `lib/i18n` (useTranslations hook), `messages/en.json` + `messages/da.json`
+- SEO metadata and `<html lang>` set to Danish (da) — targeting Danish market
 - Sentry error monitoring (client/server/edge) with error boundaries at root, app, and dashboard levels
 - Vercel Blob for file storage (contract PDFs, receipts, company logos)
 
