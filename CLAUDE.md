@@ -120,7 +120,7 @@ Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation,
 - Lock/archive: Locked prevents new entries, archived hides from employees
 - System-managed projects (e.g., Absence) can't be locked/archived
 - **Timeline tab**: Gantt view with project bars, milestone diamonds, today line
-  - **Day/Week/Month view toggle**: Day (3mo daily columns), Week (6mo weekly columns), Month (12mo monthly columns)
+  - **Day/Week/Month view toggle** with **period span slider**: users drag to control visible range per view mode (Day: 1-6mo, Week: 2-12mo, Month: 6-24mo)
   - CRUD milestones (title, due date, completion tracking)
   - Budget health indicators (green/yellow/red)
   - Multi-milestone support per column in week/month views (with +N badge)
@@ -128,9 +128,9 @@ Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation,
 ### Team
 - **Team tab**: Member list with roles, bill/cost rates, weekly targets, extra vacation days, employment type (employee/freelancer)
 - Currency conversion display with master currency setting
-- **Resource Planner tab**: Week/2-week/month grid view
+- **Resource Planner tab**: Week/2-week/month grid view with **period span slider** (Week/2-week: 1-4wk, Month: 2-6mo)
   - Week & 2-week: daily columns with allocation bars spanning days
-  - Month: week-level columns spanning 3 months with aggregated allocation/vacation display
+  - Month: week-level columns with aggregated allocation/vacation display
   - Per-day/total hours modes
   - Capacity summary with utilization percentages
   - Tentative/confirmed/completed status
