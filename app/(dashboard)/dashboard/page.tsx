@@ -802,7 +802,7 @@ export default function DashboardPage() {
         />
         <StatCard
           title={t("vacation")}
-          value={`${vacationDaysUsed}d`}
+          value={`${vacationDaysUsed.toFixed(1)}d`}
           icon={Palmtree}
           color="bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400"
           subtitle={t("daysUsed")}
@@ -824,7 +824,7 @@ export default function DashboardPage() {
         />
         <StatCard
           title={t("vacationDays")}
-          value={`${vacationDaysTotal - vacationDaysUsed}`}
+          value={`${(vacationDaysTotal - vacationDaysUsed).toFixed(1)}`}
           icon={CalendarDays}
           color="bg-sky-50 text-sky-600 dark:bg-sky-950 dark:text-sky-400"
           subtitle={t("remaining")}
