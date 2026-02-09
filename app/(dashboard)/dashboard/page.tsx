@@ -1025,6 +1025,8 @@ export default function DashboardPage() {
                       {projects.some((p) => p.myAllocation != null || p.budgetTotalHours != null) && (
                         <td className="px-2 py-1">
                           {(() => {
+                            // Skip budget display for system-managed projects (Absence etc.)
+                            if (project.systemManaged) return <div className="text-center text-muted-foreground">—</div>;
                             // Use budgetTotalHours for all project types (hours for hourly, converted hours for fixed-price)
                             const budget = project.myAllocation ?? project.budgetTotalHours;
                             if (budget == null) return <div className="text-center text-muted-foreground">—</div>;
