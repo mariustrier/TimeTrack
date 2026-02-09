@@ -812,7 +812,10 @@
     "vacation": "Ferie",
     "holidayLabel": "Helligdag",
     "sick": "Syg",
-    "personal": "Personlig"
+    "personal": "Personlig",
+    "period": "Periode",
+    "weeks": "uge",
+    "months": "mdr"
   },
   "timeline": {
     "title": "Projekt Tidslinje",
@@ -843,7 +846,9 @@
     "updateError": "Kunne ikke opdatere projekt",
     "viewDay": "Dag",
     "viewWeek": "Uge",
-    "viewMonth": "Måned"
+    "viewMonth": "Måned",
+    "period": "Periode",
+    "months": "mdr"
   },
   "ai": {
     "title": "AI Assistent",

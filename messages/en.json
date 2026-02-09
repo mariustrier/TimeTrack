@@ -812,7 +812,10 @@
     "vacation": "Vacation",
     "holidayLabel": "Holiday",
     "sick": "Sick",
-    "personal": "Personal"
+    "personal": "Personal",
+    "period": "Period",
+    "weeks": "wk",
+    "months": "mo"
   },
   "timeline": {
     "title": "Project Timeline",
@@ -843,7 +846,9 @@
     "updateError": "Failed to update project",
     "viewDay": "Day",
     "viewWeek": "Week",
-    "viewMonth": "Month"
+    "viewMonth": "Month",
+    "period": "Period",
+    "months": "mo"
   },
   "ai": {
     "title": "AI Assistant",

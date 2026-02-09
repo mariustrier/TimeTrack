@@ -8,26 +8,19 @@ import {
   subWeeks,
   addMonths,
   subMonths,
-  addDays,
   format,
   eachDayOfInterval,
   isWeekend,
-  isSameDay,
-  differenceInCalendarDays,
 } from "date-fns";
 import {
   ChevronLeft,
   ChevronRight,
-  Plus,
-  Calendar,
-  Users,
-  AlertTriangle,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { Slider } from "@/components/ui/slider";
 import { useTranslations, useDateLocale } from "@/lib/i18n";
 import { ResourceGrid } from "@/components/resource-planner/ResourceGrid";
 import { AllocationDialog } from "@/components/resource-planner/AllocationDialog";
@@ -90,6 +83,16 @@ export function ResourcePlanner() {
 
   const [viewMode, setViewMode] = useState<ViewMode>("twoWeeks");
   const [currentDate, setCurrentDate] = useState(() => new Date());
+  const [spans, setSpans] = useState<Record<ViewMode, number>>({ week: 1, twoWeeks: 2, month: 3 });
+
+  const spanConfig: Record<ViewMode, { min: number; max: number; step: number; unit: "weeks" | "months" }> = {
+    week: { min: 1, max: 4, step: 1, unit: "weeks" },
+    twoWeeks: { min: 1, max: 4, step: 1, unit: "weeks" },
+    month: { min: 2, max: 6, step: 1, unit: "months" },
+  };
+
+  const currentSpan = spans[viewMode];
+  const { min, max, step, unit } = spanConfig[viewMode];
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [allocations, setAllocations] = useState<ResourceAllocation[]>([]);
@@ -105,7 +108,7 @@ export function ResourcePlanner() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  // Calculate date range based on view mode
+  // Calculate date range based on view mode and span
   const getDateRange = useCallback(() => {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
 
@@ -113,20 +116,23 @@ export function ResourcePlanner() {
       case "week":
         return {
           start: weekStart,
-          end: endOfWeek(currentDate, { weekStartsOn: 1 }),
+          end: endOfWeek(addWeeks(weekStart, currentSpan - 1), { weekStartsOn: 1 }),
         };
       case "twoWeeks":
         return {
           start: weekStart,
-          end: addDays(weekStart, 13),
+          end: endOfWeek(addWeeks(weekStart, currentSpan - 1), { weekStartsOn: 1 }),
         };
-      case "month":
+      case "month": {
+        const half = Math.floor(currentSpan / 2);
+        const remainder = currentSpan - half;
         return {
-          start: startOfWeek(subMonths(currentDate, 1), { weekStartsOn: 1 }),
-          end: endOfWeek(addMonths(currentDate, 2), { weekStartsOn: 1 }),
+          start: startOfWeek(subMonths(currentDate, half), { weekStartsOn: 1 }),
+          end: endOfWeek(addMonths(currentDate, remainder), { weekStartsOn: 1 }),
         };
+      }
     }
-  }, [currentDate, viewMode]);
+  }, [currentDate, viewMode, currentSpan]);
 
   const dateRange = getDateRange();
   const days = eachDayOfInterval({ start: dateRange.start, end: dateRange.end });
@@ -197,32 +203,20 @@ export function ResourcePlanner() {
     fetchData();
   }, [fetchData]);
 
-  // Navigation
+  // Navigation - step adapts to span
   const goToPrevious = () => {
-    switch (viewMode) {
-      case "week":
-        setCurrentDate((d) => subWeeks(d, 1));
-        break;
-      case "twoWeeks":
-        setCurrentDate((d) => subWeeks(d, 2));
-        break;
-      case "month":
-        setCurrentDate((d) => subMonths(d, 1));
-        break;
+    if (viewMode === "month") {
+      setCurrentDate((d) => subMonths(d, Math.max(1, Math.ceil(currentSpan / 2))));
+    } else {
+      setCurrentDate((d) => subWeeks(d, currentSpan));
     }
   };
 
   const goToNext = () => {
-    switch (viewMode) {
-      case "week":
-        setCurrentDate((d) => addWeeks(d, 1));
-        break;
-      case "twoWeeks":
-        setCurrentDate((d) => addWeeks(d, 2));
-        break;
-      case "month":
-        setCurrentDate((d) => addMonths(d, 1));
-        break;
+    if (viewMode === "month") {
+      setCurrentDate((d) => addMonths(d, Math.max(1, Math.ceil(currentSpan / 2))));
+    } else {
+      setCurrentDate((d) => addWeeks(d, currentSpan));
     }
   };
 
@@ -355,6 +349,19 @@ export function ResourcePlanner() {
             viewMode={viewMode}
             onViewModeChange={setViewMode}
           />
+          <div className="flex items-center gap-2">
+            <Slider
+              value={[currentSpan]}
+              onValueChange={([v]) => setSpans((s) => ({ ...s, [viewMode]: v }))}
+              min={min}
+              max={max}
+              step={step}
+              className="w-[100px]"
+            />
+            <span className="text-xs text-muted-foreground w-10 text-right">
+              {currentSpan} {t(unit) || (unit === "weeks" ? "wk" : "mo")}
+            </span>
+          </div>
 
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" onClick={goToPrevious}>

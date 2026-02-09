@@ -23,6 +23,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { useTranslations, useDateLocale } from "@/lib/i18n";
 import { TimelineGrid } from "@/components/project-timeline/TimelineGrid";
@@ -69,32 +70,45 @@ export function ProjectTimeline() {
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<TimelineViewMode>("day");
+  const [spans, setSpans] = useState<Record<TimelineViewMode, number>>({ day: 3, week: 6, month: 12 });
+
+  const spanConfig: Record<TimelineViewMode, { min: number; max: number; step: number }> = {
+    day: { min: 1, max: 6, step: 1 },
+    week: { min: 2, max: 12, step: 1 },
+    month: { min: 6, max: 24, step: 3 },
+  };
+
+  const currentSpan = spans[viewMode];
+  const { min, max, step } = spanConfig[viewMode];
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null);
 
-  // Calculate visible date range based on view mode
+  // Calculate visible date range based on view mode and span
   const dateRange = useMemo(() => {
+    const half = Math.floor(currentSpan / 2);
+    const remainder = currentSpan - half;
+
     switch (viewMode) {
       case "day":
         return {
-          start: startOfMonth(subMonths(currentDate, 1)),
-          end: endOfMonth(addMonths(currentDate, 1)),
+          start: startOfMonth(subMonths(currentDate, half)),
+          end: endOfMonth(addMonths(currentDate, remainder - 1)),
         };
       case "week":
         return {
-          start: startOfWeek(subMonths(currentDate, 3), { weekStartsOn: 1 }),
-          end: endOfWeek(addMonths(currentDate, 3), { weekStartsOn: 1 }),
+          start: startOfWeek(subMonths(currentDate, half), { weekStartsOn: 1 }),
+          end: endOfWeek(addMonths(currentDate, remainder), { weekStartsOn: 1 }),
         };
       case "month":
         return {
-          start: startOfMonth(subMonths(currentDate, 6)),
-          end: endOfMonth(addMonths(currentDate, 6)),
+          start: startOfMonth(subMonths(currentDate, half)),
+          end: endOfMonth(addMonths(currentDate, remainder)),
         };
     }
-  }, [currentDate, viewMode]);
+  }, [currentDate, viewMode, currentSpan]);
 
   // Generate columns based on view mode
   const columns = useMemo((): TimelineColumn[] => {
@@ -170,21 +184,10 @@ export function ProjectTimeline() {
     fetchData();
   }, [fetchData]);
 
-  // Navigation - step size depends on view mode
-  const goToPrevious = () => {
-    switch (viewMode) {
-      case "day":   setCurrentDate((d) => subMonths(d, 1)); break;
-      case "week":  setCurrentDate((d) => subMonths(d, 3)); break;
-      case "month": setCurrentDate((d) => subMonths(d, 6)); break;
-    }
-  };
-  const goToNext = () => {
-    switch (viewMode) {
-      case "day":   setCurrentDate((d) => addMonths(d, 1)); break;
-      case "week":  setCurrentDate((d) => addMonths(d, 3)); break;
-      case "month": setCurrentDate((d) => addMonths(d, 6)); break;
-    }
-  };
+  // Navigation - step size adapts to span
+  const navStep = Math.max(1, Math.ceil(currentSpan / 3));
+  const goToPrevious = () => setCurrentDate((d) => subMonths(d, navStep));
+  const goToNext = () => setCurrentDate((d) => addMonths(d, navStep));
   const goToToday = () => setCurrentDate(new Date());
 
   // Milestone handlers
@@ -296,6 +299,17 @@ export function ProjectTimeline() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <TimelineViewControls viewMode={viewMode} onViewModeChange={setViewMode} />
+          <div className="flex items-center gap-2">
+            <Slider
+              value={[currentSpan]}
+              onValueChange={([v]) => setSpans((s) => ({ ...s, [viewMode]: v }))}
+              min={min}
+              max={max}
+              step={step}
+              className="w-[100px]"
+            />
+            <span className="text-xs text-muted-foreground w-10 text-right">{currentSpan} {t("months") || "mo"}</span>
+          </div>
         </div>
 
         <div className="flex items-center gap-4">
