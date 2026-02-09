@@ -120,13 +120,6 @@ export function TimelineGrid({
     });
   };
 
-  // Column width class per view mode
-  const columnWidthClass = viewMode === "day"
-    ? "min-w-[24px] max-w-[24px]"
-    : viewMode === "week"
-    ? "min-w-[48px] max-w-[48px]"
-    : "min-w-[64px] max-w-[64px]";
-
   // Generate group headers (months for day/week, years for month view)
   const groupHeaders = useMemo(() => {
     if (viewMode === "month") {
@@ -179,11 +172,14 @@ export function TimelineGrid({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse min-w-[1000px]">
+      <table className="w-full border-collapse table-fixed">
+        <colgroup>
+          <col className="w-[200px]" />
+        </colgroup>
         {/* Group Headers + Column Headers */}
         <thead>
           <tr>
-            <th className="sticky left-0 z-20 bg-card border-b border-r border-border p-3 text-left min-w-[200px]" rowSpan={2}>
+            <th className="sticky left-0 z-20 bg-card border-b border-r border-border p-3 text-left w-[200px]" rowSpan={2}>
               <span className="text-sm font-medium text-muted-foreground">{t("project") || "Project"}</span>
             </th>
             {groupHeaders.map(({ label, colSpan }, idx) => (
@@ -203,8 +199,7 @@ export function TimelineGrid({
               <th
                 key={col.key}
                 className={cn(
-                  "border-b border-r border-border p-1 text-center",
-                  columnWidthClass,
+                  "border-b border-r border-border p-1 text-center overflow-hidden",
                   col.containsToday && "bg-brand-50 dark:bg-brand-950"
                 )}
               >

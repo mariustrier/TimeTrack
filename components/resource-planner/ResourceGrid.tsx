@@ -302,10 +302,13 @@ export function ResourceGrid({
   if (isMonthView) {
     return (
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse min-w-[800px]">
+        <table className="w-full border-collapse table-fixed">
+          <colgroup>
+            <col className="w-[200px]" />
+          </colgroup>
           <thead>
             <tr>
-              <th className="sticky left-0 z-20 bg-card border-b border-r border-border p-3 text-left min-w-[200px]" rowSpan={2}>
+              <th className="sticky left-0 z-20 bg-card border-b border-r border-border p-3 text-left w-[200px]" rowSpan={2}>
                 <span className="text-sm font-medium text-muted-foreground">Team Member</span>
               </th>
               {monthGroupHeaders.map(({ label, colSpan }, idx) => (
@@ -323,7 +326,7 @@ export function ResourceGrid({
                 <th
                   key={col.key}
                   className={cn(
-                    "border-b border-r border-border p-1 text-center min-w-[72px] max-w-[72px]",
+                    "border-b border-r border-border p-1 text-center overflow-hidden",
                     col.containsToday && "bg-brand-50 dark:bg-brand-950"
                   )}
                 >
@@ -515,11 +518,14 @@ export function ResourceGrid({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse min-w-[800px]">
+      <table className="w-full border-collapse table-fixed">
+        <colgroup>
+          <col className="w-[200px]" />
+        </colgroup>
         {/* Header */}
         <thead>
           <tr>
-            <th className="sticky left-0 z-20 bg-card border-b border-r border-border p-3 text-left min-w-[200px]">
+            <th className="sticky left-0 z-20 bg-card border-b border-r border-border p-3 text-left w-[200px]">
               <span className="text-sm font-medium text-muted-foreground">Team Member</span>
             </th>
             {days.map((day) => {
@@ -529,7 +535,7 @@ export function ResourceGrid({
                 <th
                   key={day.toISOString()}
                   className={cn(
-                    "border-b border-r border-border p-2 text-center min-w-[80px]",
+                    "border-b border-r border-border p-2 text-center overflow-hidden",
                     isWeekend(day) && "bg-muted/50",
                     isToday(day) && "bg-brand-50 dark:bg-brand-950",
                     holidayName && !isWeekend(day) && "bg-amber-50 dark:bg-amber-950/30"
