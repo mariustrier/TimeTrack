@@ -39,14 +39,14 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 
 ### API Routes (70 route files across 18 domains)
 - `app/api/` - All scoped by companyId
-- Key domains: `time-entries`, `projects`, `team`, `admin`, `expenses`, `vacations`, `contracts`, `resource-allocations`, `analytics`, `ai`, `insights`, `mileage`, `auth`, `cron`, `super-admin`, `user`, `upload`, `absence-reasons`
+- Key domains: `time-entries`, `projects`, `team`, `admin`, `expenses`, `vacations`, `contracts`, `resource-allocations`, `analytics`, `ai`, `insights`, `mileage`, `auth`, `cron`, `super-admin`, `user`, `upload`, `absence-reasons`, `admin/phases`
 
 ### Components
-- `components/admin/` - AdminOverview, AdminApprovals, AdminVacations, AdminBackups, AdminAuditLog, TeamUtilizationBars
+- `components/admin/` - AdminOverview, AdminApprovals, AdminVacations, AdminBackups, AdminAuditLog, TeamUtilizationBars, PhaseMigrationDialog
 - `components/approvals/` - TimeEntryApprovals, ExpenseApprovals (nested tabs within admin)
 - `components/analytics/` - EmployeeInsights, TeamInsights, ProjectInsights, CompanyInsights
 - `components/contracts/` - ContractSection (upload, AI extraction, manual entry)
-- `components/projects/` - ProjectsList, ProjectTimeline
+- `components/projects/` - ProjectsList, ProjectTimeline, PhaseProgress
 - `components/project-timeline/` - TimelineGrid, MilestoneDialog
 - `components/resource-planner/` - ResourceGrid, AllocationDialog, ViewControls, CapacitySummary
 - `components/team/` - TeamList, ResourcePlanner
@@ -72,7 +72,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `lib/analytics-utils.ts` - Analytics data processing
 
 ### Database (15 models)
-Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense, CompanyExpense, AbsenceReason, ResourceAllocation, ProjectMilestone
+Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense, CompanyExpense, AbsenceReason, ResourceAllocation, ProjectMilestone, Phase
 
 ### Tests
 - `__tests__/lib/` - 99 unit tests across 6 suites (Vitest)
@@ -122,6 +122,17 @@ Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation,
   - Manual entry fallback for scanned PDFs
 - Lock/archive: Locked prevents new entries, archived hides from employees
 - System-managed projects (e.g., Absence) can't be locked/archived
+- **Project Phases**: Company-wide phase definitions (e.g., Planning → Design → Development → QA)
+  - Admin toggle in Overview → creates 4 default phases on first enable
+  - Phase CRUD with reorder (up/down), rename (with optional global apply to historical entries), soft-delete
+  - Per-project opt-out via "Use Phases" checkbox
+  - Phase column in projects table with PhaseProgress stepper (complete/jump actions)
+  - Auto-advance: "Complete Phase" moves to next by sortOrder; last phase → "All Phases Complete"
+  - Time entries auto-get `phaseId` + `phaseName` snapshot from project's current phase
+  - Migration dialog when enabling phases with existing projects
+  - Analytics: phase distribution + velocity charts in Project Insights
+  - AI insights: phase bottleneck detection, completion celebrations
+  - Audit log: PHASE_CHANGE, RENAME_GLOBAL, PHASE_DELETE, PHASE_BACKFILL
 - **Timeline tab**: Gantt view with project bars, milestone diamonds, today line
   - **Day/Week/Month view toggle** with **period span slider**: users drag to control visible range per view mode (Day: 1-6mo, Week: 2-12mo, Month: 6-24mo)
   - CRUD milestones (title, due date, completion tracking)
