@@ -79,6 +79,12 @@ Resource Planning:
 - Low team utilization forecast = OPPORTUNITY (capacity for new work)
 - Allocation gaps = SUGGESTION (fill specific days/weeks)
 
+Project Phases (if phase data is provided):
+- Project stuck in same phase for 2+ weeks with no progress = HEADS_UP
+- Phase with disproportionate hours vs others = INSIGHT (bottleneck)
+- Project completing final phase = CELEBRATION
+- Uneven hour distribution across phases = SUGGESTION
+
 ## Output Format
 
 Return ONLY a JSON array. Each insight:
@@ -212,6 +218,24 @@ ${JSON.stringify(data.contracts, null, 2)}`);
 
     sections.push(`## Resource Planning
 ${resourcePlanningParts.join("\n")}`);
+  }
+
+  // Phases
+  if (data.phases?.enabled && data.phases.definitions.length > 0) {
+    const phaseParts: string[] = [];
+    phaseParts.push(`Phase definitions: ${data.phases.definitions.map((p) => p.name).join(" → ")}`);
+
+    if (data.phases.projectPhases.length > 0) {
+      const phaseSummary = data.phases.projectPhases.map((p) => ({
+        project: p.projectName,
+        currentPhase: p.phaseCompleted ? "Completed" : (p.currentPhase || "Unassigned"),
+        hoursPerPhase: p.hoursPerPhase,
+      }));
+      phaseParts.push(`Project phases: ${JSON.stringify(phaseSummary, null, 2)}`);
+    }
+
+    sections.push(`## Project Phases
+${phaseParts.join("\n")}`);
   }
 
   return sections.join("\n\n");

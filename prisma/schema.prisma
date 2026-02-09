@@ -28,6 +28,9 @@ model Company {
   // Holiday configuration
   disabledHolidays String[] @default([]) // Danish holiday codes that are disabled for this company
 
+  // Project phases
+  phasesEnabled Boolean @default(false)
+
   users               User[]
   projects            Project[]
   timeEntries         TimeEntry[]
@@ -39,6 +42,7 @@ model Company {
   companyExpenses     CompanyExpense[]
   absenceReasons      AbsenceReason[]
   companyHolidays     CompanyHoliday[]
+  phases              Phase[]
 }
 
 model User {
@@ -119,7 +123,14 @@ model Project {
   startDate   DateTime?
   endDate     DateTime?
 
+  // Phase tracking
+  phasesEnabled    Boolean   @default(true)   // per-project opt-out when company phases enabled
+  currentPhaseId   String?
+  phaseCompleted   Boolean   @default(false)  // all phases done
+  phaseCompletedAt DateTime?
+
   company             Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  currentPhase         Phase?               @relation("CurrentPhase", fields: [currentPhaseId], references: [id], onDelete: SetNull)
   timeEntries         TimeEntry[]
   allocations         ProjectAllocation[]
   resourceAllocations ResourceAllocation[]
@@ -167,10 +178,15 @@ model TimeEntry {
   // Absence tracking
   absenceReasonId String?
 
+  // Phase attribution
+  phaseId   String?
+  phaseName String?  // Denormalized snapshot of phase name at time of entry
+
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
   company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
   absenceReason AbsenceReason? @relation(fields: [absenceReasonId], references: [id], onDelete: SetNull)
+  phase         Phase?         @relation(fields: [phaseId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([projectId])
@@ -178,6 +194,7 @@ model TimeEntry {
   @@index([date])
   @@index([approvalStatus])
   @@index([companyId, approvalStatus, date])
+  @@index([phaseId])
 }
 
 model VacationRequest {
@@ -394,6 +411,25 @@ model AbsenceReason {
   company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
   timeEntries TimeEntry[]
   users       User[]      @relation("UserAbsenceReasons")
+
+  @@unique([companyId, name])
+  @@index([companyId])
+}
+
+// ─── PROJECT PHASES ───
+// Company-wide phase definitions that projects progress through
+model Phase {
+  id        String   @id @default(cuid())
+  name      String
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  companyId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company            Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  currentForProjects Project[]   @relation("CurrentPhase")
+  timeEntries        TimeEntry[]
 
   @@unique([companyId, name])
   @@index([companyId])

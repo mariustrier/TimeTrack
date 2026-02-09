@@ -15,6 +15,8 @@ import {
   aggregateNonBillableTrend,
   aggregateUnbilledWork,
   aggregateExpenseBreakdown,
+  aggregatePhaseDistribution,
+  aggregatePhaseVelocity,
 } from "@/lib/analytics-utils";
 import { expandRecurringExpenses } from "@/lib/expense-utils";
 
@@ -88,7 +90,15 @@ export async function GET(req: Request) {
         companyId: user.companyId,
         ...dateFilter,
       },
-      include: {
+      select: {
+        id: true,
+        hours: true,
+        date: true,
+        billingStatus: true,
+        approvalStatus: true,
+        userId: true,
+        projectId: true,
+        phaseName: true,
         user: {
           select: {
             id: true,
@@ -174,10 +184,13 @@ export async function GET(req: Request) {
           return NextResponse.json({ error: "Project not found" }, { status: 404 });
         }
 
+        const projectEntries = castEntries.filter((e) => e.projectId === projectId);
         return NextResponse.json({
           burndown: aggregateProjectBurndown(castEntries, project, from, to, granularity),
           profitability: aggregateProjectProfitability(castEntries, projectId, from, to, granularity),
           billableMix: aggregateProjectBillableMix(castEntries, projects),
+          phaseDistribution: aggregatePhaseDistribution(projectEntries),
+          phaseVelocity: aggregatePhaseVelocity(projectEntries, from, to, granularity),
           currency,
         });
       }

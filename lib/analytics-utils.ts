@@ -342,6 +342,59 @@ export function aggregateProjectBillableMix(entries: Entry[], projects: Project[
   }).filter((p) => p.billable + p.included + p.non_billable + p.internal + p.presales > 0);
 }
 
+// --- Phase Analytics ---
+
+interface PhaseEntry extends Entry {
+  phaseName?: string | null;
+}
+
+export function aggregatePhaseDistribution(entries: PhaseEntry[]) {
+  const groups: Record<string, { hours: number; revenue: number; cost: number }> = {};
+  for (const e of entries) {
+    const key = e.phaseName || "Unassigned";
+    if (!groups[key]) groups[key] = { hours: 0, revenue: 0, cost: 0 };
+    groups[key].hours += e.hours;
+    if (e.billingStatus === "billable") {
+      groups[key].revenue += e.hours * e.user.hourlyRate;
+    }
+    groups[key].cost += e.hours * e.user.costRate;
+  }
+  return Object.entries(groups).map(([phaseName, data]) => ({
+    phaseName,
+    hours: Math.round(data.hours * 10) / 10,
+    revenue: Math.round(data.revenue),
+    cost: Math.round(data.cost),
+    margin: data.revenue > 0 ? Math.round(((data.revenue - data.cost) / data.revenue) * 1000) / 10 : 0,
+  }));
+}
+
+export function aggregatePhaseVelocity(
+  entries: PhaseEntry[],
+  from: Date,
+  to: Date,
+  granularity: "monthly" | "weekly"
+) {
+  const periods = getPeriodKeys(from, to, granularity);
+  const phaseNames = new Set<string>();
+  const grouped: Record<string, Record<string, number>> = {};
+
+  for (const e of entries) {
+    const pName = e.phaseName || "Unassigned";
+    phaseNames.add(pName);
+    const key = periodKey(e.date, granularity);
+    if (!grouped[key]) grouped[key] = {};
+    grouped[key][pName] = (grouped[key][pName] || 0) + e.hours;
+  }
+
+  return periods.map((key) => {
+    const result: Record<string, unknown> = { period: periodLabel(key, granularity) };
+    for (const pName of Array.from(phaseNames)) {
+      result[pName] = Math.round((grouped[key]?.[pName] || 0) * 10) / 10;
+    }
+    return result;
+  });
+}
+
 // --- Expense types for analytics ---
 
 interface ExpenseEntry {

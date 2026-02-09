@@ -27,7 +27,7 @@ export async function PUT(
     const body = await req.json();
     const result = validate(updateProjectSchema, body);
     if (!result.success) return result.response;
-    const { name, client, color, budgetHours, billable, currency, pricingType, fixedPrice, rateMode, projectRate, locked, archived } = result.data;
+    const { name, client, color, budgetHours, billable, currency, pricingType, fixedPrice, rateMode, projectRate, locked, archived, phasesEnabled } = result.data;
 
     // Prevent deactivating system-managed projects
     if (project.systemManaged && body.active === false) {
@@ -61,6 +61,7 @@ export async function PUT(
         ...(fixedPrice !== undefined && { fixedPrice: fixedPrice ?? null }),
         ...(rateMode !== undefined && { rateMode }),
         ...(projectRate !== undefined && { projectRate: projectRate ?? null }),
+        ...(phasesEnabled !== undefined && { phasesEnabled }),
         // Lock state
         ...(locked !== undefined && {
           locked,

@@ -65,6 +65,7 @@ export const updateProjectSchema = createProjectSchema.partial().extend({
   active: z.boolean().optional(),
   locked: z.boolean().optional(),
   archived: z.boolean().optional(),
+  phasesEnabled: z.boolean().optional(),
 });
 
 // --- Team Members ---
@@ -202,4 +203,38 @@ export const updateMilestoneSchema = z.object({
   dueDate: z.string().min(1).optional(),
   completed: z.boolean().optional(),
   sortOrder: z.coerce.number().int().nonnegative().optional(),
+});
+
+// --- Project Phases ---
+
+export const createPhaseSchema = z.object({
+  name: z.string().min(1).max(50),
+});
+
+export const updatePhaseSchema = z.object({
+  name: z.string().min(1).max(50).optional(),
+  active: z.boolean().optional(),
+  applyGlobally: z.boolean().optional(),
+});
+
+export const reorderPhasesSchema = z.object({
+  orderedIds: z.array(z.string().min(1)).min(1),
+});
+
+export const phaseWorkflowSchema = z.object({
+  action: z.enum(["complete", "setPhase"]),
+  phaseId: z.string().min(1).optional(),
+});
+
+export const phaseMigrationSchema = z.object({
+  assignments: z.array(z.object({
+    projectId: z.string().min(1),
+    phaseId: z.string().min(1).nullable(),
+  })),
+  backfillRanges: z.array(z.object({
+    projectId: z.string().min(1),
+    phaseId: z.string().min(1),
+    from: z.string().min(1),
+    to: z.string().min(1),
+  })).optional(),
 });

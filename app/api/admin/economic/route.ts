@@ -25,6 +25,7 @@ export async function GET() {
         expenseAutoApproveThreshold: true,
         aiAnonymization: true,
         logoUrl: true,
+        phasesEnabled: true,
       },
     });
 
@@ -68,6 +69,26 @@ export async function PUT(req: Request) {
     if (aiAnonymization !== undefined) {
       data.aiAnonymization = !!aiAnonymization;
     }
+    if (body.phasesEnabled !== undefined) {
+      data.phasesEnabled = !!body.phasesEnabled;
+
+      // When enabling phases for the first time, create 4 default phases
+      if (body.phasesEnabled) {
+        const existingPhases = await db.phase.count({
+          where: { companyId: user.companyId },
+        });
+        if (existingPhases === 0) {
+          await db.phase.createMany({
+            data: [
+              { name: "Phase 1", sortOrder: 1, companyId: user.companyId },
+              { name: "Phase 2", sortOrder: 2, companyId: user.companyId },
+              { name: "Phase 3", sortOrder: 3, companyId: user.companyId },
+              { name: "Phase 4", sortOrder: 4, companyId: user.companyId },
+            ],
+          });
+        }
+      }
+    }
 
     const company = await db.company.update({
       where: { id: user.companyId },
@@ -82,6 +103,7 @@ export async function PUT(req: Request) {
         economicCurrency: true,
         expenseAutoApproveThreshold: true,
         aiAnonymization: true,
+        phasesEnabled: true,
       },
     });
 

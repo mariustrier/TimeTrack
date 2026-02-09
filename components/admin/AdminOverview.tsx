@@ -36,6 +36,9 @@ import {
   Unlock,
   Archive,
   ArchiveRestore,
+  Layers,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -69,6 +72,7 @@ import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { TeamUtilizationBars } from "@/components/admin/TeamUtilizationBars";
 import { AtRiskProjects } from "@/components/admin/AtRiskProjects";
 import { Switch } from "@/components/ui/switch";
+import { PhaseMigrationDialog } from "@/components/admin/PhaseMigrationDialog";
 
 interface EmployeeStat {
   id: string;
@@ -223,6 +227,25 @@ export function AdminOverview() {
   const [holidaySaving, setHolidaySaving] = useState(false);
   const [fillingHolidays, setFillingHolidays] = useState(false);
 
+  // Phase management state
+  interface Phase {
+    id: string;
+    name: string;
+    sortOrder: number;
+    active: boolean;
+  }
+  const tp = useTranslations("phases");
+  const [phasesEnabled, setPhasesEnabled] = useState(false);
+  const [phases, setPhases] = useState<Phase[]>([]);
+  const [phaseDialogOpen, setPhaseDialogOpen] = useState(false);
+  const [editingPhase, setEditingPhase] = useState<Phase | null>(null);
+  const [phaseName, setPhaseName] = useState("");
+  const [phaseApplyGlobally, setPhaseApplyGlobally] = useState(false);
+  const [phaseSaving, setPhaseSaving] = useState(false);
+  const [phasesToggleSaving, setPhasesToggleSaving] = useState(false);
+  const [migrationDialogOpen, setMigrationDialogOpen] = useState(false);
+  const [migrationProjects, setMigrationProjects] = useState<Array<{ id: string; name: string; color: string; systemManaged?: boolean; phasesEnabled: boolean; currentPhase: { id: string; name: string } | null }>>([]);
+
   const weekStart = useMemo(() => startOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
   const weekEnd = useMemo(() => endOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
 
@@ -277,8 +300,14 @@ export function AdminOverview() {
           setUniversalRateInput(data.defaultHourlyRate?.toString() || "");
           setExpenseThresholdInput(data.expenseAutoApproveThreshold?.toString() || "");
           setCompanyLogoUrl(data.logoUrl || null);
+          setPhasesEnabled(data.phasesEnabled || false);
         }
       })
+      .catch(() => {});
+    // Load phases
+    fetch("/api/admin/phases")
+      .then((res) => res.ok ? res.json() : [])
+      .then(setPhases)
       .catch(() => {});
   }, []);
 
@@ -1182,6 +1211,273 @@ export function AdminOverview() {
         </CardContent>
       </Card>
 
+      {/* Project Phases */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center gap-3">
+            <Layers className="h-5 w-5 text-primary" />
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-foreground">{tp("title")}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{tp("description")}</p>
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-3">
+            <button
+              onClick={async () => {
+                const newVal = !phasesEnabled;
+                setPhasesEnabled(newVal);
+                setPhasesToggleSaving(true);
+                try {
+                  await fetch("/api/admin/economic", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ phasesEnabled: newVal }),
+                  });
+                  if (newVal) {
+                    // Reload phases (defaults may have been created)
+                    const res = await fetch("/api/admin/phases");
+                    if (res.ok) {
+                      const newPhases = await res.json();
+                      setPhases(newPhases);
+                      // Check if existing projects need phase assignment
+                      const projRes = await fetch("/api/projects");
+                      if (projRes.ok) {
+                        const projects = await projRes.json();
+                        const needAssignment = projects.filter((p: { systemManaged?: boolean; currentPhase: unknown }) => !p.systemManaged && !p.currentPhase);
+                        if (needAssignment.length > 0) {
+                          setMigrationProjects(projects);
+                          setMigrationDialogOpen(true);
+                        }
+                      }
+                    }
+                  }
+                } catch { /* ignore */ } finally {
+                  setPhasesToggleSaving(false);
+                }
+              }}
+              disabled={phasesToggleSaving}
+              className={cn(
+                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                phasesEnabled ? "bg-primary" : "bg-muted-foreground/30"
+              )}
+            >
+              <span className={cn(
+                "inline-block h-4 w-4 rounded-full bg-white transition-transform",
+                phasesEnabled ? "translate-x-6" : "translate-x-1"
+              )} />
+            </button>
+            <Badge variant={phasesEnabled ? "default" : "secondary"}>
+              {phasesEnabled ? tp("enabled") : tp("disabled")}
+            </Badge>
+          </div>
+
+          {phasesEnabled && (
+            <div className="mt-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium text-foreground">{tp("title")}</h4>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setEditingPhase(null);
+                    setPhaseName("");
+                    setPhaseApplyGlobally(false);
+                    setPhaseDialogOpen(true);
+                  }}
+                >
+                  <Plus className="mr-1 h-3 w-3" />
+                  {tp("addPhase")}
+                </Button>
+              </div>
+              <div className="rounded-lg border">
+                {phases.filter(p => p.active).length === 0 ? (
+                  <p className="p-4 text-sm text-muted-foreground">{tp("description")}</p>
+                ) : (
+                  phases.filter(p => p.active).map((phase, idx, arr) => (
+                    <div key={phase.id} className={cn("flex items-center justify-between px-4 py-2", idx < arr.length - 1 && "border-b")}>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-mono text-muted-foreground w-5">{idx + 1}</span>
+                        <span className="text-sm font-medium">{phase.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          disabled={idx === 0}
+                          onClick={async () => {
+                            const activePhases = phases.filter(p => p.active);
+                            const newOrder = [...activePhases];
+                            [newOrder[idx - 1], newOrder[idx]] = [newOrder[idx], newOrder[idx - 1]];
+                            const orderedIds = newOrder.map(p => p.id);
+                            const res = await fetch("/api/admin/phases/reorder", {
+                              method: "PUT",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ orderedIds }),
+                            });
+                            if (res.ok) {
+                              setPhases(await res.json());
+                              toast.success(tp("phasesReordered"));
+                            }
+                          }}
+                        >
+                          <ChevronUp className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          disabled={idx === arr.length - 1}
+                          onClick={async () => {
+                            const activePhases = phases.filter(p => p.active);
+                            const newOrder = [...activePhases];
+                            [newOrder[idx], newOrder[idx + 1]] = [newOrder[idx + 1], newOrder[idx]];
+                            const orderedIds = newOrder.map(p => p.id);
+                            const res = await fetch("/api/admin/phases/reorder", {
+                              method: "PUT",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ orderedIds }),
+                            });
+                            if (res.ok) {
+                              setPhases(await res.json());
+                              toast.success(tp("phasesReordered"));
+                            }
+                          }}
+                        >
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => {
+                            setEditingPhase(phase);
+                            setPhaseName(phase.name);
+                            setPhaseApplyGlobally(false);
+                            setPhaseDialogOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={async () => {
+                            if (!confirm(tp("deletePhaseConfirm").replace("{name}", phase.name))) return;
+                            const res = await fetch(`/api/admin/phases/${phase.id}`, { method: "DELETE" });
+                            if (res.ok) {
+                              const data = await res.json();
+                              if (data.softDeleted) {
+                                toast.info(tp("phaseDeactivated"));
+                              } else {
+                                toast.success(tp("phaseDeleted"));
+                              }
+                              // Reload phases
+                              const pRes = await fetch("/api/admin/phases");
+                              if (pRes.ok) setPhases(await pRes.json());
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Phase Create/Edit Dialog */}
+      <Dialog open={phaseDialogOpen} onOpenChange={setPhaseDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingPhase ? tp("editPhase") : tp("addPhase")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>{tp("phaseName")}</Label>
+              <Input
+                value={phaseName}
+                onChange={(e) => setPhaseName(e.target.value)}
+                placeholder={tp("phaseNamePlaceholder")}
+                maxLength={50}
+              />
+            </div>
+            {editingPhase && phaseName.trim() !== editingPhase.name && (
+              <div className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  id="applyGlobally"
+                  checked={phaseApplyGlobally}
+                  onChange={(e) => setPhaseApplyGlobally(e.target.checked)}
+                  className="mt-1"
+                />
+                <div>
+                  <label htmlFor="applyGlobally" className="text-sm font-medium">{tp("applyGlobally")}</label>
+                  <p className="text-xs text-muted-foreground">{tp("applyGloballyDesc")}</p>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPhaseDialogOpen(false)}>{tc("cancel")}</Button>
+            <Button
+              disabled={phaseSaving || !phaseName.trim()}
+              onClick={async () => {
+                setPhaseSaving(true);
+                try {
+                  if (editingPhase) {
+                    const res = await fetch(`/api/admin/phases/${editingPhase.id}`, {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        name: phaseName.trim(),
+                        applyGlobally: phaseApplyGlobally,
+                      }),
+                    });
+                    if (!res.ok) {
+                      const data = await res.json();
+                      toast.error(data.error || "Failed to update phase");
+                      return;
+                    }
+                    if (phaseApplyGlobally && phaseName.trim() !== editingPhase.name) {
+                      toast.success(tp("phaseRenamed"));
+                    } else {
+                      toast.success(tp("phaseSaved"));
+                    }
+                  } else {
+                    const res = await fetch("/api/admin/phases", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ name: phaseName.trim() }),
+                    });
+                    if (!res.ok) {
+                      const data = await res.json();
+                      toast.error(data.error || "Failed to create phase");
+                      return;
+                    }
+                    toast.success(tp("phaseSaved"));
+                  }
+                  setPhaseDialogOpen(false);
+                  // Reload phases
+                  const pRes = await fetch("/api/admin/phases");
+                  if (pRes.ok) setPhases(await pRes.json());
+                } catch {
+                  toast.error("Failed to save phase");
+                } finally {
+                  setPhaseSaving(false);
+                }
+              }}
+            >
+              {phaseSaving ? tc("saving") : editingPhase ? tc("update") : tc("create")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Company Expenses Link */}
       <Card data-tour="admin-company-expenses">
         <CardContent className="p-6">
@@ -2046,6 +2342,18 @@ export function AdminOverview() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Phase Migration Dialog */}
+      <PhaseMigrationDialog
+        open={migrationDialogOpen}
+        onOpenChange={setMigrationDialogOpen}
+        phases={phases.filter(p => p.active)}
+        projects={migrationProjects}
+        onComplete={async () => {
+          const pRes = await fetch("/api/admin/phases");
+          if (pRes.ok) setPhases(await pRes.json());
+        }}
+      />
     </div>
   );
 }

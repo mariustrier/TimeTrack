@@ -43,6 +43,7 @@ export async function GET(req: Request) {
       include: {
         project: { select: { id: true, name: true, color: true, billable: true } },
         user: { select: { id: true, firstName: true, lastName: true, email: true } },
+        phase: { select: { id: true, name: true } },
       },
       orderBy: { date: "asc" },
     });
@@ -169,6 +170,7 @@ export async function POST(req: Request) {
 
     const project = await db.project.findFirst({
       where: { id: projectId, companyId: user.companyId },
+      include: { currentPhase: { select: { id: true, name: true } } },
     });
 
     if (!project) {
@@ -249,9 +251,14 @@ export async function POST(req: Request) {
         mileageRoundTrip: mileageRoundTrip ?? false,
         mileageSource: mileageSource ?? null,
         absenceReasonId: isAbsenceProject ? absenceReasonId : null,
+        ...(project.phasesEnabled && project.currentPhase && !isAbsenceProject && {
+          phaseId: project.currentPhase.id,
+          phaseName: project.currentPhase.name,
+        }),
       },
       include: {
         project: { select: { id: true, name: true, color: true, billable: true } },
+        phase: { select: { id: true, name: true } },
       },
     });
 

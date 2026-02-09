@@ -21,6 +21,7 @@ import {
   BILLING_COLORS,
   METRIC_COLORS,
   BILLING_STATUS_ORDER,
+  SERIES_COLORS,
 } from "@/lib/chart-colors";
 import { ChartCard } from "@/components/analytics/chart-card";
 import {
@@ -59,6 +60,14 @@ interface ProfitabilityPoint {
   profit: number;
 }
 
+interface PhaseDistPoint {
+  phaseName: string;
+  hours: number;
+  revenue: number;
+  cost: number;
+  margin: number;
+}
+
 interface BillableMixPoint {
   name: string;
   billable: number;
@@ -83,6 +92,7 @@ export function ProjectInsights({
 }: ProjectInsightsProps) {
   const t = useTranslations("analytics");
   const tc = useTranslations("common");
+  const tp = useTranslations("phases");
   const theme = useChartTheme();
 
   const [projects, setProjects] = useState<Project[]>([]);
@@ -92,6 +102,7 @@ export function ProjectInsights({
   const [billableMix, setBillableMix] = useState<BillableMixPoint[]>([]);
   const [burndown, setBurndown] = useState<BurndownPoint[]>([]);
   const [profitability, setProfitability] = useState<ProfitabilityPoint[]>([]);
+  const [phaseDistribution, setPhaseDistribution] = useState<PhaseDistPoint[]>([]);
 
   const [loadingList, setLoadingList] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -139,6 +150,7 @@ export function ProjectInsights({
       setBurndown(data.burndown || []);
       setProfitability(data.profitability || []);
       setBillableMix(data.billableMix || []);
+      setPhaseDistribution(data.phaseDistribution || []);
       setCurrency(data.currency || "USD");
     } finally {
       setLoadingDetail(false);
@@ -384,6 +396,53 @@ export function ProjectInsights({
               />
             </ComposedChart>
           </ChartCard>
+
+          {/* Phase Distribution */}
+          {phaseDistribution.length > 0 && phaseDistribution.some(p => p.phaseName !== "Unassigned") && (
+            <ChartCard
+              title={tp("phase") + " — " + tc("hours")}
+              loading={loadingDetail}
+              isEmpty={phaseDistribution.length === 0}
+              exportData={phaseDistribution}
+              exportFilename="phase-distribution"
+              className="lg:col-span-2"
+            >
+              <BarChart data={phaseDistribution}>
+                <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
+                <XAxis
+                  dataKey="phaseName"
+                  tick={{ fill: theme.textMuted, fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={{ stroke: theme.grid }}
+                />
+                <YAxis
+                  tick={{ fill: theme.textMuted, fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={{ stroke: theme.grid }}
+                />
+                <Tooltip
+                  {...tooltipStyle}
+                  formatter={(value: any, name: any) => {
+                    if (name === "hours") return [`${value.toFixed(1)}h`, tc("hours")];
+                    if (name === "revenue") return [formatCurrency(value, currency), t("revenue")];
+                    if (name === "cost") return [formatCurrency(value, currency), t("cost")];
+                    return [value, name];
+                  }}
+                />
+                <Legend
+                  formatter={(value: any) => {
+                    if (value === "hours") return tc("hours");
+                    if (value === "revenue") return t("revenue");
+                    if (value === "cost") return t("cost");
+                    return value;
+                  }}
+                />
+                <Bar dataKey="hours" fill={SERIES_COLORS[0]} name="hours" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="revenue" fill={SERIES_COLORS[1]} name="revenue" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="cost" fill={SERIES_COLORS[3]} name="cost" radius={[2, 2, 0, 0]} />
+              </BarChart>
+            </ChartCard>
+          )}
         </div>
       )}
     </div>

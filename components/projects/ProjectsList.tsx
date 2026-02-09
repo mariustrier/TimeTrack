@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FolderKanban, Plus, Pencil, Trash2, FileText } from "lucide-react";
+import { FolderKanban, Plus, Pencil, Trash2, FileText, Layers } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +34,13 @@ import { useTranslations } from "@/lib/i18n";
 import { convertAndFormat, convertAndFormatBudget, SUPPORTED_CURRENCIES } from "@/lib/currency";
 import { ContractSection } from "@/components/contracts/contract-section";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
+import { PhaseProgress } from "@/components/projects/PhaseProgress";
+
+interface Phase {
+  id: string;
+  name: string;
+  sortOrder: number;
+}
 
 interface Project {
   id: string;
@@ -50,6 +57,10 @@ interface Project {
   rateMode: string;
   projectRate: number | null;
   moneyUsed: number;
+  phasesEnabled: boolean;
+  currentPhase: Phase | null;
+  phaseCompleted: boolean;
+  systemManaged?: boolean;
   _count: { timeEntries: number };
 }
 
@@ -62,6 +73,7 @@ export function ProjectsList() {
   const t = useTranslations("projects");
   const tc = useTranslations("common");
   const tContracts = useTranslations("contracts");
+  const tp = useTranslations("phases");
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,6 +98,9 @@ export function ProjectsList() {
   const [projectRate, setProjectRate] = useState("");
   const [userRole, setUserRole] = useState("employee");
   const [contractProjectId, setContractProjectId] = useState<string | null>(null);
+  const [companyPhasesEnabled, setCompanyPhasesEnabled] = useState(false);
+  const [companyPhases, setCompanyPhases] = useState<Phase[]>([]);
+  const [projectPhasesEnabled, setProjectPhasesEnabled] = useState(true);
 
   async function fetchProjects() {
     setLoading(true);
@@ -109,6 +124,13 @@ export function ProjectsList() {
           setDisplayCurrency(data.currency || "USD");
         }
         if (data?.defaultHourlyRate) setDefaultHourlyRate(data.defaultHourlyRate);
+        if (data?.phasesEnabled) {
+          setCompanyPhasesEnabled(true);
+          fetch("/api/admin/phases")
+            .then((res) => res.ok ? res.json() : [])
+            .then((phases) => setCompanyPhases(phases.filter((p: Phase & { active: boolean }) => p.active)))
+            .catch(() => {});
+        }
       })
       .catch(() => {});
   }, []);
@@ -132,6 +154,7 @@ export function ProjectsList() {
     setFixedPrice("");
     setRateMode("COMPANY_RATE");
     setProjectRate("");
+    setProjectPhasesEnabled(true);
     setModalOpen(true);
   }
 
@@ -147,6 +170,7 @@ export function ProjectsList() {
     setFixedPrice(project.fixedPrice?.toString() || "");
     setRateMode(project.rateMode || "COMPANY_RATE");
     setProjectRate(project.projectRate?.toString() || "");
+    setProjectPhasesEnabled(project.phasesEnabled);
     setModalOpen(true);
   }
 
@@ -154,7 +178,7 @@ export function ProjectsList() {
     if (!name.trim()) return;
     setSaving(true);
     try {
-      const body = {
+      const body: Record<string, unknown> = {
         name,
         client,
         color,
@@ -166,6 +190,9 @@ export function ProjectsList() {
         billable,
         currency: (currency && currency !== "default") ? currency : null,
       };
+      if (companyPhasesEnabled) {
+        body.phasesEnabled = projectPhasesEnabled;
+      }
       if (editingProject) {
         await fetch(`/api/projects/${editingProject.id}`, {
           method: "PUT",
@@ -264,6 +291,7 @@ export function ProjectsList() {
                   <TableHead>{t("client")}</TableHead>
                   <TableHead>{t("budget")}</TableHead>
                   <TableHead>{t("entries")}</TableHead>
+                  {companyPhasesEnabled && <TableHead>{tp("phase")}</TableHead>}
                   <TableHead>{tc("status")}</TableHead>
                   <TableHead className="w-20">{tc("actions")}</TableHead>
                 </TableRow>
@@ -287,6 +315,23 @@ export function ProjectsList() {
                       {project.budgetTotalHours != null ? `${project.budgetTotalHours}h` : "-"}
                     </TableCell>
                     <TableCell>{project._count.timeEntries}</TableCell>
+                    {companyPhasesEnabled && (
+                      <TableCell>
+                        {project.phasesEnabled && companyPhases.length > 0 ? (
+                          <PhaseProgress
+                            phases={companyPhases}
+                            currentPhaseId={project.currentPhase?.id || null}
+                            phaseCompleted={project.phaseCompleted}
+                            projectId={project.id}
+                            onPhaseChange={fetchProjects}
+                          />
+                        ) : project.phasesEnabled ? (
+                          <span className="text-muted-foreground text-xs">{tp("unassigned")}</span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">{tp("noPhases")}</span>
+                        )}
+                      </TableCell>
+                    )}
                     <TableCell>
                       <div className="flex gap-1.5">
                         <Badge variant={project.active ? "default" : "secondary"}>
@@ -467,6 +512,21 @@ export function ProjectsList() {
                   </div>
                 )}
               </>
+            )}
+            {companyPhasesEnabled && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="usePhasesEnabled"
+                  checked={projectPhasesEnabled}
+                  onChange={(e) => setProjectPhasesEnabled(e.target.checked)}
+                  className="h-4 w-4 rounded border-border"
+                />
+                <Label htmlFor="usePhasesEnabled" className="flex items-center gap-1">
+                  <Layers className="h-4 w-4" />
+                  {tp("usePhases")}
+                </Label>
+              </div>
             )}
             <div className="space-y-2">
               <Label>{tc("currency")}</Label>

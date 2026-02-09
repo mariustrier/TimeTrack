@@ -100,6 +100,16 @@ export interface InsightDataPackage {
     unassignedUsers: { name: string; weeklyTarget: number; availableHours: number }[];
     understaffedProjects: { projectName: string; allocatedHours: number; estimatedNeed: number }[];
   };
+  phases?: {
+    enabled: boolean;
+    definitions: { name: string; sortOrder: number }[];
+    projectPhases: {
+      projectName: string;
+      currentPhase: string | null;
+      phaseCompleted: boolean;
+      hoursPerPhase: Record<string, number>;
+    }[];
+  };
 }
 
 // Helper functions
@@ -664,7 +674,7 @@ export async function gatherInsightData(companyId: string): Promise<InsightDataP
     }
   }
 
-  return {
+  const result: InsightDataPackage = {
     company: {
       id: company.id,
       name: company.name,
@@ -701,4 +711,65 @@ export async function gatherInsightData(companyId: string): Promise<InsightDataP
       understaffedProjects,
     },
   };
+
+  // Add phase data if enabled
+  try {
+    const companyFull = await db.company.findUnique({
+      where: { id: companyId },
+      select: { phasesEnabled: true },
+    });
+
+    if (companyFull?.phasesEnabled) {
+      const [phaseDefs, phaseProjects, phaseEntries] = await Promise.all([
+        db.phase.findMany({
+          where: { companyId, active: true },
+          select: { name: true, sortOrder: true },
+          orderBy: { sortOrder: "asc" },
+        }),
+        db.project.findMany({
+          where: { companyId, active: true, systemManaged: false, phasesEnabled: true },
+          select: {
+            name: true,
+            currentPhaseId: true,
+            phaseCompleted: true,
+            currentPhase: { select: { name: true } },
+          },
+        }),
+        db.timeEntry.groupBy({
+          by: ["projectId", "phaseName"],
+          where: { companyId, phaseName: { not: null } },
+          _sum: { hours: true },
+        }),
+      ]);
+
+      const phaseHoursMap = new Map<string, Record<string, number>>();
+      for (const entry of phaseEntries) {
+        if (!entry.phaseName) continue;
+        const pName = entry.phaseName!;
+        const existing = phaseHoursMap.get(entry.projectId) || {};
+        existing[pName] = entry._sum.hours || 0;
+        phaseHoursMap.set(entry.projectId, existing);
+      }
+
+      const phaseProjectsFull = await db.project.findMany({
+        where: { companyId, active: true, systemManaged: false, phasesEnabled: true },
+        select: { id: true, name: true, currentPhaseId: true, phaseCompleted: true, currentPhase: { select: { name: true } } },
+      });
+
+      result.phases = {
+        enabled: true,
+        definitions: phaseDefs,
+        projectPhases: phaseProjectsFull.map((p) => ({
+          projectName: p.name,
+          currentPhase: p.currentPhase?.name || null,
+          phaseCompleted: p.phaseCompleted,
+          hoursPerPhase: phaseHoursMap.get(p.id) || {},
+        })),
+      };
+    }
+  } catch {
+    // Phase data is optional, don't fail insights if it errors
+  }
+
+  return result;
 }

@@ -22,6 +22,7 @@ export async function GET() {
           where: projectWhere,
           include: {
             _count: { select: { timeEntries: true } },
+            currentPhase: { select: { id: true, name: true, sortOrder: true } },
           },
           orderBy: { name: "asc" },
         }),
@@ -54,7 +55,7 @@ export async function GET() {
         // Company settings for universal rate
         db.company.findUnique({
           where: { id: user.companyId },
-          select: { defaultHourlyRate: true, useUniversalRate: true },
+          select: { defaultHourlyRate: true, useUniversalRate: true, phasesEnabled: true },
         }),
 
         // User rates for moneyUsed calculation
@@ -153,6 +154,18 @@ export async function POST(req: Request) {
     if (!result.success) return result.response;
     const { name, client, color, budgetHours, billable, currency, pricingType, fixedPrice, rateMode, projectRate } = result.data;
 
+    // Auto-assign first phase if company has phases enabled
+    let currentPhaseId: string | null = null;
+    const usePhasesForProject = body.phasesEnabled !== false;
+    if (user.company.phasesEnabled && usePhasesForProject) {
+      const firstPhase = await db.phase.findFirst({
+        where: { companyId: user.companyId, active: true },
+        orderBy: { sortOrder: "asc" },
+        select: { id: true },
+      });
+      if (firstPhase) currentPhaseId = firstPhase.id;
+    }
+
     const project = await db.project.create({
       data: {
         name,
@@ -166,6 +179,8 @@ export async function POST(req: Request) {
         rateMode: rateMode || "COMPANY_RATE",
         projectRate: projectRate || null,
         companyId: user.companyId,
+        phasesEnabled: usePhasesForProject,
+        currentPhaseId,
       },
     });
 
