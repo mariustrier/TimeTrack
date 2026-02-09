@@ -184,10 +184,9 @@ export function ProjectTimeline() {
     fetchData();
   }, [fetchData]);
 
-  // Navigation - step size adapts to span
-  const navStep = Math.max(1, Math.ceil(currentSpan / 3));
-  const goToPrevious = () => setCurrentDate((d) => subMonths(d, navStep));
-  const goToNext = () => setCurrentDate((d) => addMonths(d, navStep));
+  // Navigation - always 1 month at a time
+  const goToPrevious = () => setCurrentDate((d) => subMonths(d, 1));
+  const goToNext = () => setCurrentDate((d) => addMonths(d, 1));
   const goToToday = () => setCurrentDate(new Date());
 
   // Milestone handlers
