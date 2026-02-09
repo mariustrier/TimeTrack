@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUser, isAdminOrManager } from "@/lib/auth";
 import { getDailyTarget } from "@/lib/calculations";
 import type { CustomHoliday } from "@/lib/holidays";
 
@@ -23,10 +23,12 @@ export async function GET(req: Request) {
       companyId: user.companyId,
     };
 
-    if (user.role !== "admin") {
+    if (!isAdminOrManager(user.role)) {
       where.userId = user.id;
     } else if (userId) {
       where.userId = userId;
+    } else {
+      where.userId = user.id;
     }
 
     if (startDate && endDate) {
@@ -45,18 +47,28 @@ export async function GET(req: Request) {
       orderBy: { date: "asc" },
     });
 
-    // Calculate cumulative flex balance prior to the requested week (personal, for logged-in user)
+    // Resolve target user for flex balance (may differ from logged-in user when admin views an employee)
+    const targetUserId = (isAdminOrManager(user.role) && userId) ? userId : user.id;
+    const targetUser = targetUserId !== user.id
+      ? await db.user.findFirst({ where: { id: targetUserId, companyId: user.companyId }, select: { id: true, weeklyTarget: true, createdAt: true } })
+      : user;
+
+    if (!targetUser) {
+      return NextResponse.json({ error: "Target user not found" }, { status: 404 });
+    }
+
+    // Calculate cumulative flex balance prior to the requested week
     let priorFlexBalance: number | null = null;
     if (startDate) {
       const weekStartDate = new Date(startDate);
-      const userStart = user.createdAt;
+      const userStart = targetUser.createdAt;
 
       // Only calculate if the user existed before this week
       if (userStart < weekStartDate) {
-        // Sum all hours the logged-in user worked before the current week
+        // Sum all hours the target user worked before the current week
         const priorHoursAgg = await db.timeEntry.aggregate({
           where: {
-            userId: user.id,
+            userId: targetUser.id,
             companyId: user.companyId,
             date: { gte: userStart, lt: weekStartDate },
           },
@@ -81,7 +93,7 @@ export async function GET(req: Request) {
         }));
 
         // Count expected hours (Mon-Fri minus holidays)
-        const wt = user.weeklyTarget;
+        const wt = targetUser.weeklyTarget;
         let expected = 0;
         const d = new Date(userStart);
         d.setHours(0, 0, 0, 0);
@@ -101,7 +113,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       entries,
       meta: {
-        weeklyTarget: user.weeklyTarget,
+        weeklyTarget: targetUser.weeklyTarget,
         ...(priorFlexBalance !== null && { priorFlexBalance }),
       },
     });
@@ -137,7 +149,23 @@ export async function POST(req: Request) {
       mileageRoundTrip,
       mileageSource,
       absenceReasonId,
+      userId: targetUserId,
     } = result.data;
+
+    // Determine effective user (admin/manager can log on behalf of employees)
+    let effectiveUserId = user.id;
+    if (targetUserId && targetUserId !== user.id) {
+      if (!isAdminOrManager(user.role)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      const targetUser = await db.user.findFirst({
+        where: { id: targetUserId, companyId: user.companyId },
+      });
+      if (!targetUser) {
+        return NextResponse.json({ error: "Target user not found" }, { status: 404 });
+      }
+      effectiveUserId = targetUserId;
+    }
 
     const project = await db.project.findFirst({
       where: { id: projectId, companyId: user.companyId },
@@ -175,7 +203,7 @@ export async function POST(req: Request) {
     };
     const dayEntries = await db.timeEntry.findMany({
       where: {
-        userId: user.id,
+        userId: effectiveUserId,
         companyId: user.companyId,
         date: { gte: dayStart, lte: dayEnd },
       },
@@ -183,7 +211,9 @@ export async function POST(req: Request) {
     });
 
     // Only block if the day has entries and ALL are approved or locked
-    if (dayEntries.length > 0) {
+    // (admins logging on behalf can bypass this restriction)
+    const isOnBehalf = effectiveUserId !== user.id;
+    if (dayEntries.length > 0 && !isOnBehalf) {
       const allProcessed = dayEntries.every(
         (e) => e.approvalStatus === "approved" || e.approvalStatus === "locked"
       );
@@ -208,7 +238,7 @@ export async function POST(req: Request) {
         hours,
         date: entryDate,
         comment: comment || null,
-        userId: user.id,
+        userId: effectiveUserId,
         projectId,
         companyId: user.companyId,
         billingStatus: isAbsenceProject ? "non_billable" : (billingStatus || defaultBillingStatus),
@@ -219,6 +249,8 @@ export async function POST(req: Request) {
         mileageRoundTrip: mileageRoundTrip ?? false,
         mileageSource: mileageSource ?? null,
         absenceReasonId: isAbsenceProject ? absenceReasonId : null,
+        // Admin-created entries on behalf are auto-approved
+        ...(isOnBehalf && { approvalStatus: "approved" }),
       },
       include: {
         project: { select: { id: true, name: true, color: true, billable: true } },

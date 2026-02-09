@@ -19,6 +19,8 @@ export const createTimeEntrySchema = z.object({
   mileageSource: z.enum(["manual", "calculated"]).optional().nullable(),
   // Absence tracking
   absenceReasonId: z.string().optional().nullable(),
+  // Admin: log on behalf of employee
+  userId: z.string().min(1).optional(),
 });
 
 export const updateTimeEntrySchema = z.object({

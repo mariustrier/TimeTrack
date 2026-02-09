@@ -31,6 +31,7 @@ import {
   RefreshCw,
   Car,
   MapPin,
+  Users,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -193,6 +194,10 @@ export default function DashboardPage() {
   const [disabledHolidayCodes, setDisabledHolidayCodes] = useState<string[]>([]);
   const [customHolidays, setCustomHolidays] = useState<CustomHoliday[]>([]);
   const { locale } = useLocale();
+  // Admin "view as" employee
+  const [userRole, setUserRole] = useState<string>("employee");
+  const [teamMembers, setTeamMembers] = useState<{ id: string; firstName: string | null; lastName: string | null; email: string }[]>([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
 
   const weekStart = useMemo(() => startOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
   const weekEnd = useMemo(() => endOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
@@ -244,8 +249,9 @@ export default function DashboardPage() {
       const start = format(weekStart, "yyyy-MM-dd");
       const end = format(weekEnd, "yyyy-MM-dd");
 
+      const userIdParam = selectedEmployeeId ? `&userId=${selectedEmployeeId}` : "";
       const [entriesRes, projectsRes, vacationsRes, absenceReasonsRes, holidaysRes, userMeRes] = await Promise.all([
-        fetch(`/api/time-entries?startDate=${start}&endDate=${end}`),
+        fetch(`/api/time-entries?startDate=${start}&endDate=${end}${userIdParam}`),
         fetch("/api/projects"),
         fetch("/api/vacations"),
         fetch("/api/absence-reasons"),
@@ -302,6 +308,7 @@ export default function DashboardPage() {
       if (userMeRes.ok) {
         const meData = await userMeRes.json();
         if (meData.vacationDays != null) setBonusVacationDays(meData.vacationDays);
+        if (meData.role) setUserRole(meData.role);
       }
       setLastUpdated(new Date());
     } catch (error) {
@@ -309,11 +316,21 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [weekStart, weekEnd]);
+  }, [weekStart, weekEnd, selectedEmployeeId]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Fetch team members for admin/manager employee selector
+  useEffect(() => {
+    if (userRole === "admin" || userRole === "manager") {
+      fetch("/api/team")
+        .then((res) => res.ok ? res.json() : [])
+        .then((data) => setTeamMembers(data))
+        .catch(() => {});
+    }
+  }, [userRole]);
 
   // Auto-refresh: 30s polling + refetch on window focus
   useEffect(() => {
@@ -487,6 +504,7 @@ export default function DashboardPage() {
             mileageRoundTrip,
             mileageSource: mileageSource || null,
             absenceReasonId: isAbsenceProject(selectedProjectId) ? selectedAbsenceReasonId : null,
+            ...(selectedEmployeeId && { userId: selectedEmployeeId }),
           }),
         });
       }
@@ -706,9 +724,30 @@ export default function DashboardPage() {
       <PageGuide pageId="dashboard" titleKey="dashboardTitle" descKey="dashboardDesc" tips={["dashboardTip1", "dashboardTip2", "dashboardTip3"]} />
       {/* Week Navigation */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
+          {(userRole === "admin" || userRole === "manager") && teamMembers.length > 0 && (
+            <Select
+              value={selectedEmployeeId || "__self__"}
+              onValueChange={(val) => setSelectedEmployeeId(val === "__self__" ? "" : val)}
+            >
+              <SelectTrigger className="w-[220px]">
+                <Users className="h-4 w-4 mr-2 text-muted-foreground" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__self__">{t("myTimesheet")}</SelectItem>
+                {teamMembers.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.firstName && m.lastName ? `${m.firstName} ${m.lastName}` : m.email}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
         <div className="flex items-center gap-2">
-          {hasDraftEntries && (
+          {hasDraftEntries && !selectedEmployeeId && (
             <Button onClick={() => setSubmitDialogOpen(true)}>
               <Send className="mr-2 h-4 w-4" />
               {t("submitWeek")}
@@ -744,6 +783,19 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Viewing employee banner */}
+      {selectedEmployeeId && (
+        <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
+          <Users className="h-4 w-4" />
+          {t("viewingEmployeeTimesheet", {
+            name: (() => {
+              const m = teamMembers.find((m) => m.id === selectedEmployeeId);
+              return m?.firstName && m?.lastName ? `${m.firstName} ${m.lastName}` : m?.email || "";
+            })(),
+          })}
+        </div>
+      )}
 
       {/* Week Status Banner */}
       {weekStatus === "submitted" && (
@@ -1049,8 +1101,8 @@ export default function DashboardPage() {
                       {timeBalance >= 0 ? "+" : ""}{timeBalance.toFixed(1)}
                     </td>
                   </tr>
-                  {/* Daily Submit Buttons row */}
-                  <tr className="bg-muted/30">
+                  {/* Daily Submit Buttons row (hidden when viewing on behalf) */}
+                  {!selectedEmployeeId && <tr className="bg-muted/30">
                     <td className="px-4 py-2 text-sm text-muted-foreground">{t("submitDay")}</td>
                     {weekDays.map((day) => {
                       const hasDrafts = dayHasDraftEntries(day);
@@ -1086,7 +1138,7 @@ export default function DashboardPage() {
                       <td className="px-2 py-2" />
                     )}
                     <td className="px-4 py-2" />
-                  </tr>
+                  </tr>}
                 </tfoot>
               </table>
             </div>

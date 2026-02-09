@@ -105,6 +105,8 @@
     "failedToSubmit": "Failed to submit week",
     "submitDay": "Submit",
     "flexBalance": "Flex",
+    "myTimesheet": "My timesheet",
+    "viewingEmployeeTimesheet": "Viewing {name}'s timesheet. Entries created here will be logged under their account.",
     "daySubmitted": "Day submitted for approval",
     "projectBudgets": "Project Budgets",
     "budget": "Budget",

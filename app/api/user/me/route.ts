@@ -9,6 +9,7 @@ export async function GET() {
     }
 
     return NextResponse.json({
+      role: user.role,
       vacationDays: user.vacationDays,
       weeklyTarget: user.weeklyTarget,
       createdAt: user.createdAt,

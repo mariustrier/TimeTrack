@@ -105,6 +105,8 @@
     "failedToSubmit": "Kunne ikke indsende uge",
     "submitDay": "Indsend",
     "flexBalance": "Flex",
+    "myTimesheet": "Min timeseddel",
+    "viewingEmployeeTimesheet": "Viser {name}s timeseddel. Registreringer oprettet her vil blive logget under deres konto.",
     "daySubmitted": "Dag indsendt til godkendelse",
     "projectBudgets": "Projektbudgetter",
     "budget": "Budget",
