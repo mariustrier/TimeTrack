@@ -35,11 +35,11 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 7. `app/(dashboard)/expenses/` - Expense tracking with receipt uploads
 8. `app/(dashboard)/vacations/` - **Tabbed**: My Requests | Planner | Team Calendar
 9. `app/(dashboard)/settings/` - Tour replay, data export, account deletion
-10. `app/(dashboard)/super-admin/` - Platform-level admin *(superAdmin only)*
+10. `app/(dashboard)/super-admin/` - Platform-level admin with support access requests *(superAdmin only)*
 
-### API Routes (70 route files across 18 domains)
-- `app/api/` - All scoped by companyId
-- Key domains: `time-entries`, `projects`, `team`, `admin`, `expenses`, `vacations`, `contracts`, `resource-allocations`, `analytics`, `ai`, `insights`, `mileage`, `auth`, `cron`, `super-admin`, `user`, `upload`, `absence-reasons`, `admin/phases`
+### API Routes (77 route files across 19 domains)
+- `app/api/` - All scoped by companyId (via `getAuthUser()` which auto-overrides for support mode)
+- Key domains: `time-entries`, `projects`, `team`, `admin`, `expenses`, `vacations`, `contracts`, `resource-allocations`, `analytics`, `ai`, `insights`, `mileage`, `auth`, `cron`, `super-admin`, `super-admin/access`, `admin/support-access`, `user`, `upload`, `absence-reasons`, `admin/phases`
 
 ### Components
 - `components/admin/` - AdminOverview, AdminApprovals, AdminVacations, AdminBackups, AdminAuditLog, TeamUtilizationBars, PhaseMigrationDialog
@@ -51,11 +51,11 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `components/resource-planner/` - ResourceGrid, AllocationDialog, ViewControls, CapacitySummary
 - `components/team/` - TeamList, ResourcePlanner
 - `components/vacations/` - VacationCalendar, VacationPlanner
-- `components/layout/` - Sidebar (role-based nav with badge counts)
+- `components/layout/` - Sidebar (role-based nav with badge counts, support mode banner)
 - `components/ui/` - shadcn/ui primitives, guided-tour, page-guide, info-tooltip, theme/locale toggles
 
 ### Shared Libraries
-- `lib/auth.ts` - getAuthUser helper (Clerk + Prisma)
+- `lib/auth.ts` - getAuthUser helper (Clerk + Prisma, support access override for super admins)
 - `lib/db.ts` - Prisma client singleton
 - `lib/schemas.ts` - All Zod validation schemas
 - `lib/validate.ts` - Zod validation helper for API routes
@@ -71,8 +71,8 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `lib/expense-utils.ts` - Expense formatting helpers
 - `lib/analytics-utils.ts` - Analytics data processing
 
-### Database (15 models)
-Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense, CompanyExpense, AbsenceReason, ResourceAllocation, ProjectMilestone, Phase
+### Database (16 models)
+Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense, CompanyExpense, AbsenceReason, ResourceAllocation, ProjectMilestone, Phase, SupportAccess
 
 ### Tests
 - `__tests__/lib/` - 99 unit tests across 6 suites (Vitest)
@@ -179,6 +179,18 @@ Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation,
 - Enhanced TourOverlay: Back button, keyboard nav (Esc/Arrow keys), auto-flip positioning, ResizeObserver, progress dots, smooth transitions
 - Reset via Settings → "Replay Guided Tour"
 
+### Super Admin Support Access
+- Consent-based system for super admin to enter any company's context for support/troubleshooting
+- **Flow**: Super admin requests access → Company admin sees banner in Admin Overview → Grants or denies → Super admin enters via "Enter" button → Redirected to dashboard with amber sidebar banner → Exits when done
+- **Session-scoped**: Once super admin exits, the session is permanently expired — a new grant is needed to re-enter
+- **Auto-expiry**: Sessions auto-expire after 4 hours
+- **Single session**: Only one active/pending/granted session per super admin at a time
+- **Auth override**: `getAuthUser()` detects active `SupportAccess` and overrides `companyId`, `company`, `role` to "admin" — all 70+ API routes work automatically
+- **Admin notification**: Banner in AdminOverview with Grant/Deny buttons (pending) or Revoke button (active)
+- **Sidebar banner**: Amber "Support Mode" banner with company name and "Exit Support" button
+- **Audit logging**: SUPPORT_REQUEST, SUPPORT_GRANT, SUPPORT_DENY, SUPPORT_ENTER, SUPPORT_EXIT, SUPPORT_REVOKE
+- **DB model**: `SupportAccess` with status lifecycle: `pending` → `granted` → `active` → `expired`
+
 ### Mileage Tracking
 - Integrated into time entry modal (collapsible section)
 - Fields: km, start/end address, intermediate stops, round trip toggle
@@ -200,6 +212,7 @@ Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation,
 - `BLOB_READ_WRITE_TOKEN` - Vercel Blob storage
 - `RESEND_API_KEY` - Resend email service
 - `RESEND_FROM_EMAIL` - Sender address (e.g., `Cloud Timer <noreply@cloudtimer.dk>`)
+- `SUPER_ADMIN_EMAIL` - Email address for platform super admin (enables `/super-admin` page + support access)
 
 ## Known Gaps (potential future work)
 
