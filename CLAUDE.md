@@ -86,7 +86,7 @@ Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation,
 - Daily flex balance row showing running overtime/undertime
 - Per-day submit buttons + bulk "Submit Week"
 - Flex calculation: Mon-Thu get rounded daily target, Friday gets remainder (e.g., 37h → 9.25×4 + 0h Fri... actually Mon-Thu=9.5, Fri=7 for 45h)
-- Budget progress bars per project (includes draft/unsubmitted hours)
+- Budget progress bars per project (includes draft/unsubmitted hours, hidden for system-managed projects like Absence)
 - **"Full day" button** in time entry modal: auto-fills hours based on day (Mon-Thu target or Friday target)
 - Mileage tracking in time entry modal (OpenRouteService API)
 - Absence reason selection for absence project entries (comment optional for absence, required for other projects)
