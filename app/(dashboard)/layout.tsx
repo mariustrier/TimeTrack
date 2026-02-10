@@ -39,13 +39,32 @@ export default async function DashboardLayout({
     redirect("/consent");
   }
 
+  // Check for active support session (super admin only)
+  let supportMode = false;
+  let supportCompanyName: string | null = null;
+  if (isSuperAdmin(user.email)) {
+    const activeSupportAccess = await db.supportAccess.findFirst({
+      where: { requestedBy: user.id, status: "active" },
+      include: { company: { select: { name: true } } },
+    });
+    if (activeSupportAccess) {
+      supportMode = true;
+      supportCompanyName = activeSupportAccess.company.name;
+    }
+  }
+
   return (
     <LocaleProvider>
       <TooltipProvider delayDuration={200}>
       <CompanyProvider logoUrl={user.company?.logoUrl ?? null}>
       <GuideProvider dismissedGuides={user.dismissedGuides}>
         <div className="flex h-screen overflow-hidden bg-background">
-          <Sidebar userRole={user.role} isSuperAdmin={isSuperAdmin(user.email)} />
+          <Sidebar
+            userRole={user.role}
+            isSuperAdmin={isSuperAdmin(user.email)}
+            supportMode={supportMode}
+            supportCompanyName={supportCompanyName}
+          />
           <main className="flex-1 overflow-y-auto">
             <div className="p-6 lg:p-8">{children}</div>
           </main>

@@ -43,6 +43,7 @@ model Company {
   absenceReasons      AbsenceReason[]
   companyHolidays     CompanyHoliday[]
   phases              Phase[]
+  supportAccesses     SupportAccess[]
 }
 
 model User {
@@ -433,6 +434,26 @@ model Phase {
 
   @@unique([companyId, name])
   @@index([companyId])
+}
+
+// ─── SUPPORT ACCESS ───
+// Super admin consent-based access to company contexts
+model SupportAccess {
+  id           String    @id @default(cuid())
+  companyId    String
+  requestedBy  String    // User ID of super admin
+  status       String    @default("pending") // pending | granted | active | expired
+  grantedBy    String?
+  grantedAt    DateTime?
+  activatedAt  DateTime?
+  expiredAt    DateTime?
+  expiryReason String?   // manual_exit | admin_revoked | auto_expired
+  createdAt    DateTime  @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, status])
+  @@index([requestedBy, status])
 }
 
 // ─── RESOURCE ALLOCATIONS (Time-bounded) ───

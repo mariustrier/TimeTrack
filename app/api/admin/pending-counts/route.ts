@@ -76,6 +76,18 @@ export async function GET() {
       counts.vacationManagement = vacationCount + cancelledVacationCount;
     }
 
+    if (user.role === "admin") {
+      const supportAccessCount = await db.supportAccess.count({
+        where: {
+          companyId: user.companyId,
+          status: { in: ["pending", "active"] },
+        },
+      });
+      if (supportAccessCount > 0) {
+        counts.supportAccess = supportAccessCount;
+      }
+    }
+
     if (user.role === "admin" || user.role === "manager") {
       const insightCount = await db.contractInsight.count({
         where: { companyId: user.companyId, dismissed: false, seenAt: null },

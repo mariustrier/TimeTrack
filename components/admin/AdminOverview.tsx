@@ -73,6 +73,7 @@ import { TeamUtilizationBars } from "@/components/admin/TeamUtilizationBars";
 import { AtRiskProjects } from "@/components/admin/AtRiskProjects";
 import { Switch } from "@/components/ui/switch";
 import { PhaseMigrationDialog } from "@/components/admin/PhaseMigrationDialog";
+import { ShieldAlert, CheckCircle, XCircle } from "lucide-react";
 
 interface EmployeeStat {
   id: string;
@@ -130,6 +131,7 @@ export function AdminOverview() {
   const t = useTranslations("admin");
   const tc = useTranslations("common");
   const tt = useTranslations("team");
+  const tSupport = useTranslations("support");
   const dateLocale = useDateLocale();
   const formatOpts = dateLocale ? { locale: dateLocale } : undefined;
 
@@ -166,6 +168,10 @@ export function AdminOverview() {
   const [receiptExporting, setReceiptExporting] = useState(false);
   const [companyLogoUrl, setCompanyLogoUrl] = useState<string | null>(null);
   const [logoUploading, setLogoUploading] = useState(false);
+
+  // Support access state
+  const [supportAccess, setSupportAccess] = useState<{ id: string; status: string }[]>([]);
+  const [supportActionLoading, setSupportActionLoading] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   // Absence reasons state
@@ -282,6 +288,41 @@ export function AdminOverview() {
       clearInterval(interval);
     };
   }, [fetchStats]);
+
+  // Fetch support access requests for this company
+  const fetchSupportAccess = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/support-access");
+      if (res.ok) {
+        setSupportAccess(await res.json());
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    fetchSupportAccess();
+    const interval = setInterval(fetchSupportAccess, 30000);
+    return () => clearInterval(interval);
+  }, [fetchSupportAccess]);
+
+  const handleSupportAction = async (accessId: string, action: "grant" | "revoke") => {
+    setSupportActionLoading(true);
+    try {
+      const url = action === "grant"
+        ? "/api/admin/support-access/grant"
+        : "/api/admin/support-access/revoke";
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ supportAccessId: accessId }),
+      });
+      if (res.ok) {
+        toast.success(action === "grant" ? tSupport("accessGranted") : tSupport("accessRevoked"));
+        fetchSupportAccess();
+      }
+    } catch {}
+    setSupportActionLoading(false);
+  };
 
   // Load e-conomic settings + company currency on mount
   useEffect(() => {
@@ -637,6 +678,64 @@ export function AdminOverview() {
 
   return (
     <div className="space-y-6">
+      {/* Support Access Banner */}
+      {supportAccess.length > 0 && supportAccess.map((sa) => (
+        <div
+          key={sa.id}
+          className="flex items-center justify-between rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950"
+        >
+          <div className="flex items-center gap-3">
+            <ShieldAlert className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            <div>
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                {sa.status === "pending" ? tSupport("requestPending") : tSupport("supportActive")}
+              </p>
+              <p className="text-xs text-amber-600 dark:text-amber-500">
+                {sa.status === "pending" ? tSupport("requestPendingDesc") : tSupport("supportActiveDesc")}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {sa.status === "pending" && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400"
+                  onClick={() => handleSupportAction(sa.id, "grant")}
+                  disabled={supportActionLoading}
+                >
+                  <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
+                  {tSupport("grant")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 border-red-300 text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-400"
+                  onClick={() => handleSupportAction(sa.id, "revoke")}
+                  disabled={supportActionLoading}
+                >
+                  <XCircle className="mr-1.5 h-3.5 w-3.5" />
+                  {tSupport("deny")}
+                </Button>
+              </>
+            )}
+            {(sa.status === "granted" || sa.status === "active") && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 border-red-300 text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-400"
+                onClick={() => handleSupportAction(sa.id, "revoke")}
+                disabled={supportActionLoading}
+              >
+                <XCircle className="mr-1.5 h-3.5 w-3.5" />
+                {tSupport("revoke")}
+              </Button>
+            )}
+          </div>
+        </div>
+      ))}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

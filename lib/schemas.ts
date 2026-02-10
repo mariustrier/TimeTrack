@@ -226,6 +226,16 @@ export const phaseWorkflowSchema = z.object({
   phaseId: z.string().min(1).optional(),
 });
 
+// --- Support Access ---
+
+export const supportAccessRequestSchema = z.object({
+  companyId: z.string().min(1),
+});
+
+export const supportAccessActionSchema = z.object({
+  supportAccessId: z.string().min(1),
+});
+
 export const phaseMigrationSchema = z.object({
   assignments: z.array(z.object({
     projectId: z.string().min(1),

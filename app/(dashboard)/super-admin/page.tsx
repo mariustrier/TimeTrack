@@ -1,17 +1,23 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   Shield,
   Building2,
   Users,
   Clock,
   Sparkles,
+  KeyRound,
+  Loader2,
+  LogIn,
 } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface CompanyInfo {
   id: string;
@@ -41,26 +47,39 @@ interface UsageData {
   };
 }
 
+interface SupportSession {
+  id: string;
+  companyId: string;
+  status: string;
+  company: { id: string; name: string };
+}
+
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
 export default function SuperAdminPage() {
   const t = useTranslations("superAdmin");
+  const ts = useTranslations("support");
+  const router = useRouter();
 
   const [companies, setCompanies] = useState<CompanyInfo[]>([]);
   const [usageData, setUsageData] = useState<UsageData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sessions, setSessions] = useState<SupportSession[]>([]);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [companiesRes, usageRes] = await Promise.all([
+      const [companiesRes, usageRes, sessionsRes] = await Promise.all([
         fetch("/api/super-admin/companies"),
         fetch("/api/super-admin/usage"),
+        fetch("/api/super-admin/access/status"),
       ]);
       if (companiesRes.ok) setCompanies(await companiesRes.json());
       if (usageRes.ok) setUsageData(await usageRes.json());
+      if (sessionsRes.ok) setSessions(await sessionsRes.json());
     } catch (error) {
       console.error("Failed to fetch super admin data:", error);
     } finally {
@@ -71,6 +90,56 @@ export default function SuperAdminPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const getSessionForCompany = (companyId: string) => {
+    return sessions.find(
+      (s) => s.companyId === companyId && ["pending", "granted", "active"].includes(s.status)
+    );
+  };
+
+  const handleRequestAccess = async (companyId: string) => {
+    setActionLoading(companyId);
+    try {
+      const res = await fetch("/api/super-admin/access/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId }),
+      });
+      if (res.ok) {
+        toast.success(ts("requestSent"));
+        fetchData();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || ts("requestFailed"));
+      }
+    } catch {
+      toast.error(ts("requestFailed"));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleEnter = async (sessionId: string) => {
+    setActionLoading(sessionId);
+    try {
+      const res = await fetch("/api/super-admin/access/enter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ supportAccessId: sessionId }),
+      });
+      if (res.ok) {
+        toast.success(ts("sessionStarted"));
+        router.push("/dashboard");
+        router.refresh();
+      } else {
+        toast.error(ts("enterFailed"));
+      }
+    } catch {
+      toast.error(ts("enterFailed"));
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   const totalUsers = companies.reduce((sum, c) => sum + c.userCount, 0);
   const totalEntries = companies.reduce((sum, c) => sum + c.entryCount, 0);
@@ -163,24 +232,71 @@ export default function SuperAdminPage() {
                     <th className="pb-2 font-medium text-muted-foreground">{t("users")}</th>
                     <th className="pb-2 font-medium text-muted-foreground">{t("entries")}</th>
                     <th className="pb-2 font-medium text-muted-foreground">{t("created")}</th>
+                    <th className="pb-2 text-right font-medium text-muted-foreground">{ts("access")}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {companies.map((company) => (
-                    <tr key={company.id} className="border-b last:border-0">
-                      <td className="py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-foreground">{company.name}</span>
-                          <Badge variant="outline" className="text-xs">{company.currency}</Badge>
-                        </div>
-                      </td>
-                      <td className="py-3 text-muted-foreground">{company.userCount}</td>
-                      <td className="py-3 text-muted-foreground">{company.entryCount.toLocaleString()}</td>
-                      <td className="py-3 text-muted-foreground">
-                        {new Date(company.createdAt).toLocaleDateString()}
-                      </td>
-                    </tr>
-                  ))}
+                  {companies.map((company) => {
+                    const session = getSessionForCompany(company.id);
+                    return (
+                      <tr key={company.id} className="border-b last:border-0">
+                        <td className="py-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-foreground">{company.name}</span>
+                            <Badge variant="outline" className="text-xs">{company.currency}</Badge>
+                          </div>
+                        </td>
+                        <td className="py-3 text-muted-foreground">{company.userCount}</td>
+                        <td className="py-3 text-muted-foreground">{company.entryCount.toLocaleString()}</td>
+                        <td className="py-3 text-muted-foreground">
+                          {new Date(company.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="py-3 text-right">
+                          {!session && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7"
+                              onClick={() => handleRequestAccess(company.id)}
+                              disabled={actionLoading === company.id}
+                            >
+                              {actionLoading === company.id ? (
+                                <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                              ) : (
+                                <KeyRound className="mr-1.5 h-3 w-3" />
+                              )}
+                              {ts("requestAccess")}
+                            </Button>
+                          )}
+                          {session?.status === "pending" && (
+                            <Badge variant="secondary" className="bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400">
+                              {ts("pending")}
+                            </Badge>
+                          )}
+                          {session?.status === "granted" && (
+                            <Button
+                              size="sm"
+                              className="h-7 bg-green-600 hover:bg-green-700"
+                              onClick={() => handleEnter(session.id)}
+                              disabled={actionLoading === session.id}
+                            >
+                              {actionLoading === session.id ? (
+                                <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                              ) : (
+                                <LogIn className="mr-1.5 h-3 w-3" />
+                              )}
+                              {ts("enter")}
+                            </Button>
+                          )}
+                          {session?.status === "active" && (
+                            <Badge className="bg-amber-500 text-white">
+                              {ts("active")}
+                            </Badge>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

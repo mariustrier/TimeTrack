@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 import {
@@ -15,12 +15,16 @@ import {
   Shield,
   Receipt,
   Settings,
+  LogOut,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoIcon } from "@/components/ui/logo-icon";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { LocaleToggle } from "@/components/ui/locale-toggle";
 import { useTranslations } from "@/lib/i18n";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface NavItem {
   labelKey: string;
@@ -47,12 +51,17 @@ const navItems: NavItem[] = [
 interface SidebarProps {
   userRole: string;
   isSuperAdmin?: boolean;
+  supportMode?: boolean;
+  supportCompanyName?: string | null;
 }
 
-export function Sidebar({ userRole, isSuperAdmin: superAdmin }: SidebarProps) {
+export function Sidebar({ userRole, isSuperAdmin: superAdmin, supportMode, supportCompanyName }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const t = useTranslations("nav");
+  const ts = useTranslations("support");
   const [badgeCounts, setBadgeCounts] = useState<Record<string, number>>({});
+  const [exiting, setExiting] = useState(false);
 
   const visibleItems = navItems.filter((item) => {
     if (item.superAdminOnly) return superAdmin;
@@ -78,12 +87,53 @@ export function Sidebar({ userRole, isSuperAdmin: superAdmin }: SidebarProps) {
     }
   }, [userRole]);
 
+  const handleExitSupport = async () => {
+    setExiting(true);
+    try {
+      const res = await fetch("/api/super-admin/access/exit", { method: "POST" });
+      if (res.ok) {
+        toast.success(ts("sessionEnded"));
+        router.push("/super-admin");
+        router.refresh();
+      } else {
+        toast.error(ts("exitFailed"));
+      }
+    } catch {
+      toast.error(ts("exitFailed"));
+    } finally {
+      setExiting(false);
+    }
+  };
+
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-border bg-card">
       <div className="flex h-16 items-center gap-2 border-b border-border -ml-2">
         <LogoIcon className="h-[5.5rem] w-[5.5rem] text-brand-500" />
         <span className="text-lg font-bold text-foreground">{t("timetrack")}</span>
       </div>
+
+      {/* Support Mode Banner */}
+      {supportMode && supportCompanyName && (
+        <div className="mx-3 mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950">
+          <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+            <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+            <span className="text-xs font-semibold">{ts("supportMode")}</span>
+          </div>
+          <p className="mt-1 text-xs text-amber-600 dark:text-amber-500 truncate">
+            {supportCompanyName}
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            className="mt-2 h-7 w-full border-amber-300 text-amber-700 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-900"
+            onClick={handleExitSupport}
+            disabled={exiting}
+          >
+            <LogOut className="mr-1.5 h-3 w-3" />
+            {exiting ? ts("exiting") : ts("exitSupport")}
+          </Button>
+        </div>
+      )}
 
       <nav className="flex-1 space-y-1 px-3 py-4">
         {visibleItems.map((item) => {

@@ -5,6 +5,8 @@ export function isAdminOrManager(role: string): boolean {
   return role === "admin" || role === "manager";
 }
 
+const SUPPORT_SESSION_HOURS = 4;
+
 export async function getAuthUser() {
   const { userId } = auth();
   if (!userId) return null;
@@ -14,7 +16,45 @@ export async function getAuthUser() {
     include: { company: true },
   });
 
+  if (!user) return null;
+
+  // Support access override for super admins
+  if (isSuperAdmin(user.email)) {
+    const supportAccess = await db.supportAccess.findFirst({
+      where: { requestedBy: user.id, status: "active" },
+      include: { company: true },
+    });
+
+    if (supportAccess) {
+      // Auto-expire after configured hours
+      const expiryTime = new Date(Date.now() - SUPPORT_SESSION_HOURS * 60 * 60 * 1000);
+      if (supportAccess.activatedAt && supportAccess.activatedAt < expiryTime) {
+        await db.supportAccess.update({
+          where: { id: supportAccess.id },
+          data: { status: "expired", expiredAt: new Date(), expiryReason: "auto_expired" },
+        });
+        return user;
+      }
+
+      // Override company context
+      return {
+        ...user,
+        companyId: supportAccess.companyId,
+        company: supportAccess.company,
+        role: "admin",
+        _supportAccessId: supportAccess.id,
+        _isSupportMode: true,
+        _supportCompanyName: supportAccess.company.name,
+        _originalCompanyId: user.companyId,
+      };
+    }
+  }
+
   return user;
+}
+
+export function isInSupportMode(user: any): boolean {
+  return user?._isSupportMode === true;
 }
 
 export async function requireAuth() {
