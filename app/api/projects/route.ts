@@ -60,7 +60,7 @@ export async function GET() {
 
         // User rates for moneyUsed calculation
         db.user.findMany({
-          where: { companyId: user.companyId },
+          where: { companyId: user.companyId, deletedAt: null },
           select: { id: true, hourlyRate: true, employmentType: true },
         }),
 

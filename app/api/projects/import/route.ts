@@ -85,7 +85,7 @@ export async function POST(req: Request) {
     }
 
     const companyUsers = await db.user.findMany({
-      where: { companyId: user.companyId, id: { in: mappedUserIds } },
+      where: { companyId: user.companyId, id: { in: mappedUserIds }, deletedAt: null },
       select: { id: true },
     });
     const validUserIds = new Set(companyUsers.map((u) => u.id));

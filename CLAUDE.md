@@ -55,7 +55,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `components/ui/` - shadcn/ui primitives, guided-tour, page-guide, info-tooltip, theme/locale toggles
 
 ### Shared Libraries
-- `lib/auth.ts` - getAuthUser helper (Clerk + Prisma, support access override for super admins)
+- `lib/auth.ts` - getAuthUser helper (Clerk + Prisma, support access override for super admins, blocks soft-deleted users)
 - `lib/db.ts` - Prisma client singleton
 - `lib/schemas.ts` - All Zod validation schemas
 - `lib/validate.ts` - Zod validation helper for API routes
@@ -73,7 +73,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `lib/economic-import.ts` - e-conomic Projektkort XLSX parser
 
 ### Database (16 models)
-Company, User (`isHourly`, `weeklyTarget`, `vacationDays`, etc.), Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense, CompanyExpense, AbsenceReason, ResourceAllocation, ProjectMilestone, Phase, SupportAccess
+Company, User (`isHourly`, `weeklyTarget`, `vacationDays`, `deletedAt`, etc.), Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense, CompanyExpense, AbsenceReason, ResourceAllocation, ProjectMilestone, Phase, SupportAccess
 
 ### Tests
 - `__tests__/lib/` - 185 unit tests across 10 suites (Vitest)
@@ -157,6 +157,7 @@ Company, User (`isHourly`, `weeklyTarget`, `vacationDays`, etc.), Project, TimeE
 ### Team
 - **Team tab**: Member list with roles, bill/cost rates, weekly targets, extra vacation days, employment type (employee/freelancer), hourly toggle
 - **Hourly employees** (`User.isHourly`): Toggle in team edit modal disables weekly target field. Table shows blue "Timelønnet"/"Hourly" badge instead of hours. Flex balance, vacation accrual, "Full Day" button, holiday entry creation, and admin utilization tracking are all disabled. Hourly employees can still submit vacation requests but accrual is not tracked.
+- **Employee removal (soft-delete)**: Admin "Remove" sets `deletedAt` on the user, invalidates their `clerkId` to `"deleted_{id}"`, deletes their Clerk account, and creates a `MEMBER_REMOVED` audit log. All time entries, expenses, project allocations, and resource allocations are preserved for accurate company statistics. Removed employees are filtered from team lists, dropdowns, stats, and resource planner but their historical data remains in analytics, project budgets, and exports. The data export CSV marks removed employees with "Removed" status. If the same person later joins a different company on Cloud Timer, a new user record is created with no conflicts (email is not unique, companyId scoping isolates data).
 - **Email invitations**: Admin invites create a pending user (`clerkId: "pending_*"`) and send a Resend email with sign-up link. When invited user signs up via Clerk, `/api/auth/sync` matches by email and links them to the existing company (bypasses onboarding form).
 - Currency conversion display with master currency setting
 - **Resource Planner tab**: Week/2-week/month grid view with **period span slider** (Week/2-week: 1-4wk, Month: 2-6mo)
@@ -170,8 +171,8 @@ Company, User (`isHourly`, `weeklyTarget`, `vacationDays`, etc.), Project, TimeE
 - **Overview tab**: Financial stats (revenue, costs, margins), team utilization (1 decimal place), project budgets with allocations, absence reason management, e-conomic CSV export, company settings (currency, universal bill rate, expense threshold, AI anonymization, logo)
 - **Approvals tab**: Nested Time Entry + Expense sub-tabs with per-day approve/reject, bulk actions
 - **Vacations tab**: Approve/reject vacation requests with status filtering (pending/approved/rejected/cancelled)
-- **Backups tab**: Full data export as ZIP (users.csv, projects.csv, time-entries.csv, metadata.json)
-- **Audit Log tab**: Paginated viewer of all audit events (submit, approve, reject, lock, reopen, billing edits, expense amend/void) with action/entity/actor filters and color-coded badges
+- **Backups tab**: Full data export as ZIP (users.csv with Status/Removed At columns, projects.csv, time-entries.csv, metadata.json)
+- **Audit Log tab**: Paginated viewer of all audit events (submit, approve, reject, lock, reopen, billing edits, expense amend/void, member removal) with action/entity/actor filters and color-coded badges
 
 ### Analytics
 - 4 tabs: Employee, Team, Project, Company insights
@@ -216,6 +217,13 @@ Company, User (`isHourly`, `weeklyTarget`, `vacationDays`, etc.), Project, TimeE
 
 - Zod validation on all mutation API routes via `validate()` helper
 - Rate limiting on expensive routes (AI, exports, uploads, mileage) via `checkRateLimit()`
+
+## Soft-Delete Convention
+
+- **User queries must include `deletedAt: null`** in the `where` clause when listing active team members. This applies to all `db.user.findMany()` calls that populate team lists, dropdowns, stats, analytics members, and resource planners.
+- **Exception**: Data export (`/api/admin/export`) intentionally includes all users (active + removed) for complete records.
+- **Auth gate**: `getAuthUser()` in `lib/auth.ts` returns `null` for users with `deletedAt` set, blocking all API access globally.
+- **Auth sync**: `/api/auth/sync` checks `deletedAt` to prevent removed users from re-linking and adds `deletedAt: null` to pending user lookups.
 
 ## Environment Variables
 

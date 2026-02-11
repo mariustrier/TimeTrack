@@ -60,7 +60,7 @@ export async function GET(req: Request) {
     });
 
     const members = await db.user.findMany({
-      where: { companyId: user.companyId },
+      where: { companyId: user.companyId, deletedAt: null },
       select: {
         id: true,
         firstName: true,

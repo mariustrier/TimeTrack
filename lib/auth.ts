@@ -17,6 +17,7 @@ export async function getAuthUser() {
   });
 
   if (!user) return null;
+  if (user.deletedAt) return null;
 
   // Support access override for super admins
   if (isSuperAdmin(user.email)) {

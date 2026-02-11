@@ -43,7 +43,7 @@ export async function POST() {
       if (existingReasons === 0) {
         // Get all users in this company
         const companyUsers = await db.user.findMany({
-          where: { companyId: company.id },
+          where: { companyId: company.id, deletedAt: null },
           select: { id: true },
         });
 
@@ -99,6 +99,7 @@ export async function POST() {
       const usersWithoutReasons = await db.user.findMany({
         where: {
           companyId,
+          deletedAt: null,
           absenceReasons: {
             none: {},
           },

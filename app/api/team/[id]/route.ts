@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clerkClient } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
 import { validate } from "@/lib/validate";
@@ -69,13 +70,44 @@ export async function DELETE(
     }
 
     const member = await db.user.findFirst({
-      where: { id: params.id, companyId: user.companyId },
+      where: { id: params.id, companyId: user.companyId, deletedAt: null },
     });
     if (!member) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    await db.user.delete({ where: { id: params.id } });
+    const originalClerkId = member.clerkId;
+
+    // Soft-delete: preserve all data, revoke access
+    await db.$transaction([
+      db.user.update({
+        where: { id: params.id },
+        data: {
+          deletedAt: new Date(),
+          clerkId: `deleted_${params.id}`,
+        },
+      }),
+      db.auditLog.create({
+        data: {
+          action: "MEMBER_REMOVED",
+          entityType: "user",
+          entityId: params.id,
+          actorId: user.id,
+          companyId: user.companyId,
+          metadata: JSON.stringify({ memberName: `${member.firstName} ${member.lastName}`, memberEmail: member.email }),
+        },
+      }),
+    ]);
+
+    // Delete Clerk account (non-fatal if it fails)
+    if (originalClerkId && !originalClerkId.startsWith("pending_")) {
+      try {
+        const clerk = await clerkClient();
+        await clerk.users.deleteUser(originalClerkId);
+      } catch (clerkError) {
+        console.error("[TEAM_DELETE] Failed to delete Clerk user:", clerkError);
+      }
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

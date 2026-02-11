@@ -51,6 +51,7 @@ export async function PUT(
         where: {
           id: { in: userIds },
           companyId: user.companyId,
+          deletedAt: null,
         },
         select: { id: true },
       });

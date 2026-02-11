@@ -16,7 +16,7 @@ export async function GET() {
     }
 
     const members = await db.user.findMany({
-      where: { companyId: user.companyId },
+      where: { companyId: user.companyId, deletedAt: null },
       select: {
         id: true,
         email: true,
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
 
     const normalizedEmail = email.toLowerCase();
     const existing = await db.user.findFirst({
-      where: { email: normalizedEmail, companyId: user.companyId },
+      where: { email: normalizedEmail, companyId: user.companyId, deletedAt: null },
     });
     if (existing) {
       return NextResponse.json({ error: "User already exists" }, { status: 409 });

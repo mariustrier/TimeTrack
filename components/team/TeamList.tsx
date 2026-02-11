@@ -186,12 +186,20 @@ export function TeamList() {
     if (!deletingMember) return;
     setSaving(true);
     try {
-      await fetch(`/api/team/${deletingMember.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/team/${deletingMember.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json();
+        toast.error(data.error || "Failed to remove member");
+        return;
+      }
+      const memberName = deletingMember.firstName || deletingMember.email || "";
+      toast.success(t("memberRemoved", { name: memberName }));
       setDeleteModalOpen(false);
       setDeletingMember(null);
       fetchTeam();
     } catch (error) {
-      console.error("Failed to delete:", error);
+      console.error("Failed to remove member:", error);
+      toast.error("Failed to remove member");
     } finally {
       setSaving(false);
     }

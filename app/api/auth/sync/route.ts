@@ -20,6 +20,9 @@ export async function POST(req: Request) {
     });
 
     if (existingUser) {
+      if (existingUser.deletedAt) {
+        return NextResponse.json({ error: "Account has been deactivated" }, { status: 403 });
+      }
       return NextResponse.json({ user: existingUser });
     }
 
@@ -30,6 +33,7 @@ export async function POST(req: Request) {
         where: {
           email,
           clerkId: { startsWith: "pending_" },
+          deletedAt: null,
         },
       });
 
