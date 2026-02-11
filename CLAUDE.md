@@ -73,7 +73,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `lib/economic-import.ts` - e-conomic Projektkort XLSX parser
 
 ### Database (16 models)
-Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense, CompanyExpense, AbsenceReason, ResourceAllocation, ProjectMilestone, Phase, SupportAccess
+Company, User (`isHourly`, `weeklyTarget`, `vacationDays`, etc.), Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense, CompanyExpense, AbsenceReason, ResourceAllocation, ProjectMilestone, Phase, SupportAccess
 
 ### Tests
 - `__tests__/lib/` - 185 unit tests across 10 suites (Vitest)
@@ -83,8 +83,9 @@ Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation,
 ### Time Tracking (Dashboard)
 - Weekly timesheet grid with per-cell time entry creation/editing
 - 6 stat cards: Target, Billable Hours, Vacation Used, Total Hours, Flex Balance, Remaining Vacation (all numeric values use `.toFixed(1)` for clean display)
-- **Cumulative flex balance**: Carries over from all prior weeks since user creation (not just current week)
-- Daily flex balance row showing running overtime/undertime
+- **Hourly employees** (`isHourly`): Reduced to 3 stat cards (Total, Billable, Hourly indicator). Flex balance row, "Full Day" button, and vacation accrual hidden.
+- **Cumulative flex balance**: Carries over from all prior weeks since user creation (not just current week). Skipped entirely for hourly employees.
+- Daily flex balance row showing running overtime/undertime (hidden for hourly employees)
 - Per-day submit buttons + bulk "Submit Week"
 - Flex calculation: Mon-Thu get rounded daily target, Friday gets remainder (e.g., 37h → 9.25×4 + 0h Fri... actually Mon-Thu=9.5, Fri=7 for 45h)
 - Budget progress bars per project (includes draft/unsubmitted hours, hidden for system-managed projects like Absence)
@@ -105,11 +106,11 @@ Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation,
 ### Vacations
 - Request with start/end date, type (vacation/sick/personal), note
 - Business day calculation (weekdays only)
-- **Accrual system**: Employees earn 2.08 vacation days/month (Danish standard, ~25/year)
+- **Accrual system**: Salaried employees earn 2.08 vacation days/month (Danish standard, ~25/year). Disabled for hourly employees (`isHourly`).
 - `User.vacationDays` field = admin-added **bonus days** on top of accrual (default 0)
 - Total allowance = `2.08 × current month number + bonusDays`
 - Admin approval/rejection workflow
-- **Auto-fill on approval**: When admin approves a vacation, absence time entries are automatically created for each business day (skipping weekends/holidays), using the employee's daily target hours, under the Absence project with matching absence reason (vacation→VACATION, sick→SICK)
+- **Auto-fill on approval**: When admin approves a vacation, absence time entries are automatically created for each business day (skipping weekends/holidays), using the employee's daily target hours, under the Absence project with matching absence reason (vacation→VACATION, sick→SICK). Skipped for hourly employees (no daily target).
 - **Auto-cleanup on rejection/cancellation**: System-created entries are deleted when vacation is rejected or cancelled
 - **Employee can cancel approved vacations**: Status set to "cancelled" (soft delete), admin notified via sidebar badge, auto-created entries cleaned up, vacation days restored
 - **Cancelled status**: Visible in admin vacation tab with filter, counted in sidebar badge alongside pending
@@ -154,7 +155,8 @@ Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation,
   - Multi-milestone support per column in week/month views (with +N badge)
 
 ### Team
-- **Team tab**: Member list with roles, bill/cost rates, weekly targets, extra vacation days, employment type (employee/freelancer)
+- **Team tab**: Member list with roles, bill/cost rates, weekly targets, extra vacation days, employment type (employee/freelancer), hourly toggle
+- **Hourly employees** (`User.isHourly`): Toggle in team edit modal disables weekly target field. Table shows blue "Timelønnet"/"Hourly" badge instead of hours. Flex balance, vacation accrual, "Full Day" button, holiday entry creation, and admin utilization tracking are all disabled. Hourly employees can still submit vacation requests but accrual is not tracked.
 - **Email invitations**: Admin invites create a pending user (`clerkId: "pending_*"`) and send a Resend email with sign-up link. When invited user signs up via Clerk, `/api/auth/sync` matches by email and links them to the existing company (bypasses onboarding form).
 - Currency conversion display with master currency setting
 - **Resource Planner tab**: Week/2-week/month grid view with **period span slider** (Week/2-week: 1-4wk, Month: 2-6mo)
@@ -235,6 +237,7 @@ Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation,
 - **Settings page** — Skeleton only (tour replay, data export, account deletion). Missing: notification preferences, language persistence, timezone, default project, profile management.
 
 ### Medium Value
+- **Hourly employee vacation handling** — Hourly employees can request vacations but accrual is disabled. No custom vacation allowance system for hourly workers yet.
 - **Expense reports** — No grouped view by month/project/category
 - **AI usage dashboard** — AIApiUsage model tracks costs but no admin UI
 - **Public holidays** — Not factored into vacation day calculations
