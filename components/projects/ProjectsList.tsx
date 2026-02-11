@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { FolderKanban, Plus, Pencil, Trash2, FileText, Layers, Filter } from "lucide-react";
+import { FolderKanban, Plus, Pencil, Trash2, FileText, Layers, Filter, Upload } from "lucide-react";
 import { getProjectStatus, PROJECT_STATUS_CONFIG, type ProjectStatus } from "@/lib/project-utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,7 @@ import { convertAndFormat, convertAndFormatBudget, SUPPORTED_CURRENCIES } from "
 import { ContractSection } from "@/components/contracts/contract-section";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { PhaseProgress } from "@/components/projects/PhaseProgress";
+import { EconomicImport } from "@/components/projects/EconomicImport";
 
 interface Phase {
   id: string;
@@ -107,6 +108,7 @@ export function ProjectsList() {
   const [projectPhasesEnabled, setProjectPhasesEnabled] = useState(true);
   const [statusFilter, setStatusFilter] = useState<"all" | ProjectStatus>("all");
   const [phaseFilter, setPhaseFilter] = useState("all");
+  const [importOpen, setImportOpen] = useState(false);
 
   const filteredProjects = useMemo(() => {
     return projects.filter((p) => {
@@ -315,10 +317,18 @@ export function ProjectsList() {
             </span>
           )}
         </div>
-        <Button onClick={openCreateModal} data-tour="projects-create-btn">
-          <Plus className="mr-2 h-4 w-4" />
-          {t("newProject")}
-        </Button>
+        <div className="flex gap-2">
+          {(userRole === "admin" || userRole === "manager") && (
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
+              <Upload className="mr-2 h-4 w-4" />
+              {t("importEconomic")}
+            </Button>
+          )}
+          <Button onClick={openCreateModal} data-tour="projects-create-btn">
+            <Plus className="mr-2 h-4 w-4" />
+            {t("newProject")}
+          </Button>
+        </div>
       </div>
 
       <Card data-tour="projects-table">
@@ -648,6 +658,13 @@ export function ProjectsList() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* e-conomic Import Dialog */}
+      <EconomicImport
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onSuccess={fetchProjects}
+      />
 
       {/* Contract Dialog */}
       <Dialog open={!!contractProjectId} onOpenChange={(open) => !open && setContractProjectId(null)}>

@@ -238,6 +238,22 @@ export const supportAccessActionSchema = z.object({
   supportAccessId: z.string().min(1),
 });
 
+// --- Project Import ---
+
+export const importProjectSchema = z.object({
+  mappings: z.object({
+    employees: z.record(z.string(), z.string()),
+    categories: z.record(z.string(), z.string()),
+  }),
+  projectSettings: z.object({
+    name: z.string().min(1).max(100),
+    client: z.string().max(100).optional().nullable(),
+    color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+    budgetHours: z.coerce.number().nonnegative().optional().nullable(),
+    existingProjectId: z.string().optional().nullable(),
+  }),
+});
+
 export const phaseMigrationSchema = z.object({
   assignments: z.array(z.object({
     projectId: z.string().min(1),

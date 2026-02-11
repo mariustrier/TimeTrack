@@ -20,7 +20,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 
 - `npm run dev` - Start development server
 - `npm run build` - Production build (also runs linting + type checking)
-- `npm run test` - Run all 99 unit tests (Vitest)
+- `npm run test` - Run all 185 unit tests (Vitest)
 - `npm run test:watch` - Run tests in watch mode
 
 ## Project Structure
@@ -37,7 +37,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 9. `app/(dashboard)/settings/` - Tour replay, data export, account deletion
 10. `app/(dashboard)/super-admin/` - Platform-level admin with support access requests *(superAdmin only)*
 
-### API Routes (77 route files across 19 domains)
+### API Routes (78 route files across 19 domains)
 - `app/api/` - All scoped by companyId (via `getAuthUser()` which auto-overrides for support mode)
 - Key domains: `time-entries`, `projects`, `team`, `admin`, `expenses`, `vacations`, `contracts`, `resource-allocations`, `analytics`, `ai`, `insights`, `mileage`, `auth`, `cron`, `super-admin`, `super-admin/access`, `admin/support-access`, `user`, `upload`, `absence-reasons`, `admin/phases`
 
@@ -70,12 +70,13 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `lib/email.ts` - Resend email client (lazy-init), sendInvitationEmail
 - `lib/expense-utils.ts` - Expense formatting helpers
 - `lib/analytics-utils.ts` - Analytics data processing
+- `lib/economic-import.ts` - e-conomic Projektkort XLSX parser
 
 ### Database (16 models)
 Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense, CompanyExpense, AbsenceReason, ResourceAllocation, ProjectMilestone, Phase, SupportAccess
 
 ### Tests
-- `__tests__/lib/` - 99 unit tests across 6 suites (Vitest)
+- `__tests__/lib/` - 185 unit tests across 10 suites (Vitest)
 
 ## Core Features
 
@@ -138,6 +139,14 @@ Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation,
   - Analytics: phase distribution + velocity charts in Project Insights
   - AI insights: phase bottleneck detection, completion celebrations
   - Audit log: PHASE_CHANGE, RENAME_GLOBAL, PHASE_DELETE, PHASE_BACKFILL
+- **e-conomic Import**: Import historical project data from e-conomic Projektkort (.xlsx)
+  - 5-step wizard: Upload → Map Employees → Map Categories to Phases → Project Settings → Review & Confirm
+  - Client-side XLSX parsing via SheetJS (`xlsx` package)
+  - Auto-match employees by name similarity, categories to phases
+  - Creates project, allocations, and time entries (pre-approved) in a single Prisma transaction
+  - Audit log: IMPORT action with metadata
+  - API: `POST /api/projects/import` (multipart/form-data, admin/manager only, rate-limited)
+  - Parser: `lib/economic-import.ts` — extracts invoices, task categories, time entries from Projektkort format
 - **Timeline tab**: Gantt view with project bars, milestone diamonds, today line
   - **Day/Week/Month view toggle** with **period span slider**: users drag to control visible range per view mode (Day: 1-6mo, Week: 2-12mo, Month: 6-24mo)
   - CRUD milestones (title, due date, completion tracking)
