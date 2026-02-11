@@ -146,8 +146,8 @@
     "allPhases": "All Phases",
     "noPhase": "No Phase",
     "phasesCompleted": "Completed",
-    "sortNameAsc": "Name A–Å",
-    "sortNameDesc": "Name Å–A",
+    "sortNameAsc": "Name A–Z",
+    "sortNameDesc": "Name Z–A",
     "sortNewest": "Newest First",
     "sortOldest": "Oldest First"
   },
