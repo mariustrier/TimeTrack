@@ -191,7 +191,9 @@
     "projectRateDescription": "Tilpasset sats for dette projekt",
     "hoursAvailable": "{hours}t tilgængelig",
     "noCompanyRate": "Sæt en standard timesats under Admin for at bruge firmasats.",
-    "importEconomic": "Importer fra e-conomic"
+    "importEconomic": "Importer fra e-conomic",
+    "columnSettings": "Kolonneindstillinger",
+    "resetColumns": "Nulstil til standard"
   },
   "team": {
     "title": "Hold",
@@ -1305,7 +1307,9 @@
     "finalPhaseDescription": "Dette er den sidste fase for dette projekt. Vil du også arkivere projektet og sætte det som inaktivt?",
     "completeOnly": "Kun Fuldfør",
     "completeAndArchive": "Fuldfør & Arkiver",
-    "projectArchivedOnComplete": "Projekt arkiveret"
+    "projectArchivedOnComplete": "Projekt arkiveret",
+    "selectPhase": "Vælg Fase",
+    "advanceTo": "Ryk til {name}"
   },
   "economicImport": {
     "title": "Importer fra e-conomic",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { FolderKanban, Plus, Pencil, Trash2, FileText, Layers, Filter, Upload } from "lucide-react";
+import { FolderKanban, Plus, Pencil, Trash2, FileText, Layers, Filter, Upload, Settings2, ArrowUp, ArrowDown, Eye, EyeOff, RotateCcw } from "lucide-react";
 import { getProjectStatus, PROJECT_STATUS_CONFIG, type ProjectStatus } from "@/lib/project-utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useTranslations } from "@/lib/i18n";
 import { convertAndFormat, convertAndFormatBudget, SUPPORTED_CURRENCIES } from "@/lib/currency";
 import { ContractSection } from "@/components/contracts/contract-section";
@@ -74,6 +79,39 @@ const COLORS = [
   "#EC4899", "#06B6D4", "#F97316", "#6366F1", "#14B8A6",
 ];
 
+type ColumnKey = "client" | "budget" | "entries" | "phase" | "status";
+const DEFAULT_COLUMNS: ColumnKey[] = ["client", "budget", "entries", "phase", "status"];
+const STORAGE_KEY = "cloudtimer:projectsTableColumns";
+
+interface ColumnConfig {
+  order: ColumnKey[];
+  hidden: ColumnKey[];
+}
+
+function loadColumnConfig(): ColumnConfig {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed.order) && Array.isArray(parsed.hidden)) {
+        // Ensure all default columns are present in order
+        const order = parsed.order.filter((k: string) => DEFAULT_COLUMNS.includes(k as ColumnKey)) as ColumnKey[];
+        for (const col of DEFAULT_COLUMNS) {
+          if (!order.includes(col)) order.push(col);
+        }
+        return { order, hidden: parsed.hidden.filter((k: string) => DEFAULT_COLUMNS.includes(k as ColumnKey)) };
+      }
+    }
+  } catch { /* ignore */ }
+  return { order: [...DEFAULT_COLUMNS], hidden: [] };
+}
+
+function saveColumnConfig(config: ColumnConfig) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+  } catch { /* ignore */ }
+}
+
 export function ProjectsList() {
   const t = useTranslations("projects");
   const tc = useTranslations("common");
@@ -109,6 +147,46 @@ export function ProjectsList() {
   const [statusFilter, setStatusFilter] = useState<"all" | ProjectStatus>("all");
   const [phaseFilter, setPhaseFilter] = useState("all");
   const [importOpen, setImportOpen] = useState(false);
+  const [columnConfig, setColumnConfig] = useState<ColumnConfig>({ order: [...DEFAULT_COLUMNS], hidden: [] });
+
+  useEffect(() => {
+    setColumnConfig(loadColumnConfig());
+  }, []);
+
+  const visibleColumns = useMemo(() => {
+    return columnConfig.order.filter((col) => {
+      if (col === "phase" && !companyPhasesEnabled) return false;
+      return !columnConfig.hidden.includes(col);
+    });
+  }, [columnConfig, companyPhasesEnabled]);
+
+  function updateColumnConfig(newConfig: ColumnConfig) {
+    setColumnConfig(newConfig);
+    saveColumnConfig(newConfig);
+  }
+
+  function toggleColumn(col: ColumnKey) {
+    const hidden = columnConfig.hidden.includes(col)
+      ? columnConfig.hidden.filter((c) => c !== col)
+      : [...columnConfig.hidden, col];
+    updateColumnConfig({ ...columnConfig, hidden });
+  }
+
+  function moveColumn(col: ColumnKey, direction: "up" | "down") {
+    const order = [...columnConfig.order];
+    const idx = order.indexOf(col);
+    if (direction === "up" && idx > 0) {
+      [order[idx - 1], order[idx]] = [order[idx], order[idx - 1]];
+    } else if (direction === "down" && idx < order.length - 1) {
+      [order[idx + 1], order[idx]] = [order[idx], order[idx + 1]];
+    }
+    updateColumnConfig({ ...columnConfig, order });
+  }
+
+  function resetColumns() {
+    const config = { order: [...DEFAULT_COLUMNS], hidden: [] as ColumnKey[] };
+    updateColumnConfig(config);
+  }
 
   const filteredProjects = useMemo(() => {
     return projects.filter((p) => {
@@ -332,8 +410,58 @@ export function ProjectsList() {
       </div>
 
       <Card data-tour="projects-table">
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-3 flex flex-row items-center justify-between">
           <CardTitle className="text-lg">{t("allProjects")}</CardTitle>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Settings2 className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-64">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium">{t("columnSettings")}</p>
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={resetColumns}>
+                    <RotateCcw className="h-3 w-3 mr-1" />
+                    {t("resetColumns")}
+                  </Button>
+                </div>
+                <div className="space-y-1">
+                  {columnConfig.order.map((col, idx) => {
+                    if (col === "phase" && !companyPhasesEnabled) return null;
+                    const isHidden = columnConfig.hidden.includes(col);
+                    const label = col === "phase" ? tp("phase") : col === "status" ? tc("status") : t(col as "client" | "budget" | "entries");
+                    return (
+                      <div key={col} className="flex items-center gap-1 rounded-md px-2 py-1.5 hover:bg-accent">
+                        <button
+                          onClick={() => toggleColumn(col)}
+                          className="shrink-0 text-muted-foreground hover:text-foreground"
+                        >
+                          {isHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                        </button>
+                        <span className={`flex-1 text-sm ${isHidden ? "text-muted-foreground line-through" : ""}`}>{label}</span>
+                        <button
+                          onClick={() => moveColumn(col, "up")}
+                          disabled={idx === 0}
+                          className="shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                        >
+                          <ArrowUp className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => moveColumn(col, "down")}
+                          disabled={idx === columnConfig.order.length - 1 || (idx === columnConfig.order.length - 2 && col === "phase" && !companyPhasesEnabled)}
+                          className="shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                        >
+                          <ArrowDown className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         </CardHeader>
         <CardContent className="p-0">
           {projects.length === 0 ? (
@@ -356,11 +484,11 @@ export function ProjectsList() {
               <TableHeader>
                 <TableRow>
                   <TableHead>{tc("project")}</TableHead>
-                  <TableHead>{t("client")}</TableHead>
-                  <TableHead>{t("budget")}</TableHead>
-                  <TableHead>{t("entries")}</TableHead>
-                  {companyPhasesEnabled && <TableHead>{tp("phase")}</TableHead>}
-                  <TableHead>{tc("status")}</TableHead>
+                  {visibleColumns.map((col) => (
+                    <TableHead key={col}>
+                      {col === "client" ? t("client") : col === "budget" ? t("budget") : col === "entries" ? t("entries") : col === "phase" ? tp("phase") : tc("status")}
+                    </TableHead>
+                  ))}
                   <TableHead className="w-20">{tc("actions")}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -376,53 +504,64 @@ export function ProjectsList() {
                         <span className="font-medium">{project.name}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {project.client || "-"}
-                    </TableCell>
-                    <TableCell>
-                      {project.budgetTotalHours != null ? `${project.budgetTotalHours}h` : "-"}
-                    </TableCell>
-                    <TableCell>{project._count.timeEntries}</TableCell>
-                    {companyPhasesEnabled && (
-                      <TableCell>
-                        {project.phasesEnabled && companyPhases.length > 0 ? (
-                          <PhaseProgress
-                            phases={companyPhases}
-                            currentPhaseId={project.currentPhase?.id || null}
-                            phaseCompleted={project.phaseCompleted}
-                            projectId={project.id}
-                            onPhaseChange={fetchProjects}
-                          />
-                        ) : project.phasesEnabled ? (
-                          <span className="text-muted-foreground text-xs">{tp("unassigned")}</span>
-                        ) : (
-                          <span className="text-muted-foreground text-xs">{tp("noPhases")}</span>
-                        )}
-                      </TableCell>
-                    )}
-                    <TableCell>
-                      <div className="flex gap-1.5">
-                        {(() => {
-                          const status = getProjectStatus(project);
-                          const config = PROJECT_STATUS_CONFIG[status];
-                          const label = status === "active" ? tc("active") : status === "paused" ? tc("paused") : tc("inactive");
-                          return (
-                            <Badge variant="outline" className={config.colorClass}>
-                              {label}
-                            </Badge>
-                          );
-                        })()}
-                        {project.billable && (
-                          <Badge variant="outline">{tc("billable")}</Badge>
-                        )}
-                        {project.pricingType === "fixed_price" && (
-                          <Badge variant="outline">{t("fixedPrice")}</Badge>
-                        )}
-                        {project.currency && project.currency !== masterCurrency && (
-                          <Badge variant="outline">{project.currency}</Badge>
-                        )}
-                      </div>
-                    </TableCell>
+                    {visibleColumns.map((col) => {
+                      if (col === "client") return (
+                        <TableCell key={col} className="text-muted-foreground">
+                          {project.client || "-"}
+                        </TableCell>
+                      );
+                      if (col === "budget") return (
+                        <TableCell key={col}>
+                          {project.budgetTotalHours != null ? `${project.budgetTotalHours}h` : "-"}
+                        </TableCell>
+                      );
+                      if (col === "entries") return (
+                        <TableCell key={col}>{project._count.timeEntries}</TableCell>
+                      );
+                      if (col === "phase") return (
+                        <TableCell key={col}>
+                          {project.phasesEnabled && companyPhases.length > 0 ? (
+                            <PhaseProgress
+                              phases={companyPhases}
+                              currentPhaseId={project.currentPhase?.id || null}
+                              phaseCompleted={project.phaseCompleted}
+                              projectId={project.id}
+                              onPhaseChange={fetchProjects}
+                            />
+                          ) : project.phasesEnabled ? (
+                            <span className="text-muted-foreground text-xs">{tp("unassigned")}</span>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">{tp("noPhases")}</span>
+                          )}
+                        </TableCell>
+                      );
+                      if (col === "status") return (
+                        <TableCell key={col}>
+                          <div className="flex gap-1.5">
+                            {(() => {
+                              const status = getProjectStatus(project);
+                              const config = PROJECT_STATUS_CONFIG[status];
+                              const label = status === "active" ? tc("active") : status === "paused" ? tc("paused") : tc("inactive");
+                              return (
+                                <Badge variant="outline" className={config.colorClass}>
+                                  {label}
+                                </Badge>
+                              );
+                            })()}
+                            {project.billable && (
+                              <Badge variant="outline">{tc("billable")}</Badge>
+                            )}
+                            {project.pricingType === "fixed_price" && (
+                              <Badge variant="outline">{t("fixedPrice")}</Badge>
+                            )}
+                            {project.currency && project.currency !== masterCurrency && (
+                              <Badge variant="outline">{project.currency}</Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                      );
+                      return null;
+                    })}
                     <TableCell>
                       <div className="flex gap-1">
                         <Button

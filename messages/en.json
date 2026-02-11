@@ -191,7 +191,9 @@
     "projectRateDescription": "Custom rate for this project",
     "hoursAvailable": "{hours}h available",
     "noCompanyRate": "Set a default hourly rate in Admin to use company rate mode.",
-    "importEconomic": "Import from e-conomic"
+    "importEconomic": "Import from e-conomic",
+    "columnSettings": "Column Settings",
+    "resetColumns": "Reset to Default"
   },
   "team": {
     "title": "Team",
@@ -1305,7 +1307,9 @@
     "finalPhaseDescription": "This is the last phase for this project. Would you also like to archive the project and set it as inactive?",
     "completeOnly": "Complete Only",
     "completeAndArchive": "Complete & Archive",
-    "projectArchivedOnComplete": "Project archived"
+    "projectArchivedOnComplete": "Project archived",
+    "selectPhase": "Select Phase",
+    "advanceTo": "Advance to {name}"
   },
   "economicImport": {
     "title": "Import from e-conomic",

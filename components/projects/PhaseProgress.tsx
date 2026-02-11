@@ -1,9 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Check, ChevronRight } from "lucide-react";
+import { Check, ChevronDown, ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +53,7 @@ export function PhaseProgress({
 
   const currentIdx = phases.findIndex((p) => p.id === currentPhaseId);
   const currentPhase = currentIdx >= 0 ? phases[currentIdx] : null;
+  const nextPhase = currentIdx >= 0 && currentIdx < phases.length - 1 ? phases[currentIdx + 1] : null;
 
   async function handleComplete() {
     const isLast = currentIdx === phases.length - 1;
@@ -121,23 +129,39 @@ export function PhaseProgress({
     }
   }
 
+  // All phases complete
   if (phaseCompleted) {
-    return (
-      <div className="flex items-center gap-2">
+    if (readOnly) {
+      return (
         <Badge variant="default" className="bg-green-600 hover:bg-green-700">
           <Check className="mr-1 h-3 w-3" />
           {tp("allComplete")}
         </Badge>
-        {!readOnly && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 text-xs"
-            onClick={() => setJumpDialog(phases[0])}
-          >
-            {tp("jumpToPhase")}
-          </Button>
-        )}
+      );
+    }
+
+    return (
+      <>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="inline-flex items-center gap-1 rounded-full bg-green-600 px-2.5 py-0.5 text-xs font-medium text-white hover:bg-green-700 transition-colors">
+              <Check className="h-3 w-3" />
+              {tp("allComplete")}
+              <ChevronDown className="h-3 w-3 ml-0.5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {phases.map((p) => (
+              <DropdownMenuItem
+                key={p.id}
+                disabled={saving}
+                onClick={() => setJumpDialog(p)}
+              >
+                {p.name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {jumpDialog && (
           <Dialog open={!!jumpDialog} onOpenChange={() => setJumpDialog(null)}>
@@ -145,80 +169,96 @@ export function PhaseProgress({
               <DialogHeader>
                 <DialogTitle>{tp("jumpToPhase")}</DialogTitle>
               </DialogHeader>
-              <div className="space-y-2 py-2">
-                {phases.map((p) => (
-                  <Button
-                    key={p.id}
-                    variant="outline"
-                    className="w-full justify-start"
-                    disabled={saving}
-                    onClick={() => handleJump(p)}
-                  >
-                    {p.name}
-                  </Button>
-                ))}
-              </div>
+              <p className="text-sm text-muted-foreground">
+                {tp("jumpConfirm")
+                  .replace("{from}", tp("allComplete"))
+                  .replace("{to}", jumpDialog.name)}
+              </p>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setJumpDialog(null)}>
                   {tc("cancel")}
+                </Button>
+                <Button disabled={saving} onClick={() => handleJump(jumpDialog)}>
+                  {tc("confirm")}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         )}
-      </div>
+      </>
     );
   }
 
+  // Current phase display
+  const badgeLabel = currentPhase ? currentPhase.name : tp("unassigned");
+  const badgeStyle = currentPhase?.color
+    ? { backgroundColor: currentPhase.color, color: "#fff" }
+    : undefined;
+  const badgeClass = currentPhase
+    ? currentPhase.color
+      ? ""
+      : "bg-primary text-primary-foreground"
+    : "bg-muted text-muted-foreground";
+
   return (
-    <div className="flex items-center gap-1">
-      {phases.map((phase, idx) => {
-        const isCompleted = currentIdx >= 0 && idx < currentIdx;
-        const isCurrent = phase.id === currentPhaseId;
-        const isFuture = currentIdx >= 0 && idx > currentIdx;
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild disabled={readOnly}>
+          <button
+            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${badgeClass} ${!readOnly ? "cursor-pointer hover:opacity-80" : ""}`}
+            style={badgeStyle}
+          >
+            <span className="max-w-[100px] truncate">{badgeLabel}</span>
+            {!readOnly && <ChevronDown className="h-3 w-3 ml-0.5 shrink-0" />}
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="min-w-[180px]">
+          {phases.map((phase, idx) => {
+            const isCompleted = currentIdx >= 0 && idx < currentIdx;
+            const isCurrent = phase.id === currentPhaseId;
 
-        return (
-          <div key={phase.id} className="flex items-center">
-            {idx > 0 && (
-              <ChevronRight className="h-3 w-3 mx-0.5 text-muted-foreground/50" />
-            )}
-            <button
-              disabled={readOnly || saving || isCurrent}
-              onClick={() => {
-                if (!readOnly && !isCurrent) setJumpDialog(phase);
-              }}
-              className={`
-                inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-colors
-                ${isFuture ? "bg-muted text-muted-foreground" : ""}
-                ${!phase.color && isCompleted ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : ""}
-                ${!phase.color && isCurrent ? "bg-primary text-primary-foreground" : ""}
-                ${!readOnly && !isCurrent ? "cursor-pointer hover:opacity-80" : ""}
-              `}
-              style={phase.color && !isFuture ? {
-                backgroundColor: isCompleted ? `${phase.color}20` : isCurrent ? phase.color : undefined,
-                color: isCompleted ? phase.color : isCurrent ? "#fff" : undefined,
-              } : undefined}
-              title={phase.name}
-            >
-              {isCompleted && <Check className="h-3 w-3" />}
-              <span className="max-w-[80px] truncate">{phase.name}</span>
-            </button>
-          </div>
-        );
-      })}
-
-      {!readOnly && currentPhase && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="ml-1 h-6 px-2 text-xs"
-          disabled={saving}
-          onClick={handleComplete}
-        >
-          <Check className="mr-1 h-3 w-3" />
-          {tp("completePhase")}
-        </Button>
-      )}
+            return (
+              <DropdownMenuItem
+                key={phase.id}
+                disabled={saving || isCurrent}
+                onClick={() => {
+                  if (!isCurrent) setJumpDialog(phase);
+                }}
+                className="flex items-center gap-2"
+              >
+                {isCompleted ? (
+                  <Check className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                ) : isCurrent ? (
+                  <div
+                    className={`h-2 w-2 rounded-full shrink-0 ml-0.5 mr-0.5 ${!phase.color ? "bg-primary" : ""}`}
+                    style={phase.color ? { backgroundColor: phase.color } : undefined}
+                  />
+                ) : (
+                  <div className="h-3.5 w-3.5 shrink-0" />
+                )}
+                <span className={isCurrent ? "font-semibold" : ""}>{phase.name}</span>
+              </DropdownMenuItem>
+            );
+          })}
+          {currentPhase && !readOnly && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                disabled={saving}
+                onClick={handleComplete}
+                className="flex items-center gap-2"
+              >
+                <ArrowRight className="h-3.5 w-3.5 shrink-0" />
+                <span>
+                  {nextPhase
+                    ? tp("advanceTo").replace("{name}", nextPhase.name)
+                    : tp("completePhase")}
+                </span>
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {jumpDialog && (
         <Dialog open={!!jumpDialog} onOpenChange={() => setJumpDialog(null)}>
@@ -270,6 +310,6 @@ export function PhaseProgress({
           </DialogContent>
         </Dialog>
       )}
-    </div>
+    </>
   );
 }
