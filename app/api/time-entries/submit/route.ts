@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getAuthUser } from "@/lib/auth";
+import { getAuthUser, isAdminOrManager } from "@/lib/auth";
 import { getWeekBounds } from "@/lib/week-helpers";
 import { startOfDay, endOfDay } from "date-fns";
 
@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { weekStart, date } = body;
+    const { weekStart, date, userId: targetUserId } = body;
 
     console.log("[SUBMIT] Received body:", JSON.stringify(body));
     console.log("[SUBMIT] weekStart:", weekStart, "date:", date);
@@ -23,6 +23,21 @@ export async function POST(req: Request) {
         { error: "Provide either weekStart (for week) or date (for day)" },
         { status: 400 }
       );
+    }
+
+    // Determine effective user (admin/manager can submit on behalf of employees)
+    let effectiveUserId = user.id;
+    if (targetUserId && targetUserId !== user.id) {
+      if (!isAdminOrManager(user.role)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      const targetUser = await db.user.findFirst({
+        where: { id: targetUserId, companyId: user.companyId },
+      });
+      if (!targetUser) {
+        return NextResponse.json({ error: "Target user not found" }, { status: 404 });
+      }
+      effectiveUserId = targetUserId;
     }
 
     let start: Date;
@@ -45,10 +60,10 @@ export async function POST(req: Request) {
 
     console.log("[SUBMIT] Date range:", { start: start.toISOString(), end: end.toISOString(), isDay });
 
-    // Find all draft entries for this user+week
+    // Find all draft entries for this user+period
     const draftEntries = await db.timeEntry.findMany({
       where: {
-        userId: user.id,
+        userId: effectiveUserId,
         companyId: user.companyId,
         date: { gte: start, lte: end },
         approvalStatus: "draft",
@@ -82,12 +97,13 @@ export async function POST(req: Request) {
     });
 
     // Audit log
+    const isOnBehalf = effectiveUserId !== user.id;
     const totalHours = draftEntries.reduce((sum, e) => sum + e.hours, 0);
     await db.auditLog.create({
       data: {
         companyId: user.companyId,
         entityType: "TimeEntry",
-        entityId: `user:${user.id}|${entityIdSuffix}`,
+        entityId: `user:${effectiveUserId}|${entityIdSuffix}`,
         action: "SUBMIT",
         fromStatus: "draft",
         toStatus: "submitted",
@@ -96,6 +112,7 @@ export async function POST(req: Request) {
           ...(isDay ? { date } : { weekStart }),
           entryCount: draftEntries.length,
           totalHours,
+          ...(isOnBehalf && { onBehalfOf: effectiveUserId }),
         }),
       },
     });

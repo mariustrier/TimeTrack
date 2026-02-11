@@ -58,6 +58,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { convertAndFormatBudget } from "@/lib/currency";
 import { useTranslations, useDateLocale, useLocale } from "@/lib/i18n";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { PageGuide } from "@/components/ui/page-guide";
 import { useCompanyLogo } from "@/lib/company-context";
 import { isCompanyHoliday, getCompanyHolidayName, type CustomHoliday } from "@/lib/holidays";
@@ -160,6 +162,7 @@ export default function DashboardPage() {
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submittingDay, setSubmittingDay] = useState<string | null>(null);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [hours, setHours] = useState("");
@@ -548,7 +551,10 @@ export default function DashboardPage() {
       const res = await fetch("/api/time-entries/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ weekStart: format(weekStart, "yyyy-MM-dd") }),
+        body: JSON.stringify({
+          weekStart: format(weekStart, "yyyy-MM-dd"),
+          ...(selectedEmployeeId && { userId: selectedEmployeeId }),
+        }),
       });
       if (res.ok) {
         setSubmitDialogOpen(false);
@@ -588,7 +594,10 @@ export default function DashboardPage() {
       const res = await fetch("/api/time-entries/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: dateStr }),
+        body: JSON.stringify({
+          date: dateStr,
+          ...(selectedEmployeeId && { userId: selectedEmployeeId }),
+        }),
       });
       if (res.ok) {
         toast.success(t("daySubmitted"));
@@ -750,7 +759,7 @@ export default function DashboardPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          {hasDraftEntries && !selectedEmployeeId && (
+          {hasDraftEntries && (
             <Button onClick={() => setSubmitDialogOpen(true)}>
               <Send className="mr-2 h-4 w-4" />
               {t("submitWeek")}
@@ -763,9 +772,28 @@ export default function DashboardPage() {
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="outline" onClick={() => setCurrentWeek(new Date())}>
-            {tc("today")}
-          </Button>
+          <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="min-w-[180px]">
+                <CalendarDays className="mr-2 h-4 w-4" />
+                {format(weekStart, "MMM d", formatOpts)} – {format(weekEnd, "MMM d, yyyy", formatOpts)}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="center">
+              <Calendar
+                mode="single"
+                selected={weekStart}
+                onSelect={(day) => {
+                  if (day) {
+                    setCurrentWeek(day);
+                    setCalendarOpen(false);
+                  }
+                }}
+                weekStartsOn={1}
+                locale={dateLocale}
+              />
+            </PopoverContent>
+          </Popover>
           <Button
             variant="outline"
             size="icon"
@@ -773,9 +801,9 @@ export default function DashboardPage() {
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <span className="ml-2 text-sm text-muted-foreground">
-            {format(weekStart, "MMM d", formatOpts)} - {format(weekEnd, "MMM d, yyyy", formatOpts)}
-          </span>
+          <Button variant="outline" size="sm" onClick={() => setCurrentWeek(new Date())}>
+            {tc("today")}
+          </Button>
           <Button variant="ghost" size="icon" onClick={() => fetchData(true)} className="ml-1">
             <RefreshCw className="h-4 w-4" />
           </Button>
@@ -1116,8 +1144,8 @@ export default function DashboardPage() {
                       {timeBalance >= 0 ? "+" : ""}{timeBalance.toFixed(1)}
                     </td>
                   </tr>
-                  {/* Daily Submit Buttons row (hidden when viewing on behalf) */}
-                  {!selectedEmployeeId && <tr className="bg-muted/30">
+                  {/* Daily Submit Buttons row */}
+                  {<tr className="bg-muted/30">
                     <td className="px-4 py-2 text-sm text-muted-foreground">{t("submitDay")}</td>
                     {weekDays.map((day) => {
                       const hasDrafts = dayHasDraftEntries(day);

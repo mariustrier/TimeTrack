@@ -91,7 +91,8 @@ Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation,
 - Mileage tracking in time entry modal (OpenRouteService API)
 - Absence reason selection for absence project entries (comment optional for absence, required for other projects)
 - **Phase label** per project row: shows current phase badge (skipped for system-managed projects like Absence)
-- **Admin log on behalf**: Admins/managers can select an employee from a dropdown to view their timesheet and create entries under their account. Submit buttons hidden when viewing on behalf.
+- **Admin log on behalf**: Admins/managers can select an employee from a dropdown to view their timesheet, create entries, and submit days/weeks under their account. Audit log tracks on-behalf submissions.
+- **Calendar week picker**: Week navigation uses a calendar popover (click the date range to open) with left/right arrows and a "Today" button
 
 ### Expenses
 - Create with amount, description, category, date, project, receipt upload
