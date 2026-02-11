@@ -32,6 +32,8 @@ import {
   Car,
   MapPin,
   Users,
+  Layers,
+  ArrowUpDown,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -85,6 +87,7 @@ interface Project {
   phasesEnabled: boolean;
   currentPhase: { id: string; name: string; sortOrder: number; color?: string } | null;
   phaseCompleted: boolean;
+  createdAt: string;
 }
 
 interface AbsenceReason {
@@ -163,7 +166,8 @@ export default function DashboardPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submittingDay, setSubmittingDay] = useState<string | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const [projectStatusFilter, setProjectStatusFilter] = useState<"all" | "active" | "paused">("all");
+  const [phaseFilter, setPhaseFilter] = useState("all");
+  const [projectSort, setProjectSort] = useState<"name-asc" | "name-desc" | "newest" | "oldest">("name-asc");
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [hours, setHours] = useState("");
@@ -209,6 +213,17 @@ export default function DashboardPage() {
   const weekStart = useMemo(() => startOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
   const weekEnd = useMemo(() => endOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
   const weekDays = useMemo(() => eachDayOfInterval({ start: weekStart, end: weekEnd }), [weekStart, weekEnd]);
+
+  const uniquePhases = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; sortOrder: number; color?: string }>();
+    for (const p of projects) {
+      if (p.currentPhase && !map.has(p.currentPhase.id)) {
+        map.set(p.currentPhase.id, p.currentPhase);
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.sortOrder - b.sortOrder);
+  }, [projects]);
+  const hasAnyPhases = projects.some(p => p.phasesEnabled);
 
   // Compute week approval status (for banners)
   // Must handle mixed states: e.g. Mon approved + Tue-Fri draft = "mixed" not "approved"
@@ -278,13 +293,7 @@ export default function DashboardPage() {
       }
       if (projectsRes.ok) {
         const data = await projectsRes.json();
-        // Filter active projects and sort: regular projects first, then system projects (Absence)
         const activeProjects = data.filter((p: Project & { active?: boolean }) => p.active !== false);
-        activeProjects.sort((a: Project, b: Project) => {
-          if (a.systemType && !b.systemType) return 1;
-          if (!a.systemType && b.systemType) return -1;
-          return 0;
-        });
         setProjects(activeProjects);
       }
       if (absenceReasonsRes.ok) {
@@ -920,16 +929,36 @@ export default function DashboardPage() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">{t("weeklyTimesheet")}</CardTitle>
-            <Select value={projectStatusFilter} onValueChange={(val) => setProjectStatusFilter(val as typeof projectStatusFilter)}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{tc("allStatuses")}</SelectItem>
-                <SelectItem value="active">{tc("active")}</SelectItem>
-                <SelectItem value="paused">{tc("paused")}</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              {hasAnyPhases && (
+                <Select value={phaseFilter} onValueChange={setPhaseFilter}>
+                  <SelectTrigger className="w-[150px]">
+                    <Layers className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t("allPhases")}</SelectItem>
+                    {uniquePhases.map((phase) => (
+                      <SelectItem key={phase.id} value={phase.id}>{phase.name}</SelectItem>
+                    ))}
+                    <SelectItem value="no_phase">{t("noPhase")}</SelectItem>
+                    <SelectItem value="completed">{t("phasesCompleted")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+              <Select value={projectSort} onValueChange={(val) => setProjectSort(val as typeof projectSort)}>
+                <SelectTrigger className="w-[140px]">
+                  <ArrowUpDown className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name-asc">{t("sortNameAsc")}</SelectItem>
+                  <SelectItem value="name-desc">{t("sortNameDesc")}</SelectItem>
+                  <SelectItem value="newest">{t("sortNewest")}</SelectItem>
+                  <SelectItem value="oldest">{t("sortOldest")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -983,9 +1012,26 @@ export default function DashboardPage() {
                 <tbody>
                   {projects.filter(p => {
                     if (p.archived) return false;
-                    if (projectStatusFilter === "active" && p.locked) return false;
-                    if (projectStatusFilter === "paused" && !p.locked) return false;
+                    if (phaseFilter !== "all") {
+                      if (phaseFilter === "no_phase") {
+                        if (p.phasesEnabled && p.currentPhase) return false;
+                      } else if (phaseFilter === "completed") {
+                        if (!p.phaseCompleted) return false;
+                      } else {
+                        if (p.currentPhase?.id !== phaseFilter) return false;
+                      }
+                    }
                     return true;
+                  }).sort((a, b) => {
+                    if (a.systemType && !b.systemType) return 1;
+                    if (!a.systemType && b.systemType) return -1;
+                    switch (projectSort) {
+                      case "name-asc": return a.name.localeCompare(b.name, "da");
+                      case "name-desc": return b.name.localeCompare(a.name, "da");
+                      case "newest": return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                      case "oldest": return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+                      default: return 0;
+                    }
                   }).map((project) => (
                     <tr
                       key={project.id}

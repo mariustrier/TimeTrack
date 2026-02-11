@@ -142,7 +142,14 @@
     "fullDay": "Hel dag",
     "absenceProject": "Fravær",
     "projectLocked": "Dette projekt er låst",
-    "projectLockedDesc": "Kontakt din administrator for at foretage ændringer"
+    "projectLockedDesc": "Kontakt din administrator for at foretage ændringer",
+    "allPhases": "Alle Faser",
+    "noPhase": "Ingen Fase",
+    "phasesCompleted": "Afsluttet",
+    "sortNameAsc": "Navn A–Å",
+    "sortNameDesc": "Navn Å–A",
+    "sortNewest": "Nyeste Først",
+    "sortOldest": "Ældste Først"
   },
   "projects": {
     "title": "Projekter",

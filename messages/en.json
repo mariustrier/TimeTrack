@@ -142,7 +142,14 @@
     "fullDay": "Full day",
     "absenceProject": "Absence",
     "projectLocked": "This project is locked",
-    "projectLockedDesc": "Contact your admin to make changes"
+    "projectLockedDesc": "Contact your admin to make changes",
+    "allPhases": "All Phases",
+    "noPhase": "No Phase",
+    "phasesCompleted": "Completed",
+    "sortNameAsc": "Name A–Å",
+    "sortNameDesc": "Name Å–A",
+    "sortNewest": "Newest First",
+    "sortOldest": "Oldest First"
   },
   "projects": {
     "title": "Projects",

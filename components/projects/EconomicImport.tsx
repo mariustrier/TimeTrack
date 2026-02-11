@@ -71,6 +71,7 @@ export function EconomicImport({ open, onOpenChange, onSuccess }: EconomicImport
 
   const [step, setStep] = useState(1);
   const [importData, setImportData] = useState<EconomicImportData | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [parseError, setParseError] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -137,6 +138,7 @@ export function EconomicImport({ open, onOpenChange, onSuccess }: EconomicImport
     if (!open) {
       setStep(1);
       setImportData(null);
+      setSelectedFile(null);
       setParseError("");
       setEmployeeMappings({});
       setCategoryMappings({});
@@ -160,6 +162,7 @@ export function EconomicImport({ open, onOpenChange, onSuccess }: EconomicImport
       try {
         const buffer = await file.arrayBuffer();
         const data = parseEconomicFile(buffer);
+        setSelectedFile(file);
         setImportData(data);
         setProjectName(`${data.projectNumber} - ${data.projectName}`);
         setProjectBudgetHours(data.totalHours.toFixed(1));
@@ -251,17 +254,14 @@ export function EconomicImport({ open, onOpenChange, onSuccess }: EconomicImport
     setImporting(true);
 
     try {
-      // Re-read the file from the input
-      const fileInput = fileInputRef.current;
-      const file = fileInput?.files?.[0];
-      if (!file) {
+      if (!selectedFile) {
         toast.error(t("noFile"));
         setImporting(false);
         return;
       }
 
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", selectedFile);
       formData.append(
         "mappings",
         JSON.stringify({
