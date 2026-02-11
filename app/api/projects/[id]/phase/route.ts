@@ -54,7 +54,7 @@ export async function PUT(
         data: nextPhase
           ? { currentPhaseId: nextPhase.id }
           : { phaseCompleted: true, phaseCompletedAt: new Date() },
-        include: { currentPhase: { select: { id: true, name: true, sortOrder: true } } },
+        include: { currentPhase: { select: { id: true, name: true, sortOrder: true, color: true } } },
       });
 
       await db.auditLog.create({
@@ -95,7 +95,7 @@ export async function PUT(
           phaseCompleted: false,
           phaseCompletedAt: null,
         },
-        include: { currentPhase: { select: { id: true, name: true, sortOrder: true } } },
+        include: { currentPhase: { select: { id: true, name: true, sortOrder: true, color: true } } },
       });
 
       await db.auditLog.create({

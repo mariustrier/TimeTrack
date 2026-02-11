@@ -22,7 +22,7 @@ export async function PUT(
     const body = await req.json();
     const result = validate(updatePhaseSchema, body);
     if (!result.success) return result.response;
-    const { name, active, applyGlobally } = result.data;
+    const { name, active, applyGlobally, color } = result.data;
 
     // If updating name, check for duplicates
     if (name && name.trim() !== phase.name) {
@@ -48,6 +48,7 @@ export async function PUT(
       data: {
         ...(name !== undefined && { name: name.trim() }),
         ...(active !== undefined && { active }),
+        ...(color !== undefined && { color }),
       },
     });
 

@@ -239,13 +239,19 @@ export function AdminOverview() {
     name: string;
     sortOrder: number;
     active: boolean;
+    color: string;
   }
+  const PHASE_COLORS = [
+    "#3B82F6", "#EF4444", "#10B981", "#F59E0B", "#8B5CF6",
+    "#EC4899", "#06B6D4", "#F97316", "#6366F1", "#14B8A6",
+  ];
   const tp = useTranslations("phases");
   const [phasesEnabled, setPhasesEnabled] = useState(false);
   const [phases, setPhases] = useState<Phase[]>([]);
   const [phaseDialogOpen, setPhaseDialogOpen] = useState(false);
   const [editingPhase, setEditingPhase] = useState<Phase | null>(null);
   const [phaseName, setPhaseName] = useState("");
+  const [phaseColor, setPhaseColor] = useState("#3B82F6");
   const [phaseApplyGlobally, setPhaseApplyGlobally] = useState(false);
   const [phaseSaving, setPhaseSaving] = useState(false);
   const [phasesToggleSaving, setPhasesToggleSaving] = useState(false);
@@ -1379,6 +1385,7 @@ export function AdminOverview() {
                   onClick={() => {
                     setEditingPhase(null);
                     setPhaseName("");
+                    setPhaseColor("#3B82F6");
                     setPhaseApplyGlobally(false);
                     setPhaseDialogOpen(true);
                   }}
@@ -1394,6 +1401,7 @@ export function AdminOverview() {
                   phases.filter(p => p.active).map((phase, idx, arr) => (
                     <div key={phase.id} className={cn("flex items-center justify-between px-4 py-2", idx < arr.length - 1 && "border-b")}>
                       <div className="flex items-center gap-3">
+                        <div className="h-3 w-3 rounded-full flex-shrink-0" style={{ backgroundColor: phase.color || "#3B82F6" }} />
                         <span className="text-xs font-mono text-muted-foreground w-5">{idx + 1}</span>
                         <span className="text-sm font-medium">{phase.name}</span>
                       </div>
@@ -1451,6 +1459,7 @@ export function AdminOverview() {
                           onClick={() => {
                             setEditingPhase(phase);
                             setPhaseName(phase.name);
+                            setPhaseColor(phase.color || "#3B82F6");
                             setPhaseApplyGlobally(false);
                             setPhaseDialogOpen(true);
                           }}
@@ -1505,6 +1514,22 @@ export function AdminOverview() {
                 maxLength={50}
               />
             </div>
+            <div className="space-y-2">
+              <Label>{tp("phaseColor")}</Label>
+              <div className="flex flex-wrap gap-2">
+                {PHASE_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setPhaseColor(c)}
+                    className={`h-7 w-7 rounded-full border-2 transition-all ${
+                      phaseColor === c ? "border-foreground scale-110" : "border-transparent"
+                    }`}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </div>
+            </div>
             {editingPhase && phaseName.trim() !== editingPhase.name && (
               <div className="flex items-start gap-2">
                 <input
@@ -1534,6 +1559,7 @@ export function AdminOverview() {
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({
                         name: phaseName.trim(),
+                        color: phaseColor,
                         applyGlobally: phaseApplyGlobally,
                       }),
                     });
@@ -1551,7 +1577,7 @@ export function AdminOverview() {
                     const res = await fetch("/api/admin/phases", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ name: phaseName.trim() }),
+                      body: JSON.stringify({ name: phaseName.trim(), color: phaseColor }),
                     });
                     if (!res.ok) {
                       const data = await res.json();

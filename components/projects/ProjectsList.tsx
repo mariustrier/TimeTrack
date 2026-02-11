@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { FolderKanban, Plus, Pencil, Trash2, FileText, Layers } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { FolderKanban, Plus, Pencil, Trash2, FileText, Layers, Filter } from "lucide-react";
+import { getProjectStatus, PROJECT_STATUS_CONFIG, type ProjectStatus } from "@/lib/project-utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,7 @@ interface Phase {
   id: string;
   name: string;
   sortOrder: number;
+  color?: string;
 }
 
 interface Project {
@@ -51,6 +53,8 @@ interface Project {
   budgetTotalHours: number | null;
   billable: boolean;
   active: boolean;
+  locked: boolean;
+  archived: boolean;
   currency: string | null;
   pricingType: string;
   fixedPrice: number | null;
@@ -101,6 +105,27 @@ export function ProjectsList() {
   const [companyPhasesEnabled, setCompanyPhasesEnabled] = useState(false);
   const [companyPhases, setCompanyPhases] = useState<Phase[]>([]);
   const [projectPhasesEnabled, setProjectPhasesEnabled] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<"all" | ProjectStatus>("all");
+  const [phaseFilter, setPhaseFilter] = useState("all");
+
+  const filteredProjects = useMemo(() => {
+    return projects.filter((p) => {
+      if (statusFilter !== "all") {
+        const status = getProjectStatus(p);
+        if (status !== statusFilter) return false;
+      }
+      if (phaseFilter !== "all") {
+        if (phaseFilter === "no_phases") {
+          if (p.phasesEnabled) return false;
+        } else if (phaseFilter === "completed") {
+          if (!p.phaseCompleted) return false;
+        } else {
+          if (p.currentPhase?.id !== phaseFilter) return false;
+        }
+      }
+      return true;
+    });
+  }, [projects, statusFilter, phaseFilter]);
 
   async function fetchProjects() {
     setLoading(true);
@@ -244,8 +269,36 @@ export function ProjectsList() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as typeof statusFilter)}>
+            <SelectTrigger className="w-[130px]">
+              <Filter className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{tc("allStatuses")}</SelectItem>
+              <SelectItem value="active">{tc("active")}</SelectItem>
+              <SelectItem value="paused">{tc("paused")}</SelectItem>
+              <SelectItem value="inactive">{tc("inactive")}</SelectItem>
+            </SelectContent>
+          </Select>
+          {companyPhasesEnabled && (
+            <Select value={phaseFilter} onValueChange={setPhaseFilter}>
+              <SelectTrigger className="w-[160px]">
+                <Layers className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{tp("allPhases")}</SelectItem>
+                {companyPhases.map((phase) => (
+                  <SelectItem key={phase.id} value={phase.id}>{phase.name}</SelectItem>
+                ))}
+                <SelectItem value="no_phases">{tp("noPhases")}</SelectItem>
+                <SelectItem value="completed">{tp("allComplete")}</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
           <Select value={displayCurrency} onValueChange={setDisplayCurrency}>
             <SelectTrigger className="w-[100px]">
               <SelectValue />
@@ -261,11 +314,11 @@ export function ProjectsList() {
               ({masterCurrency})
             </span>
           )}
-          <Button onClick={openCreateModal} data-tour="projects-create-btn">
-            <Plus className="mr-2 h-4 w-4" />
-            {t("newProject")}
-          </Button>
         </div>
+        <Button onClick={openCreateModal} data-tour="projects-create-btn">
+          <Plus className="mr-2 h-4 w-4" />
+          {t("newProject")}
+        </Button>
       </div>
 
       <Card data-tour="projects-table">
@@ -283,6 +336,11 @@ export function ProjectsList() {
                 {t("newProject")}
               </Button>
             </div>
+          ) : filteredProjects.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <Filter className="h-12 w-12 text-muted-foreground/50" />
+              <h3 className="mt-4 text-lg font-semibold text-foreground">{t("noMatchingProjects")}</h3>
+            </div>
           ) : (
             <Table>
               <TableHeader>
@@ -297,7 +355,7 @@ export function ProjectsList() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {projects.map((project) => (
+                {filteredProjects.map((project) => (
                   <TableRow key={project.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -334,9 +392,16 @@ export function ProjectsList() {
                     )}
                     <TableCell>
                       <div className="flex gap-1.5">
-                        <Badge variant={project.active ? "default" : "secondary"}>
-                          {project.active ? tc("active") : tc("inactive")}
-                        </Badge>
+                        {(() => {
+                          const status = getProjectStatus(project);
+                          const config = PROJECT_STATUS_CONFIG[status];
+                          const label = status === "active" ? tc("active") : status === "paused" ? tc("paused") : tc("inactive");
+                          return (
+                            <Badge variant="outline" className={config.colorClass}>
+                              {label}
+                            </Badge>
+                          );
+                        })()}
                         {project.billable && (
                           <Badge variant="outline">{tc("billable")}</Badge>
                         )}

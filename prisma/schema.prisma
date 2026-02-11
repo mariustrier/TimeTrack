@@ -422,6 +422,7 @@ model AbsenceReason {
 model Phase {
   id        String   @id @default(cuid())
   name      String
+  color     String   @default("#3B82F6")
   sortOrder Int      @default(0)
   active    Boolean  @default(true)
   companyId String

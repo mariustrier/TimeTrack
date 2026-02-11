@@ -22,7 +22,7 @@ export async function GET() {
           where: projectWhere,
           include: {
             _count: { select: { timeEntries: true } },
-            currentPhase: { select: { id: true, name: true, sortOrder: true } },
+            currentPhase: { select: { id: true, name: true, sortOrder: true, color: true } },
           },
           orderBy: { name: "asc" },
         }),

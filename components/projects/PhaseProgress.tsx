@@ -18,6 +18,7 @@ interface Phase {
   id: string;
   name: string;
   sortOrder: number;
+  color?: string;
 }
 
 interface PhaseProgressProps {
@@ -41,11 +42,17 @@ export function PhaseProgress({
   const tc = useTranslations("common");
   const [saving, setSaving] = useState(false);
   const [jumpDialog, setJumpDialog] = useState<Phase | null>(null);
+  const [archiveDialog, setArchiveDialog] = useState(false);
 
   const currentIdx = phases.findIndex((p) => p.id === currentPhaseId);
   const currentPhase = currentIdx >= 0 ? phases[currentIdx] : null;
 
   async function handleComplete() {
+    const isLast = currentIdx === phases.length - 1;
+    if (isLast) {
+      setArchiveDialog(true);
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch(`/api/projects/${projectId}/phase`, {
@@ -54,14 +61,43 @@ export function PhaseProgress({
         body: JSON.stringify({ action: "complete" }),
       });
       if (res.ok) {
-        const isLast = currentIdx === phases.length - 1;
-        toast.success(isLast ? tp("projectCompleted") : tp("phaseCompleted"));
+        toast.success(tp("phaseCompleted"));
         onPhaseChange();
       }
     } catch {
       console.error("Failed to complete phase");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleCompleteFinal(shouldArchive: boolean) {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/phase`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "complete" }),
+      });
+      if (res.ok) {
+        toast.success(tp("projectCompleted"));
+        if (shouldArchive) {
+          const archiveRes = await fetch(`/api/projects/${projectId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ archived: true }),
+          });
+          if (archiveRes.ok) {
+            toast.success(tp("projectArchivedOnComplete"));
+          }
+        }
+        onPhaseChange();
+      }
+    } catch {
+      console.error("Failed to complete final phase");
+    } finally {
+      setSaving(false);
+      setArchiveDialog(false);
     }
   }
 
@@ -153,11 +189,15 @@ export function PhaseProgress({
               }}
               className={`
                 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-colors
-                ${isCompleted ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : ""}
-                ${isCurrent ? "bg-primary text-primary-foreground" : ""}
                 ${isFuture ? "bg-muted text-muted-foreground" : ""}
+                ${!phase.color && isCompleted ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : ""}
+                ${!phase.color && isCurrent ? "bg-primary text-primary-foreground" : ""}
                 ${!readOnly && !isCurrent ? "cursor-pointer hover:opacity-80" : ""}
               `}
+              style={phase.color && !isFuture ? {
+                backgroundColor: isCompleted ? `${phase.color}20` : isCurrent ? phase.color : undefined,
+                color: isCompleted ? phase.color : isCurrent ? "#fff" : undefined,
+              } : undefined}
               title={phase.name}
             >
               {isCompleted && <Check className="h-3 w-3" />}
@@ -197,6 +237,34 @@ export function PhaseProgress({
               </Button>
               <Button disabled={saving} onClick={() => handleJump(jumpDialog)}>
                 {tc("confirm")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {archiveDialog && (
+        <Dialog open={archiveDialog} onOpenChange={setArchiveDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{tp("finalPhaseTitle")}</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              {tp("finalPhaseDescription")}
+            </p>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                variant="outline"
+                disabled={saving}
+                onClick={() => handleCompleteFinal(false)}
+              >
+                {tp("completeOnly")}
+              </Button>
+              <Button
+                disabled={saving}
+                onClick={() => handleCompleteFinal(true)}
+              >
+                {tp("completeAndArchive")}
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -33,7 +33,9 @@
     "internal": "Internal",
     "preSales": "Pre-Sales",
     "active": "Active",
+    "paused": "Paused",
     "inactive": "Inactive",
+    "allStatuses": "All Statuses",
     "startDate": "Start Date",
     "endDate": "End Date",
     "processing": "Processing...",
@@ -150,6 +152,7 @@
     "allProjects": "All Projects",
     "noProjectsTitle": "No Projects",
     "noProjectsDescription": "Create your first project to get started.",
+    "noMatchingProjects": "No projects match the current filters.",
     "client": "Client",
     "budget": "Budget",
     "entries": "Entries",
@@ -1279,6 +1282,13 @@
     "jumpConfirm": "Change current phase from \"{from}\" to \"{to}\"?",
     "phase": "Phase",
     "migrationApplied": "Phase assignments applied",
-    "projectsNeedAssignment": "{count} projects need phase assignment"
+    "projectsNeedAssignment": "{count} projects need phase assignment",
+    "allPhases": "All Phases",
+    "phaseColor": "Color",
+    "finalPhaseTitle": "Complete Final Phase",
+    "finalPhaseDescription": "This is the last phase for this project. Would you also like to archive the project and set it as inactive?",
+    "completeOnly": "Complete Only",
+    "completeAndArchive": "Complete & Archive",
+    "projectArchivedOnComplete": "Project archived"
   }
 }

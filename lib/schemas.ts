@@ -209,12 +209,14 @@ export const updateMilestoneSchema = z.object({
 
 export const createPhaseSchema = z.object({
   name: z.string().min(1).max(50),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
 });
 
 export const updatePhaseSchema = z.object({
   name: z.string().min(1).max(50).optional(),
   active: z.boolean().optional(),
   applyGlobally: z.boolean().optional(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
 });
 
 export const reorderPhasesSchema = z.object({

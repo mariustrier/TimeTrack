@@ -33,7 +33,9 @@
     "internal": "Intern",
     "preSales": "Pre-Sales",
     "active": "Aktiv",
+    "paused": "Sat på pause",
     "inactive": "Inaktiv",
+    "allStatuses": "Alle Statusser",
     "startDate": "Startdato",
     "endDate": "Slutdato",
     "processing": "Behandler...",
@@ -150,6 +152,7 @@
     "allProjects": "Alle projekter",
     "noProjectsTitle": "Ingen projekter",
     "noProjectsDescription": "Opret dit første projekt for at komme i gang.",
+    "noMatchingProjects": "Ingen projekter matcher de valgte filtre.",
     "client": "Kunde",
     "budget": "Budget",
     "entries": "Registreringer",
@@ -1279,6 +1282,13 @@
     "jumpConfirm": "Skift nuværende fase fra \"{from}\" til \"{to}\"?",
     "phase": "Fase",
     "migrationApplied": "Fasetildelinger anvendt",
-    "projectsNeedAssignment": "{count} projekter mangler fasetildeling"
+    "projectsNeedAssignment": "{count} projekter mangler fasetildeling",
+    "allPhases": "Alle Faser",
+    "phaseColor": "Farve",
+    "finalPhaseTitle": "Fuldfør Sidste Fase",
+    "finalPhaseDescription": "Dette er den sidste fase for dette projekt. Vil du også arkivere projektet og sætte det som inaktivt?",
+    "completeOnly": "Kun Fuldfør",
+    "completeAndArchive": "Fuldfør & Arkiver",
+    "projectArchivedOnComplete": "Projekt arkiveret"
   }
 }

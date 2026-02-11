@@ -83,7 +83,7 @@ interface Project {
   locked: boolean;
   archived: boolean;
   phasesEnabled: boolean;
-  currentPhase: { id: string; name: string; sortOrder: number } | null;
+  currentPhase: { id: string; name: string; sortOrder: number; color?: string } | null;
   phaseCompleted: boolean;
 }
 
@@ -163,6 +163,7 @@ export default function DashboardPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submittingDay, setSubmittingDay] = useState<string | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [projectStatusFilter, setProjectStatusFilter] = useState<"all" | "active" | "paused">("all");
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [hours, setHours] = useState("");
@@ -917,7 +918,19 @@ export default function DashboardPage() {
       {/* Timesheet Grid */}
       <Card data-tour="timesheet">
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg">{t("weeklyTimesheet")}</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">{t("weeklyTimesheet")}</CardTitle>
+            <Select value={projectStatusFilter} onValueChange={(val) => setProjectStatusFilter(val as typeof projectStatusFilter)}>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{tc("allStatuses")}</SelectItem>
+                <SelectItem value="active">{tc("active")}</SelectItem>
+                <SelectItem value="paused">{tc("paused")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {projects.length === 0 ? (
@@ -968,7 +981,12 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {projects.filter(p => !p.archived).map((project) => (
+                  {projects.filter(p => {
+                    if (p.archived) return false;
+                    if (projectStatusFilter === "active" && p.locked) return false;
+                    if (projectStatusFilter === "paused" && !p.locked) return false;
+                    return true;
+                  }).map((project) => (
                     <tr
                       key={project.id}
                       className={cn(
@@ -990,7 +1008,16 @@ export default function DashboardPage() {
                             {project.systemType === "absence" ? t("absenceProject") : project.name}
                           </span>
                           {project.phasesEnabled && !project.systemManaged && project.currentPhase && (
-                            <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                            <span
+                              className="text-xs px-1.5 py-0.5 rounded"
+                              style={project.currentPhase.color ? {
+                                backgroundColor: `${project.currentPhase.color}20`,
+                                color: project.currentPhase.color,
+                              } : {
+                                backgroundColor: 'hsl(var(--muted))',
+                                color: 'hsl(var(--muted-foreground))',
+                              }}
+                            >
                               {project.currentPhase.name}
                             </span>
                           )}

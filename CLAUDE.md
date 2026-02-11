@@ -122,13 +122,16 @@ Company, User, Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation,
   - AI extraction of terms via Claude Haiku (maxHours, maxBudget, deadline, scope, keywords, exclusions)
   - Anonymization option for sensitive data
   - Manual entry fallback for scanned PDFs
-- Lock/archive: Locked prevents new entries, archived hides from employees
+- **Project status**: Derived from boolean fields — Active (default), Paused (locked), Inactive (archived). Color-coded badges (green/amber/gray).
+- Lock/archive: Locked prevents new entries (status → Paused), archived hides from employees (status → Inactive)
 - System-managed projects (e.g., Absence) can't be locked/archived
+- **Filters**: Projects page has status filter (All/Active/Paused/Inactive) + phase filter (All/[phases]/No Phases/Completed). Dashboard timesheet has status filter (All/Active/Paused).
 - **Project Phases**: Company-wide phase definitions (e.g., Planning → Design → Development → QA)
   - Admin toggle in Overview → creates 4 default phases on first enable
-  - Phase CRUD with reorder (up/down), rename (with optional global apply to historical entries), soft-delete
+  - Phase CRUD with reorder (up/down), rename (with optional global apply to historical entries), soft-delete, **color picker**
   - Per-project opt-out via "Use Phases" checkbox
-  - Phase column in projects table with PhaseProgress stepper (complete/jump actions)
+  - Phase column in projects table with PhaseProgress stepper (complete/jump actions, **phase-colored badges**)
+  - **Final phase completion popup**: Asks if user wants to archive the project (set inactive)
   - Auto-advance: "Complete Phase" moves to next by sortOrder; last phase → "All Phases Complete"
   - Time entries auto-get `phaseId` + `phaseName` snapshot from project's current phase
   - Migration dialog when enabling phases with existing projects

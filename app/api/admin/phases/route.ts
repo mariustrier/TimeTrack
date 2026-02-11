@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const result = validate(createPhaseSchema, body);
     if (!result.success) return result.response;
-    const { name } = result.data;
+    const { name, color } = result.data;
 
     // Check for duplicate name
     const existing = await db.phase.findUnique({
@@ -70,6 +70,7 @@ export async function POST(req: Request) {
         name: name.trim(),
         sortOrder: (maxSortOrder._max.sortOrder ?? 0) + 1,
         companyId: user.companyId,
+        ...(color && { color }),
       },
     });
 
