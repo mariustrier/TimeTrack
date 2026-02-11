@@ -27,7 +27,7 @@ export async function PUT(
     const body = await req.json();
     const result = validate(updateTeamMemberSchema, body);
     if (!result.success) return result.response;
-    const { firstName, lastName, role, employmentType, hourlyRate, costRate, weeklyTarget, vacationDays } = result.data;
+    const { firstName, lastName, role, employmentType, hourlyRate, costRate, weeklyTarget, isHourly, vacationDays } = result.data;
 
     const updated = await db.user.update({
       where: { id: params.id },
@@ -39,6 +39,7 @@ export async function PUT(
         ...(hourlyRate !== undefined && { hourlyRate }),
         ...(costRate !== undefined && { costRate }),
         ...(weeklyTarget !== undefined && { weeklyTarget }),
+        ...(isHourly !== undefined && { isHourly }),
         ...(vacationDays !== undefined && { vacationDays }),
       },
     });

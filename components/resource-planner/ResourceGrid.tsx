@@ -16,6 +16,7 @@ interface Employee {
   email: string;
   imageUrl: string | null;
   weeklyTarget: number;
+  isHourly?: boolean;
 }
 
 interface Project {
@@ -354,7 +355,7 @@ export function ResourceGrid({
                     </Avatar>
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{getDisplayName(employee)}</p>
-                      <p className="text-xs text-muted-foreground">{employee.weeklyTarget}h/week</p>
+                      <p className="text-xs text-muted-foreground">{employee.isHourly ? t("hourly") : `${employee.weeklyTarget}h/week`}</p>
                     </div>
                   </div>
                 </td>

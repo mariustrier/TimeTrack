@@ -86,9 +86,10 @@ export default function VacationsPage() {
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
   const [bonusDays, setBonusDays] = useState(0);
+  const [isHourly, setIsHourly] = useState(false);
 
   const currentMonth = new Date().getMonth() + 1; // 1-indexed
-  const totalAllowance = Math.round((MONTHLY_ACCRUAL * currentMonth + bonusDays) * 100) / 100;
+  const totalAllowance = isHourly ? 0 : Math.round((MONTHLY_ACCRUAL * currentMonth + bonusDays) * 100) / 100;
 
   const fetchRequests = useCallback(async () => {
     setLoading(true);
@@ -110,6 +111,7 @@ export default function VacationsPage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.vacationDays != null) setBonusDays(data.vacationDays);
+        if (data.isHourly != null) setIsHourly(data.isHourly);
       })
       .catch(() => {});
   }, [fetchRequests]);
@@ -191,29 +193,35 @@ export default function VacationsPage() {
         <TabsContent value="requests" className="space-y-6 mt-4">
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">{t("totalAllowance")}</p>
-            <p className="mt-1 text-2xl font-bold">{totalAllowance.toFixed(1)} {t("days")}</p>
-            <p className="text-xs text-muted-foreground">
-              {MONTHLY_ACCRUAL} &times; {currentMonth} {t("months")}{bonusDays > 0 ? ` + ${bonusDays}` : ""}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">{t("usedApproved")}</p>
-            <p className="mt-1 text-2xl font-bold">{approvedDays} {t("days")}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-sm text-muted-foreground">{t("remainingDays")}</p>
-            <p className="mt-1 text-2xl font-bold">{remainingDays.toFixed(1)} {t("days")}</p>
-          </CardContent>
-        </Card>
-      </div>
+      {isHourly ? (
+        <div className="rounded-lg border border-dashed border-muted-foreground/30 p-6 text-center">
+          <p className="text-sm text-muted-foreground">{t("hourlyNoAccrual")}</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-sm text-muted-foreground">{t("totalAllowance")}</p>
+              <p className="mt-1 text-2xl font-bold">{totalAllowance.toFixed(1)} {t("days")}</p>
+              <p className="text-xs text-muted-foreground">
+                {MONTHLY_ACCRUAL} &times; {currentMonth} {t("months")}{bonusDays > 0 ? ` + ${bonusDays}` : ""}
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-sm text-muted-foreground">{t("usedApproved")}</p>
+              <p className="mt-1 text-2xl font-bold">{approvedDays} {t("days")}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-sm text-muted-foreground">{t("remainingDays")}</p>
+              <p className="mt-1 text-2xl font-bold">{remainingDays.toFixed(1)} {t("days")}</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Requests List */}
       <Card>
@@ -272,7 +280,7 @@ export default function VacationsPage() {
         </TabsContent>
 
         <TabsContent value="planner" className="mt-4">
-          <VacationPlanner requests={requests} bonusDays={bonusDays} />
+          <VacationPlanner requests={requests} bonusDays={bonusDays} isHourly={isHourly} />
         </TabsContent>
 
         <TabsContent value="calendar" className="mt-4">

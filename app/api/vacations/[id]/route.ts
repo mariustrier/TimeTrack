@@ -25,9 +25,9 @@ async function createVacationEntries(
 
   const vacationUser = await db.user.findUnique({
     where: { id: vacation.userId },
-    select: { weeklyTarget: true },
+    select: { weeklyTarget: true, isHourly: true },
   });
-  if (!vacationUser) return;
+  if (!vacationUser || vacationUser.isHourly) return;
 
   const reasonCode = TYPE_TO_REASON_CODE[vacation.type] ?? "VACATION";
   const absenceReason = await db.absenceReason.findFirst({

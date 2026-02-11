@@ -45,6 +45,7 @@ export async function GET(req: Request) {
         hourlyRate: true,
         costRate: true,
         weeklyTarget: true,
+        isHourly: true,
         employmentType: true,
       },
     });
@@ -97,7 +98,8 @@ export async function GET(req: Request) {
         employmentType: member.employmentType,
         costRate: member.costRate,
         weeklyTarget: member.weeklyTarget,
-        utilization: member.weeklyTarget > 0 ? (hours / member.weeklyTarget) * 100 : 0,
+        isHourly: member.isHourly,
+        utilization: member.isHourly ? null : (member.weeklyTarget > 0 ? (hours / member.weeklyTarget) * 100 : 0),
       };
     });
 
@@ -196,7 +198,7 @@ export async function GET(req: Request) {
       };
     });
 
-    const targetHours = members.reduce((sum, m) => sum + m.weeklyTarget, 0);
+    const targetHours = members.reduce((sum, m) => sum + (m.isHourly ? 0 : m.weeklyTarget), 0);
 
     // Fetch approved project expenses for the date range
     const expenseDateFilter: Record<string, unknown> = {};

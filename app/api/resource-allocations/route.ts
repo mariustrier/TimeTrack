@@ -56,6 +56,7 @@ export async function GET(req: Request) {
             email: true,
             imageUrl: true,
             weeklyTarget: true,
+            isHourly: true,
           },
         },
         project: {

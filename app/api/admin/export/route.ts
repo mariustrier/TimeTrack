@@ -59,10 +59,10 @@ export async function GET() {
     const zip = new JSZip();
 
     // Users CSV
-    const userHeaders = ["ID", "Email", "First Name", "Last Name", "Role", "Hourly Rate", "Cost Rate", "Weekly Target"];
+    const userHeaders = ["ID", "Email", "First Name", "Last Name", "Role", "Hourly Rate", "Cost Rate", "Weekly Target", "Is Hourly"];
     const userRows = users.map((u) => [
       u.id, u.email, u.firstName || "", u.lastName || "", u.role,
-      u.hourlyRate.toString(), u.costRate.toString(), u.weeklyTarget.toString(),
+      u.hourlyRate.toString(), u.costRate.toString(), u.weeklyTarget.toString(), u.isHourly.toString(),
     ]);
     zip.file("users.csv", toCsv(userHeaders, userRows));
 

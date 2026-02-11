@@ -53,8 +53,11 @@ export async function POST(req: Request) {
         companyId: user.companyId,
         deletedAt: null,
       },
-      select: { id: true, weeklyTarget: true },
+      select: { id: true, weeklyTarget: true, isHourly: true },
     });
+
+    // Filter out hourly employees (no daily target to fill)
+    const salariedUsers = users.filter((u) => !u.isHourly);
 
     let entriesCreated = 0;
     let alreadyExisted = 0;
@@ -66,7 +69,7 @@ export async function POST(req: Request) {
       const dayOfWeek = holidayDate.getDay();
       if (dayOfWeek === 0 || dayOfWeek === 6) continue; // Skip weekends
 
-      for (const u of users) {
+      for (const u of salariedUsers) {
         const existing = await db.timeEntry.findFirst({
           where: {
             userId: u.id,

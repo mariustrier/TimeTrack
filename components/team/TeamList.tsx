@@ -45,6 +45,7 @@ interface TeamMember {
   hourlyRate: number;
   costRate: number;
   weeklyTarget: number;
+  isHourly: boolean;
   vacationDays: number;
 }
 
@@ -69,6 +70,7 @@ export function TeamList() {
   const [hourlyRate, setHourlyRate] = useState("");
   const [costRate, setCostRate] = useState("");
   const [weeklyTarget, setWeeklyTarget] = useState("37");
+  const [isHourly, setIsHourly] = useState(false);
   const [vacationDays, setVacationDays] = useState("0");
 
   async function fetchTeam() {
@@ -106,6 +108,7 @@ export function TeamList() {
     setHourlyRate("");
     setCostRate("");
     setWeeklyTarget("37");
+    setIsHourly(false);
     setVacationDays("0");
     setModalOpen(true);
   }
@@ -120,6 +123,7 @@ export function TeamList() {
     setHourlyRate(member.hourlyRate.toString());
     setCostRate(member.costRate.toString());
     setWeeklyTarget(member.weeklyTarget.toString());
+    setIsHourly(member.isHourly || false);
     setVacationDays(member.vacationDays.toString());
     setModalOpen(true);
   }
@@ -135,7 +139,8 @@ export function TeamList() {
         employmentType,
         hourlyRate,
         costRate,
-        weeklyTarget,
+        weeklyTarget: isHourly ? "0" : weeklyTarget,
+        isHourly,
         vacationDays,
       };
 
@@ -278,7 +283,15 @@ export function TeamList() {
                     </TableCell>
                     <TableCell>{convertAndFormat(member.hourlyRate, masterCurrency, displayCurrency)}/h</TableCell>
                     <TableCell>{convertAndFormat(member.costRate, masterCurrency, displayCurrency)}/h</TableCell>
-                    <TableCell>{member.weeklyTarget}h</TableCell>
+                    <TableCell>
+                      {member.isHourly ? (
+                        <Badge variant="outline" className="border-blue-500 text-blue-600">
+                          {t("hourly")}
+                        </Badge>
+                      ) : (
+                        `${member.weeklyTarget}h`
+                      )}
+                    </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
                         <Button
@@ -392,16 +405,39 @@ export function TeamList() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{t("weeklyTargetLabel")}</Label>
-                <Input
-                  type="number"
-                  value={weeklyTarget}
-                  onChange={(e) => setWeeklyTarget(e.target.value)}
-                  placeholder="40"
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isHourly}
+                onClick={() => setIsHourly(!isHourly)}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors cursor-pointer ${
+                  isHourly ? "bg-blue-500" : "bg-gray-300 dark:bg-gray-600"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform ${
+                    isHourly ? "translate-x-5" : "translate-x-0"
+                  }`}
                 />
-              </div>
+              </button>
+              <Label className="flex items-center gap-1 cursor-pointer" onClick={() => setIsHourly(!isHourly)}>
+                {t("isHourly")}
+                <InfoTooltip textKey="isHourly" size={13} />
+              </Label>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {!isHourly && (
+                <div className="space-y-2">
+                  <Label>{t("weeklyTargetLabel")}</Label>
+                  <Input
+                    type="number"
+                    value={weeklyTarget}
+                    onChange={(e) => setWeeklyTarget(e.target.value)}
+                    placeholder="40"
+                  />
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>{t("vacationDays")}</Label>
                 <Input

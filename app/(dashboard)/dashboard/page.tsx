@@ -178,7 +178,8 @@ export default function DashboardPage() {
   const [saving, setSaving] = useState(false);
   const [vacationDaysUsed, setVacationDaysUsed] = useState(0);
   const [bonusVacationDays, setBonusVacationDays] = useState(0);
-  const vacationDaysTotal = Math.round((2.08 * (new Date().getMonth() + 1) + bonusVacationDays) * 100) / 100;
+  const [isHourly, setIsHourly] = useState(false);
+  const vacationDaysTotal = isHourly ? 0 : Math.round((2.08 * (new Date().getMonth() + 1) + bonusVacationDays) * 100) / 100;
   const [weeklyTarget, setWeeklyTarget] = useState(40);
   const [priorFlexBalance, setPriorFlexBalance] = useState(0);
   const [weekNote, setWeekNote] = useState<{ action: string; reason: string | null; createdAt: string } | null>(null);
@@ -287,6 +288,9 @@ export default function DashboardPage() {
         if (data.meta?.weeklyTarget !== undefined) {
           setWeeklyTarget(data.meta.weeklyTarget);
         }
+        if (data.meta?.isHourly !== undefined) {
+          setIsHourly(data.meta.isHourly);
+        }
         if (data.meta?.priorFlexBalance !== undefined) {
           setPriorFlexBalance(data.meta.priorFlexBalance);
         }
@@ -324,6 +328,7 @@ export default function DashboardPage() {
       if (userMeRes.ok) {
         const meData = await userMeRes.json();
         if (meData.vacationDays != null) setBonusVacationDays(meData.vacationDays);
+        if (meData.isHourly != null && !selectedEmployeeId) setIsHourly(meData.isHourly);
         if (meData.role) setUserRole(meData.role);
       }
       setLastUpdated(new Date());
@@ -880,49 +885,72 @@ export default function DashboardPage() {
       )}
 
       {/* Stat Cards */}
-      <div data-tour="stat-cards" className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
-        <StatCard
-          title={t("target")}
-          value={`${weeklyTarget}h`}
-          icon={Target}
-          color="bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
-        />
-        <StatCard
-          title={t("billableHours")}
-          value={`${billableTotal.toFixed(1)}h`}
-          icon={DollarSign}
-          color="bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
-        />
-        <StatCard
-          title={t("vacation")}
-          value={`${vacationDaysUsed.toFixed(1)}d`}
-          icon={Palmtree}
-          color="bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400"
-          subtitle={t("daysUsed")}
-        />
-        <StatCard
-          title={t("totalHours")}
-          value={`${grandTotal.toFixed(1)}h`}
-          icon={Clock}
-          color="bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400"
-        />
-        <StatCard
-          title={t("timeBalance")}
-          value={`${timeBalance >= 0 ? "+" : ""}${timeBalance.toFixed(1)}h`}
-          icon={TrendingUp}
-          color={timeBalance >= 0
-            ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
-            : "bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400"
-          }
-        />
-        <StatCard
-          title={t("vacationDays")}
-          value={`${(vacationDaysTotal - vacationDaysUsed).toFixed(1)}`}
-          icon={CalendarDays}
-          color="bg-sky-50 text-sky-600 dark:bg-sky-950 dark:text-sky-400"
-          subtitle={t("remaining")}
-        />
-      </div>
+      {isHourly ? (
+        <div data-tour="stat-cards" className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+          <StatCard
+            title={t("totalHours")}
+            value={`${grandTotal.toFixed(1)}h`}
+            icon={Clock}
+            color="bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400"
+          />
+          <StatCard
+            title={t("billableHours")}
+            value={`${billableTotal.toFixed(1)}h`}
+            icon={DollarSign}
+            color="bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
+          />
+          <StatCard
+            title={t("target")}
+            value={t("hourlyLabel")}
+            icon={Target}
+            color="bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
+          />
+        </div>
+      ) : (
+        <div data-tour="stat-cards" className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+          <StatCard
+            title={t("target")}
+            value={`${weeklyTarget}h`}
+            icon={Target}
+            color="bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
+          />
+          <StatCard
+            title={t("billableHours")}
+            value={`${billableTotal.toFixed(1)}h`}
+            icon={DollarSign}
+            color="bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
+          />
+          <StatCard
+            title={t("vacation")}
+            value={`${vacationDaysUsed.toFixed(1)}d`}
+            icon={Palmtree}
+            color="bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400"
+            subtitle={t("daysUsed")}
+          />
+          <StatCard
+            title={t("totalHours")}
+            value={`${grandTotal.toFixed(1)}h`}
+            icon={Clock}
+            color="bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400"
+          />
+          <StatCard
+            title={t("timeBalance")}
+            value={`${timeBalance >= 0 ? "+" : ""}${timeBalance.toFixed(1)}h`}
+            icon={TrendingUp}
+            color={timeBalance >= 0
+              ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
+              : "bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400"
+            }
+          />
+          <StatCard
+            title={t("vacationDays")}
+            value={`${(vacationDaysTotal - vacationDaysUsed).toFixed(1)}`}
+            icon={CalendarDays}
+            color="bg-sky-50 text-sky-600 dark:bg-sky-950 dark:text-sky-400"
+            subtitle={t("remaining")}
+          />
+        </div>
+      )}
 
       {/* Timesheet Grid */}
       <Card data-tour="timesheet">
@@ -1189,7 +1217,8 @@ export default function DashboardPage() {
                       {grandTotal.toFixed(1)}
                     </td>
                   </tr>
-                  {/* Flex Balance row */}
+                  {/* Flex Balance row (hidden for hourly employees) */}
+                  {!isHourly && (
                   <tr className="bg-muted/30 border-t border-dashed">
                     <td className="px-4 py-2 text-sm text-muted-foreground">{t("flexBalance")}</td>
                     {weekDays.map((day, i) => {
@@ -1217,6 +1246,7 @@ export default function DashboardPage() {
                       {timeBalance >= 0 ? "+" : ""}{timeBalance.toFixed(1)}
                     </td>
                   </tr>
+                  )}
                   {/* Daily Submit Buttons row */}
                   {<tr className="bg-muted/30">
                     <td className="px-4 py-2 text-sm text-muted-foreground">{t("submitDay")}</td>
@@ -1369,7 +1399,7 @@ export default function DashboardPage() {
                   disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
                   className="flex-1"
                 />
-                {!(editingEntry && isEntryReadOnly(editingEntry)) && (
+                {!(editingEntry && isEntryReadOnly(editingEntry)) && !isHourly && (
                   <Button
                     type="button"
                     variant="outline"

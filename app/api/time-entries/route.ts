@@ -51,11 +51,23 @@ export async function GET(req: Request) {
     // Resolve target user for flex balance (may differ from logged-in user when admin views an employee)
     const targetUserId = (isAdminOrManager(user.role) && userId) ? userId : user.id;
     const targetUser = targetUserId !== user.id
-      ? await db.user.findFirst({ where: { id: targetUserId, companyId: user.companyId }, select: { id: true, weeklyTarget: true, createdAt: true } })
+      ? await db.user.findFirst({ where: { id: targetUserId, companyId: user.companyId }, select: { id: true, weeklyTarget: true, isHourly: true, createdAt: true } })
       : user;
 
     if (!targetUser) {
       return NextResponse.json({ error: "Target user not found" }, { status: 404 });
+    }
+
+    // Skip flex balance calculation for hourly employees
+    const isHourly = !!(targetUser as { isHourly?: boolean }).isHourly;
+    if (isHourly) {
+      return NextResponse.json({
+        entries,
+        meta: {
+          weeklyTarget: 0,
+          isHourly: true,
+        },
+      });
     }
 
     // Calculate cumulative flex balance prior to the requested week
@@ -115,6 +127,7 @@ export async function GET(req: Request) {
       entries,
       meta: {
         weeklyTarget: targetUser.weeklyTarget,
+        isHourly: false,
         ...(priorFlexBalance !== null && { priorFlexBalance }),
       },
     });

@@ -12,6 +12,7 @@ export async function GET() {
       role: user.role,
       vacationDays: user.vacationDays,
       weeklyTarget: user.weeklyTarget,
+      isHourly: user.isHourly,
       createdAt: user.createdAt,
     });
   } catch (error) {

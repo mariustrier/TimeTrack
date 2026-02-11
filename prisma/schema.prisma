@@ -58,6 +58,7 @@ model User {
   hourlyRate     Float    @default(0)
   costRate      Float    @default(0)
   weeklyTarget  Float    @default(37)
+  isHourly      Boolean  @default(false)
   vacationDays  Int      @default(0)
   companyId     String
   createdAt     DateTime @default(now())

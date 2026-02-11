@@ -79,6 +79,7 @@ export const createTeamMemberSchema = z.object({
   hourlyRate: z.coerce.number().nonnegative().optional(),
   costRate: z.coerce.number().nonnegative().optional(),
   weeklyTarget: z.coerce.number().nonnegative().max(168).optional(),
+  isHourly: z.boolean().optional(),
 });
 
 export const updateTeamMemberSchema = z.object({
@@ -89,6 +90,7 @@ export const updateTeamMemberSchema = z.object({
   hourlyRate: z.coerce.number().nonnegative().optional(),
   costRate: z.coerce.number().nonnegative().optional(),
   weeklyTarget: z.coerce.number().nonnegative().max(168).optional(),
+  isHourly: z.boolean().optional(),
   vacationDays: z.coerce.number().int().nonnegative().max(365).optional(),
 });
 

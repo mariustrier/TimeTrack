@@ -19,6 +19,7 @@ interface VacationRequest {
 interface VacationPlannerProps {
   requests: VacationRequest[];
   bonusDays: number;
+  isHourly?: boolean;
 }
 
 function countBusinessDaysInRange(start: Date, end: Date): number {
@@ -45,7 +46,7 @@ function getUsedDaysInMonth(requests: VacationRequest[], year: number, month: nu
     }, 0);
 }
 
-export function VacationPlanner({ requests, bonusDays }: VacationPlannerProps) {
+export function VacationPlanner({ requests, bonusDays, isHourly }: VacationPlannerProps) {
   const t = useTranslations("vacations");
   const dateLocale = useDateLocale();
 
@@ -69,6 +70,14 @@ export function VacationPlanner({ requests, bonusDays }: VacationPlannerProps) {
       };
     });
   }, [requests, bonusDays, currentYear, dateLocale]);
+
+  if (isHourly) {
+    return (
+      <div className="rounded-lg border border-dashed border-muted-foreground/30 p-8 text-center">
+        <p className="text-sm text-muted-foreground">{t("hourlyNoAccrual")}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

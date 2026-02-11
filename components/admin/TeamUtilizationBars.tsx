@@ -11,7 +11,8 @@ interface Employee {
   name: string;
   hours: number;
   weeklyTarget: number;
-  utilization: number;
+  isHourly?: boolean;
+  utilization: number | null;
 }
 
 interface TeamUtilizationBarsProps {
@@ -21,8 +22,9 @@ interface TeamUtilizationBarsProps {
 export function TeamUtilizationBars({ employees }: TeamUtilizationBarsProps) {
   const t = useTranslations("admin");
 
-  // Sort by utilization descending
-  const sorted = [...employees].sort((a, b) => b.utilization - a.utilization);
+  // Filter out hourly employees (no utilization), sort by utilization descending
+  const salaried = employees.filter((e) => !e.isHourly && e.utilization != null);
+  const sorted = [...salaried].sort((a, b) => (b.utilization ?? 0) - (a.utilization ?? 0));
 
   // Show top 10 for space
   const display = sorted.slice(0, 10);
@@ -57,18 +59,18 @@ export function TeamUtilizationBars({ employees }: TeamUtilizationBarsProps) {
                 <span className="font-medium truncate max-w-[150px]">{emp.name}</span>
                 <span className={cn(
                   "text-xs px-1.5 py-0.5 rounded",
-                  getUtilizationBg(emp.utilization)
+                  getUtilizationBg(emp.utilization ?? 0)
                 )}>
-                  {emp.utilization.toFixed(1)}%
+                  {(emp.utilization ?? 0).toFixed(1)}%
                 </span>
               </div>
               <div className="h-2 rounded-full bg-muted overflow-hidden">
                 <div
                   className={cn(
                     "h-full rounded-full transition-all",
-                    getUtilizationColor(emp.utilization)
+                    getUtilizationColor(emp.utilization ?? 0)
                   )}
-                  style={{ width: `${Math.min(emp.utilization, 150)}%` }}
+                  style={{ width: `${Math.min(emp.utilization ?? 0, 150)}%` }}
                 />
               </div>
             </div>

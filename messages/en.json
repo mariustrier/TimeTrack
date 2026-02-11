@@ -108,6 +108,7 @@
     "failedToSubmit": "Failed to submit week",
     "submitDay": "Submit",
     "flexBalance": "Flex",
+    "hourlyLabel": "Hourly",
     "myTimesheet": "My timesheet",
     "viewingEmployeeTimesheet": "Viewing {name}'s timesheet. Entries created here will be logged under their account.",
     "daySubmitted": "Day submitted for approval",
@@ -223,7 +224,10 @@
     "freelancer": "Freelancer",
     "employmentType": "Employment Type",
     "employeeType": "Employee",
-    "freelancerType": "Freelancer"
+    "freelancerType": "Freelancer",
+    "isHourly": "Hourly (no fixed hours)",
+    "hourly": "Hourly",
+    "isHourlyDescription": "Paid per hour. Flex balance and vacation accrual are disabled."
   },
   "admin": {
     "title": "Admin Dashboard",
@@ -431,7 +435,8 @@
     "months": "mo",
     "extraDays": "extra days",
     "earned": "Earned",
-    "used": "Used"
+    "used": "Used",
+    "hourlyNoAccrual": "Vacation accrual is not applicable for hourly employees. Contact your administrator for vacation arrangements."
   },
   "adminVacations": {
     "title": "Vacation Requests",
@@ -831,7 +836,8 @@
     "personal": "Personal",
     "period": "Period",
     "weeks": "wk",
-    "months": "mo"
+    "months": "mo",
+    "hourly": "Hourly"
   },
   "timeline": {
     "title": "Project Timeline",
@@ -1215,7 +1221,8 @@
     "submittedStatus": "Submitted and waiting for admin approval.",
     "approvedOnlyFilter": "Show only approved and locked time entries. Excludes drafts and pending submissions.",
     "timeEntriesTab": "Review and approve weekly timesheet submissions from team members.",
-    "expensesTab": "Review and approve expense reports submitted by team members."
+    "expensesTab": "Review and approve expense reports submitted by team members.",
+    "isHourly": "Hourly employees are paid per hour worked. Flex balance and vacation accrual (2.08 days/month) are disabled."
   },
   "support": {
     "access": "Access",

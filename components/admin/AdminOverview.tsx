@@ -87,7 +87,8 @@ interface EmployeeStat {
   hourlyRate: number;
   costRate: number;
   weeklyTarget: number;
-  utilization: number;
+  isHourly: boolean;
+  utilization: number | null;
   employmentType: string;
 }
 
@@ -912,6 +913,7 @@ export function AdminOverview() {
             name: emp.name,
             hours: emp.hours,
             weeklyTarget: emp.weeklyTarget,
+            isHourly: emp.isHourly,
             utilization: emp.utilization,
           }))}
         />
@@ -1070,13 +1072,22 @@ export function AdminOverview() {
                     <div className="mb-1 flex justify-between text-sm">
                       <span className="text-muted-foreground">{tc("hours")}</span>
                       <span className="font-medium">
-                        {formatHours(emp.hours)} / {formatHours(emp.weeklyTarget)}
+                        {emp.isHourly
+                          ? formatHours(emp.hours)
+                          : `${formatHours(emp.hours)} / ${formatHours(emp.weeklyTarget)}`}
                       </span>
                     </div>
-                    <Progress
-                      value={Math.min(emp.utilization, 100)}
-                      className="h-2"
-                    />
+                    {!emp.isHourly && (
+                      <Progress
+                        value={Math.min(emp.utilization ?? 0, 100)}
+                        className="h-2"
+                      />
+                    )}
+                    {emp.isHourly && (
+                      <Badge variant="outline" className="border-blue-500 text-blue-600 text-xs">
+                        {tt("hourly")}
+                      </Badge>
+                    )}
                   </div>
 
                   {/* Rates */}
