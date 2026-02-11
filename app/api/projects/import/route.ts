@@ -169,21 +169,28 @@ export async function POST(req: Request) {
         projectId = project.id;
       }
 
-      // Create allocations for mapped employees (skip duplicates)
+      // Build userId → total imported hours map
+      const userHoursMap = new Map<string, number>();
+      for (const entry of entriesToImport) {
+        const uid = employeeMap.get(entry.employeeName);
+        if (uid) {
+          userHoursMap.set(uid, (userHoursMap.get(uid) || 0) + entry.hours);
+        }
+      }
+
+      // Create or update allocations for mapped employees
       const uniqueMappedUserIds = Array.from(new Set(mappedUserIds));
       for (const userId of uniqueMappedUserIds) {
+        const employeeHours = userHoursMap.get(userId) || 0;
         const existingAlloc = await tx.projectAllocation.findUnique({
           where: { projectId_userId: { projectId, userId } },
         });
-        if (!existingAlloc) {
-          // Calculate total hours for this employee
-          const employeeName = Array.from(employeeMap.entries()).find(
-            ([, id]) => id === userId
-          )?.[0];
-          const employeeHours = entriesToImport
-            .filter((e) => e.employeeName === employeeName)
-            .reduce((sum, e) => sum + e.hours, 0);
-
+        if (existingAlloc) {
+          await tx.projectAllocation.update({
+            where: { projectId_userId: { projectId, userId } },
+            data: { hours: (existingAlloc.hours || 0) + employeeHours },
+          });
+        } else {
           await tx.projectAllocation.create({
             data: {
               projectId,
