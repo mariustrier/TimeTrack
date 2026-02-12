@@ -288,6 +288,8 @@ export function ResourcePlanner() {
     hoursPerDay: number;
     status: string;
     notes: string | null;
+    startDate?: string;
+    endDate?: string;
     editDate?: string;
   }) => {
     try {
@@ -310,15 +312,15 @@ export function ResourcePlanner() {
         if (!res.ok) throw new Error("Failed to update allocation");
         toast.success(t("allocationUpdated") || "Allocation updated");
       } else {
-        // Create new — single day allocation
+        // Create new allocation with date range from popover
         const res = await fetch("/api/resource-allocations", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             userId: popover.employeeId,
             projectId: data.projectId,
-            startDate: popover.date,
-            endDate: popover.date,
+            startDate: data.startDate || popover.date,
+            endDate: data.endDate || popover.date,
             hoursPerDay: data.hoursPerDay,
             status: data.status,
             notes: data.notes,

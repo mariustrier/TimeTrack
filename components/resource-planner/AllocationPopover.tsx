@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { addDays, format, eachDayOfInterval, isWeekend } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,6 +45,8 @@ interface AllocationPopoverProps {
     hoursPerDay: number;
     status: string;
     notes: string | null;
+    startDate?: string;
+    endDate?: string;
     editDate?: string;
   }) => void;
   onDelete: (allocationId: string, date?: string) => void;
@@ -69,7 +72,23 @@ export function AllocationPopover({
   const [hours, setHours] = useState("");
   const [status, setStatus] = useState<"tentative" | "confirmed">("tentative");
   const [notes, setNotes] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Calculate working days in the date range
+  const workingDays = useMemo(() => {
+    if (!startDate || !endDate) return 0;
+    try {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (start > end) return 0;
+      const days = eachDayOfInterval({ start, end });
+      return days.filter((d) => !isWeekend(d)).length;
+    } catch {
+      return 0;
+    }
+  }, [startDate, endDate]);
 
   // Reset form when popover opens
   useEffect(() => {
@@ -79,14 +98,23 @@ export function AllocationPopover({
         setHours(allocation.hoursPerDay.toString());
         setStatus(allocation.status === "completed" ? "confirmed" : allocation.status);
         setNotes(allocation.notes || "");
+        setStartDate("");
+        setEndDate("");
       } else {
         setProjectId("");
         setHours(defaultHoursPerDay.toString());
         setStatus("tentative");
         setNotes("");
+        // Default: clicked day to +4 days (Mon-Fri)
+        setStartDate(date);
+        try {
+          setEndDate(format(addDays(new Date(date), 4), "yyyy-MM-dd"));
+        } catch {
+          setEndDate(date);
+        }
       }
     }
-  }, [open, mode, allocation, defaultHoursPerDay]);
+  }, [open, mode, allocation, defaultHoursPerDay, date]);
 
   // Close on Escape
   useEffect(() => {
@@ -106,7 +134,6 @@ export function AllocationPopover({
         onClose();
       }
     };
-    // Delay to avoid catching the same click that opened it
     const timer = setTimeout(() => {
       document.addEventListener("mousedown", handleClick);
     }, 10);
@@ -128,6 +155,8 @@ export function AllocationPopover({
         hoursPerDay: parseFloat(hours),
         status,
         notes: notes || null,
+        startDate: mode === "create" ? startDate : undefined,
+        endDate: mode === "create" ? endDate : undefined,
         editDate: mode === "edit" && allocation?.isMultiDay ? date : undefined,
       });
     } finally {
@@ -141,7 +170,7 @@ export function AllocationPopover({
   };
 
   // Position: clamp to viewport
-  const top = Math.min(position.top, window.innerHeight - 360);
+  const top = Math.min(position.top, window.innerHeight - 440);
   const left = Math.min(position.left, window.innerWidth - 340);
 
   return (
@@ -149,7 +178,7 @@ export function AllocationPopover({
       <div className="fixed inset-0 z-40" />
       <div
         ref={ref}
-        className="fixed z-50 w-[300px] bg-card border rounded-lg shadow-xl p-4 space-y-3"
+        className="fixed z-50 w-[320px] bg-card border rounded-lg shadow-xl p-4 space-y-3"
         style={{ top, left }}
       >
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -176,6 +205,33 @@ export function AllocationPopover({
             </Select>
           </div>
 
+          {/* Date Range — only in create mode */}
+          {mode === "create" && (
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs">{t("startDate") || "Start Date"}</Label>
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="h-8 text-sm"
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">{t("endDate") || "End Date"}</Label>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  min={startDate}
+                  className="h-8 text-sm"
+                  required
+                />
+              </div>
+            </div>
+          )}
+
           {/* Hours */}
           <div className="space-y-1">
             <Label className="text-xs">{t("hoursPerDay") || "Hours per Day"}</Label>
@@ -189,6 +245,12 @@ export function AllocationPopover({
               className="h-8 text-sm"
               required
             />
+            {mode === "create" && workingDays > 0 && hours && (
+              <p className="text-[11px] text-muted-foreground">
+                = {(parseFloat(hours) * workingDays).toFixed(1)}h {t("totalOver") || "total over"}{" "}
+                {workingDays} {t("workingDays") || "working days"}
+              </p>
+            )}
           </div>
 
           {/* Status */}
