@@ -153,7 +153,12 @@
     "sortNameAsc": "Navn A–Å",
     "sortNameDesc": "Navn Å–A",
     "sortNewest": "Nyeste Først",
-    "sortOldest": "Ældste Først"
+    "sortOldest": "Ældste Først",
+    "planned": "Planlagt",
+    "plannedHoursLabel": "Planlagt",
+    "plannedForWeek": "Planlagte timer for denne uge",
+    "noPlannedHours": "ingen planlagte timer",
+    "plannedProjects": "{count} projekter"
   },
   "projects": {
     "title": "Projekter",

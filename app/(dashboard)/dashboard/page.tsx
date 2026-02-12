@@ -34,6 +34,7 @@ import {
   Users,
   Layers,
   ArrowUpDown,
+  CalendarCheck,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -218,6 +219,12 @@ export default function DashboardPage() {
   // Holiday config
   const [disabledHolidayCodes, setDisabledHolidayCodes] = useState<string[]>([]);
   const [customHolidays, setCustomHolidays] = useState<CustomHoliday[]>([]);
+  // Planned hours from resource allocations
+  const [plannedHours, setPlannedHours] = useState<{
+    totalPlanned: number;
+    byProject: Record<string, { planned: number; projectName: string; projectColor: string }>;
+    byProjectDay: Record<string, Record<string, number>>;
+  } | null>(null);
   const { locale } = useLocale();
   // Admin "view as" employee
   const [userRole, setUserRole] = useState<string>("employee");
@@ -286,7 +293,8 @@ export default function DashboardPage() {
       const end = format(weekEnd, "yyyy-MM-dd");
 
       const userIdParam = selectedEmployeeId ? `&userId=${selectedEmployeeId}` : "";
-      const [entriesRes, projectsRes, vacationsRes, absenceReasonsRes, holidaysRes, userMeRes, phasesRes] = await Promise.all([
+      const userIdPlannedParam = selectedEmployeeId ? `&userId=${selectedEmployeeId}` : "";
+      const [entriesRes, projectsRes, vacationsRes, absenceReasonsRes, holidaysRes, userMeRes, phasesRes, plannedRes] = await Promise.all([
         fetch(`/api/time-entries?startDate=${start}&endDate=${end}${userIdParam}`),
         fetch("/api/projects"),
         fetch("/api/vacations"),
@@ -294,6 +302,7 @@ export default function DashboardPage() {
         fetch("/api/admin/holidays"),
         fetch("/api/user/me"),
         fetch("/api/phases"),
+        fetch(`/api/user/planned-hours?weekStart=${start}${userIdPlannedParam}`),
       ]);
 
       if (entriesRes.ok) {
@@ -321,6 +330,10 @@ export default function DashboardPage() {
       if (phasesRes.ok) {
         const data = await phasesRes.json();
         setCompanyPhases(data);
+      }
+      if (plannedRes.ok) {
+        const data = await plannedRes.json();
+        setPlannedHours(data);
       }
       if (vacationsRes.ok) {
         const vacations = await vacationsRes.json();
@@ -916,7 +929,7 @@ export default function DashboardPage() {
 
       {/* Stat Cards */}
       {isHourly ? (
-        <div data-tour="stat-cards" className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+        <div data-tour="stat-cards" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatCard
             title={t("totalHours")}
             value={`${grandTotal.toFixed(1)}h`}
@@ -930,6 +943,15 @@ export default function DashboardPage() {
             color="bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
           />
           <StatCard
+            title={t("planned")}
+            value={`${(plannedHours?.totalPlanned ?? 0).toFixed(1)}h`}
+            icon={CalendarCheck}
+            color="bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400"
+            subtitle={plannedHours?.totalPlanned
+              ? t("plannedProjects", { count: Object.keys(plannedHours.byProject).length.toString() })
+              : t("noPlannedHours")}
+          />
+          <StatCard
             title={t("target")}
             value={t("hourlyLabel")}
             icon={Target}
@@ -937,12 +959,21 @@ export default function DashboardPage() {
           />
         </div>
       ) : (
-        <div data-tour="stat-cards" className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
+        <div data-tour="stat-cards" className="grid grid-cols-2 gap-4 lg:grid-cols-4 xl:grid-cols-7">
           <StatCard
             title={t("target")}
             value={`${weeklyTarget}h`}
             icon={Target}
             color="bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
+          />
+          <StatCard
+            title={t("planned")}
+            value={`${(plannedHours?.totalPlanned ?? 0).toFixed(1)}h`}
+            icon={CalendarCheck}
+            color="bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400"
+            subtitle={plannedHours?.totalPlanned
+              ? t("plannedProjects", { count: Object.keys(plannedHours.byProject).length.toString() })
+              : t("noPlannedHours")}
           />
           <StatCard
             title={t("billableHours")}
@@ -1065,6 +1096,11 @@ export default function DashboardPage() {
                     <th className="px-4 py-3 text-center font-medium text-muted-foreground w-20">
                       {t("total")}
                     </th>
+                    {plannedHours && plannedHours.totalPlanned > 0 && (
+                      <th className="px-2 py-3 text-center font-medium text-indigo-600 dark:text-indigo-400 w-20">
+                        {t("planned")}
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -1223,6 +1259,13 @@ export default function DashboardPage() {
                       <td className="px-4 py-2 text-center font-semibold text-foreground">
                         {getRowTotal(project.id).toFixed(1)}
                       </td>
+                      {plannedHours && plannedHours.totalPlanned > 0 && (
+                        <td className="px-2 py-2 text-center text-sm text-indigo-600 dark:text-indigo-400">
+                          {(plannedHours.byProject[project.id]?.planned ?? 0) > 0
+                            ? plannedHours.byProject[project.id].planned.toFixed(1)
+                            : "—"}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -1246,7 +1289,42 @@ export default function DashboardPage() {
                     <td className="px-4 py-3 text-center font-bold text-brand-600">
                       {grandTotal.toFixed(1)}
                     </td>
+                    {plannedHours && plannedHours.totalPlanned > 0 && (
+                      <td className="px-2 py-3" />
+                    )}
                   </tr>
+                  {/* Planned Hours row */}
+                  {plannedHours && plannedHours.totalPlanned > 0 && (
+                  <tr className="bg-indigo-50/30 dark:bg-indigo-950/20 border-t border-dashed">
+                    <td className="px-4 py-2 text-sm text-indigo-600 dark:text-indigo-400 font-medium">
+                      {t("plannedHoursLabel")}
+                    </td>
+                    {weekDays.map((day) => {
+                      const dateStr = format(day, "yyyy-MM-dd");
+                      const dayPlanned = Object.values(plannedHours.byProjectDay).reduce(
+                        (sum, projectDays) => sum + (projectDays[dateStr] || 0), 0
+                      );
+                      return (
+                        <td
+                          key={`planned-${day.toISOString()}`}
+                          className={cn(
+                            "px-2 py-2 text-center text-xs font-medium text-indigo-600 dark:text-indigo-400",
+                            isToday(day) && "bg-brand-50/30"
+                          )}
+                        >
+                          {dayPlanned > 0 ? dayPlanned.toFixed(1) : "—"}
+                        </td>
+                      );
+                    })}
+                    {projects.some((p) => p.myAllocation != null || p.budgetTotalHours != null) && (
+                      <td className="px-2 py-2" />
+                    )}
+                    <td className="px-4 py-2 text-center text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                      {plannedHours.totalPlanned.toFixed(1)}
+                    </td>
+                    <td className="px-2 py-2" />
+                  </tr>
+                  )}
                   {/* Flex Balance row (hidden for hourly employees) */}
                   {!isHourly && (
                   <tr className="bg-muted/30 border-t border-dashed">
@@ -1275,6 +1353,9 @@ export default function DashboardPage() {
                     )}>
                       {timeBalance >= 0 ? "+" : ""}{timeBalance.toFixed(1)}
                     </td>
+                    {plannedHours && plannedHours.totalPlanned > 0 && (
+                      <td className="px-2 py-2" />
+                    )}
                   </tr>
                   )}
                   {/* Daily Submit Buttons row */}
@@ -1314,6 +1395,9 @@ export default function DashboardPage() {
                       <td className="px-2 py-2" />
                     )}
                     <td className="px-4 py-2" />
+                    {plannedHours && plannedHours.totalPlanned > 0 && (
+                      <td className="px-2 py-2" />
+                    )}
                   </tr>}
                 </tfoot>
               </table>

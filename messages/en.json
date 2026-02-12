@@ -153,7 +153,12 @@
     "sortNameAsc": "Name A–Z",
     "sortNameDesc": "Name Z–A",
     "sortNewest": "Newest First",
-    "sortOldest": "Oldest First"
+    "sortOldest": "Oldest First",
+    "planned": "Planned",
+    "plannedHoursLabel": "Planned",
+    "plannedForWeek": "Planned hours for this week",
+    "noPlannedHours": "no planned hours",
+    "plannedProjects": "{count} projects"
   },
   "projects": {
     "title": "Projects",

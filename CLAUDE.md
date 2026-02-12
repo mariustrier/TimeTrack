@@ -94,6 +94,7 @@ Company, User (`isHourly`, `weeklyTarget`, `vacationDays`, `deletedAt`, etc.), P
 - Absence reason selection for absence project entries (comment optional for absence, required for other projects)
 - **Phase label** per project row: shows current phase badge (skipped for system-managed projects like Absence)
 - **Phase override**: Time entry modal shows a phase selector dropdown for phase-enabled projects (not Absence). Defaults to project's current phase, but user can select any active phase. Colored dots match phase colors. Editable on draft entries, read-only on submitted/approved/locked. Inactive phases shown as static text. Phase updates when switching projects.
+- **Planned hours**: Dashboard shows planned hours from ResourceAllocation data. "Planned" stat card (indigo, CalendarCheck icon) shows total planned hours for the current week with project count subtitle. When planned hours exist, a "Planned" column appears in the timesheet grid showing per-project breakdown, and a "Planned" footer row shows per-day planned totals. Data fetched from `GET /api/user/planned-hours?weekStart=...` which calculates weekly planned hours by finding overlapping ResourceAllocations (tentative/confirmed) and pro-rating by working days. Supports admin "view as employee" via userId param. Works for both salaried and hourly employees.
 - **Admin log on behalf**: Admins/managers can select an employee from a dropdown to view their timesheet, create entries, and submit days/weeks under their account. Audit log tracks on-behalf submissions.
 - **Calendar week picker**: Week navigation uses a calendar popover (click the date range to open) with left/right arrows and a "Today" button
 
@@ -169,6 +170,7 @@ Company, User (`isHourly`, `weeklyTarget`, `vacationDays`, `deletedAt`, etc.), P
   - Per-day/total hours modes
   - Capacity summary with utilization percentages
   - Tentative/confirmed/completed status
+  - Allocations feed into employee dashboard "Planned" stat card and timesheet grid columns
 
 ### Admin
 - **Overview tab**: Financial stats (revenue, costs, margins), team utilization (1 decimal place), project budgets with allocations, absence reason management, e-conomic CSV export, company settings (currency, universal bill rate, expense threshold, AI anonymization, logo)
