@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileText, Clock, DollarSign, Users, Receipt } from "lucide-react";
+import { FileText, Clock, Banknote, Users, Receipt } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
 import { InvoiceCreateDialog } from "./InvoiceCreateDialog";
 
@@ -92,7 +92,7 @@ export function UninvoicedTab() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <Banknote className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-lg font-bold text-foreground">{p.uninvoicedAmount.toLocaleString("da-DK")}</p>
                     <p className="text-[10px] text-muted-foreground">{t("amount")}</p>
