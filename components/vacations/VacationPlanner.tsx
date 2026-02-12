@@ -20,6 +20,9 @@ interface VacationPlannerProps {
   requests: VacationRequest[];
   bonusDays: number;
   isHourly?: boolean;
+  vacationTrackingUnit?: string;
+  vacationHoursPerYear?: number | null;
+  weeklyTarget?: number;
 }
 
 function countBusinessDaysInRange(start: Date, end: Date): number {
@@ -46,30 +49,49 @@ function getUsedDaysInMonth(requests: VacationRequest[], year: number, month: nu
     }, 0);
 }
 
-export function VacationPlanner({ requests, bonusDays, isHourly }: VacationPlannerProps) {
+export function VacationPlanner({ requests, bonusDays, isHourly, vacationTrackingUnit, vacationHoursPerYear, weeklyTarget }: VacationPlannerProps) {
   const t = useTranslations("vacations");
   const dateLocale = useDateLocale();
 
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth(); // 0-indexed
+  const isHoursMode = vacationTrackingUnit === "hours";
+  const dailyTarget = (weeklyTarget ?? 37) / 5;
+  const monthlyHoursAccrual = isHoursMode ? (vacationHoursPerYear ?? 0) / 12 : 0;
 
   const months = useMemo(() => {
     let cumulativeUsed = 0;
     return Array.from({ length: 12 }, (_, i) => {
+      const usedDaysThisMonth = getUsedDaysInMonth(requests, currentYear, i);
+
+      if (isHoursMode) {
+        const earned = Math.round(monthlyHoursAccrual * (i + 1) * 100) / 100;
+        const usedHoursThisMonth = Math.round(usedDaysThisMonth * dailyTarget * 100) / 100;
+        cumulativeUsed += usedHoursThisMonth;
+        const balance = Math.round((earned + bonusDays - cumulativeUsed) * 100) / 100;
+        return {
+          month: i,
+          label: format(new Date(currentYear, i, 1), "MMM", dateLocale ? { locale: dateLocale } : undefined),
+          earned,
+          usedThisMonth: usedHoursThisMonth,
+          cumulativeUsed,
+          balance,
+        };
+      }
+
       const earned = Math.round(MONTHLY_ACCRUAL * (i + 1) * 100) / 100;
-      const usedThisMonth = getUsedDaysInMonth(requests, currentYear, i);
-      cumulativeUsed += usedThisMonth;
+      cumulativeUsed += usedDaysThisMonth;
       const balance = Math.round((earned + bonusDays - cumulativeUsed) * 100) / 100;
       return {
         month: i,
         label: format(new Date(currentYear, i, 1), "MMM", dateLocale ? { locale: dateLocale } : undefined),
         earned,
-        usedThisMonth,
+        usedThisMonth: usedDaysThisMonth,
         cumulativeUsed,
         balance,
       };
     });
-  }, [requests, bonusDays, currentYear, dateLocale]);
+  }, [requests, bonusDays, currentYear, dateLocale, isHoursMode, monthlyHoursAccrual, dailyTarget]);
 
   if (isHourly) {
     return (
@@ -85,7 +107,7 @@ export function VacationPlanner({ requests, bonusDays, isHourly }: VacationPlann
         <h3 className="text-lg font-semibold text-foreground">{currentYear}</h3>
         {bonusDays > 0 && (
           <span className="text-sm text-muted-foreground">
-            +{bonusDays} {t("extraDays")}
+            +{bonusDays} {isHoursMode ? t("extraHours") : t("extraDays")}
           </span>
         )}
       </div>
@@ -120,7 +142,7 @@ export function VacationPlanner({ requests, bonusDays, isHourly }: VacationPlann
                   {m.balance.toFixed(1)}
                 </p>
                 <p className="text-[10px] text-muted-foreground">
-                  {t("days")}
+                  {isHoursMode ? t("hoursUnit") : t("days")}
                 </p>
                 <div className="mt-2 space-y-0.5 text-[10px] text-muted-foreground">
                   <div className="flex justify-between">

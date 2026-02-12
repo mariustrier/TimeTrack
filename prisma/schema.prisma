@@ -61,6 +61,8 @@ model User {
   weeklyTarget  Float    @default(37)
   isHourly      Boolean  @default(false)
   vacationDays  Int      @default(0)
+  vacationTrackingUnit  String   @default("days")  // "days" | "hours"
+  vacationHoursPerYear  Float?                     // annual vacation hour entitlement (e.g., 150 for 30h/week)
   companyId     String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

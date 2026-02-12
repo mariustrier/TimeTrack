@@ -41,7 +41,7 @@ export async function GET(req: Request) {
     const requests = await db.vacationRequest.findMany({
       where,
       include: {
-        user: { select: { id: true, firstName: true, lastName: true, email: true, imageUrl: true } },
+        user: { select: { id: true, firstName: true, lastName: true, email: true, imageUrl: true, vacationTrackingUnit: true, weeklyTarget: true } },
       },
       orderBy: { startDate: "asc" },
     });

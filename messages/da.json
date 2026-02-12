@@ -82,7 +82,9 @@
     "totalHours": "Total",
     "timeBalance": "Tidssaldo",
     "vacationDays": "Feriedage",
+    "vacationHours": "Ferietimer",
     "daysUsed": "dage brugt",
+    "hoursUsedStat": "timer brugt",
     "remaining": "resterende",
     "submittedBanner": "Indsendt til godkendelse. Afventer admin-gennemgang.",
     "approvedBanner": "Uge godkendt.",
@@ -238,7 +240,13 @@
     "freelancerType": "Freelancer",
     "isHourly": "Timelønnet (ingen fast tid)",
     "hourly": "Timelønnet",
-    "isHourlyDescription": "Betales per time. Flexsaldo og ferieoptjening er deaktiveret."
+    "isHourlyDescription": "Betales per time. Flexsaldo og ferieoptjening er deaktiveret.",
+    "vacationTracking": "Ferieopgørelse",
+    "trackingDays": "Dage (standard)",
+    "trackingHours": "Timer",
+    "annualHours": "Årlige ferietimer",
+    "annualHoursHelper": "Standard: ugetimer × 5 (f.eks. 30t/uge = 150t/år)",
+    "extraVacationHours": "Ekstra ferietimer"
   },
   "admin": {
     "title": "Admin-dashboard",
@@ -447,7 +455,13 @@
     "extraDays": "ekstra dage",
     "earned": "Optjent",
     "used": "Brugt",
-    "hourlyNoAccrual": "Ferieoptjening gælder ikke for timelønnede medarbejdere. Kontakt din administrator for ferieaftaler."
+    "hourlyNoAccrual": "Ferieoptjening gælder ikke for timelønnede medarbejdere. Kontakt din administrator for ferieaftaler.",
+    "hoursUnit": "timer",
+    "hoursUsed": "{hours}t brugt",
+    "hoursRemaining": "{hours}t tilbage",
+    "hoursAccrued": "{hours}t optjent",
+    "hoursCost": "Dette vil bruge ca. {hours} ferietimer ({days} dage × {perDay}t/dag)",
+    "extraHours": "ekstra timer"
   },
   "adminVacations": {
     "title": "Ferieanmodninger",
@@ -460,7 +474,8 @@
     "noRequestsDescription": "Ingen {status} ferieanmodninger fundet.",
     "employee": "Medarbejder",
     "period": "Periode",
-    "daysColumn": "Dage"
+    "daysColumn": "Dage",
+    "hoursColumn": "Timer"
   },
   "backups": {
     "title": "Backup & eksport",

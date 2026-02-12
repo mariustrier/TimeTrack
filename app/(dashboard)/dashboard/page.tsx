@@ -190,8 +190,15 @@ export default function DashboardPage() {
   const [vacationDaysUsed, setVacationDaysUsed] = useState(0);
   const [bonusVacationDays, setBonusVacationDays] = useState(0);
   const [isHourly, setIsHourly] = useState(false);
+  const [vacationTrackingUnit, setVacationTrackingUnit] = useState("days");
+  const [vacationHoursPerYear, setVacationHoursPerYear] = useState<number | null>(null);
   const vacationDaysTotal = isHourly ? 0 : Math.round((2.08 * (new Date().getMonth() + 1) + bonusVacationDays) * 100) / 100;
   const [weeklyTarget, setWeeklyTarget] = useState(40);
+  const isVacationHours = vacationTrackingUnit === "hours";
+  const vacationHoursUsed = isVacationHours ? Math.round(vacationDaysUsed * (weeklyTarget / 5) * 100) / 100 : 0;
+  const vacationHoursTotal = isVacationHours
+    ? Math.round(((vacationHoursPerYear ?? 0) / 12 * (new Date().getMonth() + 1) + bonusVacationDays) * 100) / 100
+    : 0;
   const [priorFlexBalance, setPriorFlexBalance] = useState(0);
   const [weekNote, setWeekNote] = useState<{ action: string; reason: string | null; createdAt: string } | null>(null);
   const [weekNoteDismissed, setWeekNoteDismissed] = useState(false);
@@ -361,6 +368,8 @@ export default function DashboardPage() {
         if (meData.vacationDays != null) setBonusVacationDays(meData.vacationDays);
         if (meData.isHourly != null && !selectedEmployeeId) setIsHourly(meData.isHourly);
         if (meData.role) setUserRole(meData.role);
+        if (meData.vacationTrackingUnit) setVacationTrackingUnit(meData.vacationTrackingUnit);
+        if (meData.vacationHoursPerYear != null) setVacationHoursPerYear(meData.vacationHoursPerYear);
       }
       setLastUpdated(new Date());
     } catch (error) {
@@ -983,10 +992,10 @@ export default function DashboardPage() {
           />
           <StatCard
             title={t("vacation")}
-            value={`${vacationDaysUsed.toFixed(1)}d`}
+            value={isVacationHours ? `${vacationHoursUsed.toFixed(1)}h` : `${vacationDaysUsed.toFixed(1)}d`}
             icon={Palmtree}
             color="bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400"
-            subtitle={t("daysUsed")}
+            subtitle={isVacationHours ? t("hoursUsedStat") : t("daysUsed")}
           />
           <StatCard
             title={t("totalHours")}
@@ -1004,8 +1013,10 @@ export default function DashboardPage() {
             }
           />
           <StatCard
-            title={t("vacationDays")}
-            value={`${(vacationDaysTotal - vacationDaysUsed).toFixed(1)}`}
+            title={isVacationHours ? t("vacationHours") : t("vacationDays")}
+            value={isVacationHours
+              ? `${(vacationHoursTotal - vacationHoursUsed).toFixed(1)}h`
+              : `${(vacationDaysTotal - vacationDaysUsed).toFixed(1)}`}
             icon={CalendarDays}
             color="bg-sky-50 text-sky-600 dark:bg-sky-950 dark:text-sky-400"
             subtitle={t("remaining")}

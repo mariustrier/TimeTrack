@@ -11,6 +11,8 @@ export async function GET() {
     return NextResponse.json({
       role: user.role,
       vacationDays: user.vacationDays,
+      vacationTrackingUnit: user.vacationTrackingUnit,
+      vacationHoursPerYear: user.vacationHoursPerYear,
       weeklyTarget: user.weeklyTarget,
       isHourly: user.isHourly,
       createdAt: user.createdAt,

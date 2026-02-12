@@ -29,6 +29,8 @@ interface VacationRequest {
     firstName: string | null;
     lastName: string | null;
     email: string;
+    vacationTrackingUnit?: string;
+    weeklyTarget?: number;
   };
 }
 
@@ -167,7 +169,7 @@ export function AdminVacations() {
                     <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("employee")}</th>
                     <th className="px-4 py-3 text-left font-medium text-muted-foreground">{tc("type")}</th>
                     <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("period")}</th>
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("daysColumn")}</th>
+                    <th className="px-4 py-3 text-left font-medium text-muted-foreground">{t("daysColumn")} / {t("hoursColumn")}</th>
                     <th className="px-4 py-3 text-left font-medium text-muted-foreground">{tc("status")}</th>
                     <th className="px-4 py-3 text-left font-medium text-muted-foreground">{tc("note")}</th>
                     <th className="px-4 py-3 text-right font-medium text-muted-foreground">{tc("actions")}</th>
@@ -190,7 +192,9 @@ export function AdminVacations() {
                         {format(new Date(req.endDate), "MMM d, yyyy", formatOpts)}
                       </td>
                       <td className="px-4 py-3 text-foreground">
-                        {countBusinessDays(req.startDate, req.endDate)}
+                        {req.user.vacationTrackingUnit === "hours" && req.user.weeklyTarget
+                          ? `${(countBusinessDays(req.startDate, req.endDate) * (req.user.weeklyTarget / 5)).toFixed(1)}h`
+                          : countBusinessDays(req.startDate, req.endDate)}
                       </td>
                       <td className="px-4 py-3">{getStatusBadge(req.status)}</td>
                       <td className="px-4 py-3 text-muted-foreground max-w-[200px] truncate">

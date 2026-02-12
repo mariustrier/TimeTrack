@@ -96,6 +96,8 @@ export const updateTeamMemberSchema = z.object({
   weeklyTarget: z.coerce.number().nonnegative().max(168).optional(),
   isHourly: z.boolean().optional(),
   vacationDays: z.coerce.number().int().nonnegative().max(365).optional(),
+  vacationTrackingUnit: z.enum(["days", "hours"]).optional(),
+  vacationHoursPerYear: z.coerce.number().nonnegative().max(2000).nullable().optional(),
 });
 
 // --- Expenses ---

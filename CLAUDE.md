@@ -20,7 +20,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 
 - `npm run dev` - Start development server
 - `npm run build` - Production build (also runs linting + type checking)
-- `npm run test` - Run all 185 unit tests (Vitest)
+- `npm run test` - Run all 199 unit tests (Vitest)
 - `npm run test:watch` - Run tests in watch mode
 
 ## Project Structure
@@ -73,10 +73,10 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `lib/economic-import.ts` - e-conomic Projektkort XLSX parser
 
 ### Database (17 models)
-Company, User (`isHourly`, `weeklyTarget`, `vacationDays`, `deletedAt`, etc.), Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense, CompanyExpense, ExpenseCategory, AbsenceReason, ResourceAllocation, ProjectMilestone, Phase, SupportAccess
+Company, User (`isHourly`, `weeklyTarget`, `vacationDays`, `vacationTrackingUnit`, `vacationHoursPerYear`, `deletedAt`, etc.), Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense, CompanyExpense, ExpenseCategory, AbsenceReason, ResourceAllocation, ProjectMilestone, Phase, SupportAccess
 
 ### Tests
-- `__tests__/lib/` - 185 unit tests across 10 suites (Vitest)
+- `__tests__/lib/` - 199 unit tests across 10 suites (Vitest)
 
 ## Core Features
 
@@ -110,8 +110,10 @@ Company, User (`isHourly`, `weeklyTarget`, `vacationDays`, `deletedAt`, etc.), P
 - Request with start/end date, type (vacation/sick/personal), note
 - Business day calculation (weekdays only)
 - **Accrual system**: Salaried employees earn 2.08 vacation days/month (Danish standard, ~25/year). Disabled for hourly employees (`isHourly`).
-- `User.vacationDays` field = admin-added **bonus days** on top of accrual (default 0)
-- Total allowance = `2.08 × current month number + bonusDays`
+- **Hours-based vacation tracking** (`User.vacationTrackingUnit`): Per-employee toggle between "days" (default) and "hours". For part-time/variable-hours employees, vacation is tracked in hours: accrual = `vacationHoursPerYear / 12` per month. Used hours = approved vacation business days × daily target (`weeklyTarget / 5`). Admin sets annual entitlement via `User.vacationHoursPerYear` (e.g., 150h for 30h/week employee). Dashboard, vacations page, planner, and admin view all adapt to show hours when applicable.
+- `User.vacationDays` field = admin-added **bonus days/hours** on top of accrual (default 0). Repurposed as bonus hours when tracking unit is "hours".
+- Total allowance (days mode) = `2.08 × current month number + bonusDays`
+- Total allowance (hours mode) = `(vacationHoursPerYear / 12) × current month number + bonusHours`
 - Admin approval/rejection workflow
 - **Auto-fill on approval**: When admin approves a vacation, absence time entries are automatically created for each business day (skipping weekends/holidays), using the employee's daily target hours, under the Absence project with matching absence reason (vacation→VACATION, sick→SICK). Skipped for hourly employees (no daily target).
 - **Auto-cleanup on rejection/cancellation**: System-created entries are deleted when vacation is rejected or cancelled

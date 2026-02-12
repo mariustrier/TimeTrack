@@ -82,7 +82,9 @@
     "totalHours": "Total",
     "timeBalance": "Time Balance",
     "vacationDays": "Vacation Days",
+    "vacationHours": "Vacation Hours",
     "daysUsed": "days used",
+    "hoursUsedStat": "hours used",
     "remaining": "remaining",
     "submittedBanner": "Submitted for approval. Waiting for admin review.",
     "approvedBanner": "Week approved.",
@@ -238,7 +240,13 @@
     "freelancerType": "Freelancer",
     "isHourly": "Hourly (no fixed hours)",
     "hourly": "Hourly",
-    "isHourlyDescription": "Paid per hour. Flex balance and vacation accrual are disabled."
+    "isHourlyDescription": "Paid per hour. Flex balance and vacation accrual are disabled.",
+    "vacationTracking": "Vacation tracking",
+    "trackingDays": "Days (standard)",
+    "trackingHours": "Hours",
+    "annualHours": "Annual vacation hours",
+    "annualHoursHelper": "Standard: weekly hours × 5 (e.g., 30h/week = 150h/year)",
+    "extraVacationHours": "Extra Vacation Hours"
   },
   "admin": {
     "title": "Admin Dashboard",
@@ -447,7 +455,13 @@
     "extraDays": "extra days",
     "earned": "Earned",
     "used": "Used",
-    "hourlyNoAccrual": "Vacation accrual is not applicable for hourly employees. Contact your administrator for vacation arrangements."
+    "hourlyNoAccrual": "Vacation accrual is not applicable for hourly employees. Contact your administrator for vacation arrangements.",
+    "hoursUnit": "hours",
+    "hoursUsed": "{hours}h used",
+    "hoursRemaining": "{hours}h remaining",
+    "hoursAccrued": "{hours}h accrued",
+    "hoursCost": "This will use approx. {hours} vacation hours ({days} days × {perDay}h/day)",
+    "extraHours": "extra hours"
   },
   "adminVacations": {
     "title": "Vacation Requests",
@@ -460,7 +474,8 @@
     "noRequestsDescription": "No {status} vacation requests found.",
     "employee": "Employee",
     "period": "Period",
-    "daysColumn": "Days"
+    "daysColumn": "Days",
+    "hoursColumn": "Hours"
   },
   "backups": {
     "title": "Backups & Export",

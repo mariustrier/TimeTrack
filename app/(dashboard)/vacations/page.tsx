@@ -87,9 +87,16 @@ export default function VacationsPage() {
   const [saving, setSaving] = useState(false);
   const [bonusDays, setBonusDays] = useState(0);
   const [isHourly, setIsHourly] = useState(false);
+  const [vacationTrackingUnit, setVacationTrackingUnit] = useState("days");
+  const [vacationHoursPerYear, setVacationHoursPerYear] = useState<number | null>(null);
+  const [userWeeklyTarget, setUserWeeklyTarget] = useState(37);
 
   const currentMonth = new Date().getMonth() + 1; // 1-indexed
+  const isVacationHours = vacationTrackingUnit === "hours";
   const totalAllowance = isHourly ? 0 : Math.round((MONTHLY_ACCRUAL * currentMonth + bonusDays) * 100) / 100;
+  const totalHoursAllowance = isVacationHours
+    ? Math.round(((vacationHoursPerYear ?? 0) / 12 * currentMonth + bonusDays) * 100) / 100
+    : 0;
 
   const fetchRequests = useCallback(async () => {
     setLoading(true);
@@ -112,6 +119,9 @@ export default function VacationsPage() {
       .then((data) => {
         if (data.vacationDays != null) setBonusDays(data.vacationDays);
         if (data.isHourly != null) setIsHourly(data.isHourly);
+        if (data.vacationTrackingUnit) setVacationTrackingUnit(data.vacationTrackingUnit);
+        if (data.vacationHoursPerYear != null) setVacationHoursPerYear(data.vacationHoursPerYear);
+        if (data.weeklyTarget != null) setUserWeeklyTarget(data.weeklyTarget);
       })
       .catch(() => {});
   }, [fetchRequests]);
@@ -121,6 +131,9 @@ export default function VacationsPage() {
     .reduce((sum, r) => sum + countBusinessDays(r.startDate, r.endDate), 0);
 
   const remainingDays = Math.round((totalAllowance - approvedDays) * 100) / 100;
+  const dailyTarget = userWeeklyTarget / 5;
+  const approvedHours = isVacationHours ? Math.round(approvedDays * dailyTarget * 100) / 100 : 0;
+  const remainingHours = isVacationHours ? Math.round((totalHoursAllowance - approvedHours) * 100) / 100 : 0;
 
   async function handleSubmit() {
     if (!startDate || !endDate) return;
@@ -202,22 +215,37 @@ export default function VacationsPage() {
           <Card>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">{t("totalAllowance")}</p>
-              <p className="mt-1 text-2xl font-bold">{totalAllowance.toFixed(1)} {t("days")}</p>
-              <p className="text-xs text-muted-foreground">
-                {MONTHLY_ACCRUAL} &times; {currentMonth} {t("months")}{bonusDays > 0 ? ` + ${bonusDays}` : ""}
-              </p>
+              {isVacationHours ? (
+                <>
+                  <p className="mt-1 text-2xl font-bold">{totalHoursAllowance.toFixed(1)} {t("hoursUnit")}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {((vacationHoursPerYear ?? 0) / 12).toFixed(1)} &times; {currentMonth} {t("months")}{bonusDays > 0 ? ` + ${bonusDays}` : ""}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="mt-1 text-2xl font-bold">{totalAllowance.toFixed(1)} {t("days")}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {MONTHLY_ACCRUAL} &times; {currentMonth} {t("months")}{bonusDays > 0 ? ` + ${bonusDays}` : ""}
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">{t("usedApproved")}</p>
-              <p className="mt-1 text-2xl font-bold">{approvedDays} {t("days")}</p>
+              <p className="mt-1 text-2xl font-bold">
+                {isVacationHours ? `${approvedHours} ${t("hoursUnit")}` : `${approvedDays} ${t("days")}`}
+              </p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
               <p className="text-sm text-muted-foreground">{t("remainingDays")}</p>
-              <p className="mt-1 text-2xl font-bold">{remainingDays.toFixed(1)} {t("days")}</p>
+              <p className="mt-1 text-2xl font-bold">
+                {isVacationHours ? `${remainingHours.toFixed(1)} ${t("hoursUnit")}` : `${remainingDays.toFixed(1)} ${t("days")}`}
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -249,7 +277,9 @@ export default function VacationsPage() {
                       {getTypeBadge(req.type)}
                       {getStatusBadge(req.status)}
                       <span className="text-sm text-muted-foreground">
-                        {countBusinessDays(req.startDate, req.endDate)} {t("dayCount")}
+                        {isVacationHours
+                          ? `${(countBusinessDays(req.startDate, req.endDate) * dailyTarget).toFixed(1)}h`
+                          : `${countBusinessDays(req.startDate, req.endDate)} ${t("dayCount")}`}
                       </span>
                     </div>
                     <p className="text-sm font-medium">
@@ -280,7 +310,14 @@ export default function VacationsPage() {
         </TabsContent>
 
         <TabsContent value="planner" className="mt-4">
-          <VacationPlanner requests={requests} bonusDays={bonusDays} isHourly={isHourly} />
+          <VacationPlanner
+            requests={requests}
+            bonusDays={bonusDays}
+            isHourly={isHourly}
+            vacationTrackingUnit={vacationTrackingUnit}
+            vacationHoursPerYear={vacationHoursPerYear}
+            weeklyTarget={userWeeklyTarget}
+          />
         </TabsContent>
 
         <TabsContent value="calendar" className="mt-4">
@@ -327,9 +364,18 @@ export default function VacationsPage() {
               </div>
             </div>
             {startDate && endDate && new Date(endDate) >= new Date(startDate) && (
-              <p className="text-sm text-muted-foreground">
-                {countBusinessDays(startDate, endDate)} {t("businessDays")}
-              </p>
+              <div className="text-sm text-muted-foreground">
+                <p>{countBusinessDays(startDate, endDate)} {t("businessDays")}</p>
+                {isVacationHours && (
+                  <p className="mt-1 text-xs">
+                    {t("hoursCost", {
+                      hours: (countBusinessDays(startDate, endDate) * dailyTarget).toFixed(1),
+                      days: countBusinessDays(startDate, endDate).toString(),
+                      perDay: dailyTarget.toFixed(1),
+                    })}
+                  </p>
+                )}
+              </div>
             )}
             <div className="space-y-2">
               <Label>{t("noteOptional")}</Label>

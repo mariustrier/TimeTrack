@@ -47,6 +47,8 @@ interface TeamMember {
   weeklyTarget: number;
   isHourly: boolean;
   vacationDays: number;
+  vacationTrackingUnit: string;
+  vacationHoursPerYear: number | null;
 }
 
 export function TeamList() {
@@ -72,6 +74,8 @@ export function TeamList() {
   const [weeklyTarget, setWeeklyTarget] = useState("37");
   const [isHourly, setIsHourly] = useState(false);
   const [vacationDays, setVacationDays] = useState("0");
+  const [vacationTrackingUnit, setVacationTrackingUnit] = useState("days");
+  const [vacationHoursPerYear, setVacationHoursPerYear] = useState("");
 
   async function fetchTeam() {
     setLoading(true);
@@ -110,6 +114,8 @@ export function TeamList() {
     setWeeklyTarget("37");
     setIsHourly(false);
     setVacationDays("0");
+    setVacationTrackingUnit("days");
+    setVacationHoursPerYear("");
     setModalOpen(true);
   }
 
@@ -125,6 +131,8 @@ export function TeamList() {
     setWeeklyTarget(member.weeklyTarget.toString());
     setIsHourly(member.isHourly || false);
     setVacationDays(member.vacationDays.toString());
+    setVacationTrackingUnit(member.vacationTrackingUnit || "days");
+    setVacationHoursPerYear(member.vacationHoursPerYear != null ? member.vacationHoursPerYear.toString() : "");
     setModalOpen(true);
   }
 
@@ -142,6 +150,8 @@ export function TeamList() {
         weeklyTarget: isHourly ? "0" : weeklyTarget,
         isHourly,
         vacationDays,
+        vacationTrackingUnit,
+        vacationHoursPerYear: vacationTrackingUnit === "hours" && vacationHoursPerYear ? Number(vacationHoursPerYear) : null,
       };
 
       if (editingMember) {
@@ -447,15 +457,52 @@ export function TeamList() {
                 </div>
               )}
               <div className="space-y-2">
-                <Label>{t("vacationDays")}</Label>
+                <Label>{vacationTrackingUnit === "hours" ? t("extraVacationHours") : t("vacationDays")}</Label>
                 <Input
                   type="number"
                   value={vacationDays}
                   onChange={(e) => setVacationDays(e.target.value)}
-                  placeholder="25"
+                  placeholder="0"
                 />
               </div>
             </div>
+            {!isHourly && (
+              <>
+                <div className="space-y-2">
+                  <Label>{t("vacationTracking")}</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant={vacationTrackingUnit === "days" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setVacationTrackingUnit("days")}
+                    >
+                      {t("trackingDays")}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={vacationTrackingUnit === "hours" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setVacationTrackingUnit("hours")}
+                    >
+                      {t("trackingHours")}
+                    </Button>
+                  </div>
+                </div>
+                {vacationTrackingUnit === "hours" && (
+                  <div className="space-y-2">
+                    <Label>{t("annualHours")}</Label>
+                    <Input
+                      type="number"
+                      value={vacationHoursPerYear}
+                      onChange={(e) => setVacationHoursPerYear(e.target.value)}
+                      placeholder={weeklyTarget && !isHourly ? (Number(weeklyTarget) * 5).toString() : "150"}
+                    />
+                    <p className="text-xs text-muted-foreground">{t("annualHoursHelper")}</p>
+                  </div>
+                )}
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setModalOpen(false)}>

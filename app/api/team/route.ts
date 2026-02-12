@@ -30,6 +30,8 @@ export async function GET() {
         weeklyTarget: true,
         isHourly: true,
         vacationDays: true,
+        vacationTrackingUnit: true,
+        vacationHoursPerYear: true,
         companyId: true,
         createdAt: true,
       },
