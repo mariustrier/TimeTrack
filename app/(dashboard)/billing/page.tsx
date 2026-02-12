@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FileText } from "lucide-react";
+import { FileText, Info } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
 import { UninvoicedTab } from "@/components/billing/UninvoicedTab";
 import { InvoicesTab } from "@/components/billing/InvoicesTab";
@@ -16,6 +16,12 @@ export default function BillingPage() {
       <div className="flex items-center gap-3">
         <FileText className="h-6 w-6 text-brand-500" />
         <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
+      </div>
+
+      {/* Accounting system notice */}
+      <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-300">
+        <Info className="h-4 w-4 mt-0.5 shrink-0" />
+        <p>{t("accountingNotice")}</p>
       </div>
 
       {/* Tabs */}

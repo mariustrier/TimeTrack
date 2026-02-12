@@ -1389,6 +1389,7 @@
   },
   "billing": {
     "title": "Billing",
+    "accountingNotice": "Invoices created here are drafts for your accounting system (e-conomic, Billy, or Dinero). By Danish law, all invoices must be sent through a registered accounting system. Connect your system under Settings to sync drafts automatically.",
     "uninvoiced": "Uninvoiced",
     "invoices": "Invoices",
     "settings": "Settings",

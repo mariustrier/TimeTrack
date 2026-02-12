@@ -1389,6 +1389,7 @@
   },
   "billing": {
     "title": "Fakturering",
+    "accountingNotice": "Fakturaer oprettet her er udkast til dit regnskabssystem (e-conomic, Billy eller Dinero). Ifølge dansk lovgivning skal alle fakturaer sendes gennem et registreret regnskabssystem. Forbind dit system under Indstillinger for at synkronisere udkast automatisk.",
     "uninvoiced": "Ikke-faktureret",
     "invoices": "Fakturaer",
     "settings": "Indstillinger",
