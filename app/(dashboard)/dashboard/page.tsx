@@ -96,6 +96,13 @@ interface AbsenceReason {
   code: string | null;
 }
 
+interface CompanyPhase {
+  id: string;
+  name: string;
+  color: string;
+  sortOrder: number;
+}
+
 interface TimeEntry {
   id: string;
   hours: number;
@@ -112,6 +119,9 @@ interface TimeEntry {
   mileageStops: string[];
   mileageRoundTrip: boolean;
   mileageSource: "manual" | "calculated" | null;
+  phaseId: string | null;
+  phaseName: string | null;
+  absenceReasonId: string | null;
 }
 
 interface StatCardProps {
@@ -202,6 +212,9 @@ export default function DashboardPage() {
   // Absence state
   const [absenceReasons, setAbsenceReasons] = useState<AbsenceReason[]>([]);
   const [selectedAbsenceReasonId, setSelectedAbsenceReasonId] = useState("");
+  // Phase selection state
+  const [companyPhases, setCompanyPhases] = useState<CompanyPhase[]>([]);
+  const [selectedPhaseId, setSelectedPhaseId] = useState("");
   // Holiday config
   const [disabledHolidayCodes, setDisabledHolidayCodes] = useState<string[]>([]);
   const [customHolidays, setCustomHolidays] = useState<CustomHoliday[]>([]);
@@ -273,13 +286,14 @@ export default function DashboardPage() {
       const end = format(weekEnd, "yyyy-MM-dd");
 
       const userIdParam = selectedEmployeeId ? `&userId=${selectedEmployeeId}` : "";
-      const [entriesRes, projectsRes, vacationsRes, absenceReasonsRes, holidaysRes, userMeRes] = await Promise.all([
+      const [entriesRes, projectsRes, vacationsRes, absenceReasonsRes, holidaysRes, userMeRes, phasesRes] = await Promise.all([
         fetch(`/api/time-entries?startDate=${start}&endDate=${end}${userIdParam}`),
         fetch("/api/projects"),
         fetch("/api/vacations"),
         fetch("/api/absence-reasons"),
         fetch("/api/admin/holidays"),
         fetch("/api/user/me"),
+        fetch("/api/phases"),
       ]);
 
       if (entriesRes.ok) {
@@ -303,6 +317,10 @@ export default function DashboardPage() {
       if (absenceReasonsRes.ok) {
         const data = await absenceReasonsRes.json();
         setAbsenceReasons(data);
+      }
+      if (phasesRes.ok) {
+        const data = await phasesRes.json();
+        setCompanyPhases(data);
       }
       if (vacationsRes.ok) {
         const vacations = await vacationsRes.json();
@@ -437,6 +455,12 @@ export default function DashboardPage() {
     return proj?.systemType === "absence";
   };
 
+  // Helper to check if phase selector should be shown for a project
+  const shouldShowPhaseSelector = (projectId: string) => {
+    const proj = projects.find((p) => p.id === projectId);
+    return proj?.phasesEnabled && proj?.systemType !== "absence" && companyPhases.length > 0;
+  };
+
   function openModal(date: Date, projectId?: string, entry?: TimeEntry) {
     setSelectedDate(format(date, "yyyy-MM-dd"));
     setSelectedProjectId(projectId || "");
@@ -455,7 +479,9 @@ export default function DashboardPage() {
       setMileageSource(entry.mileageSource || "");
       setMileageSectionOpen(!!entry.mileageKm);
       // Absence reason
-      setSelectedAbsenceReasonId((entry as TimeEntry & { absenceReasonId?: string }).absenceReasonId || "");
+      setSelectedAbsenceReasonId(entry.absenceReasonId || "");
+      // Phase
+      setSelectedPhaseId(entry.phaseId || "");
     } else {
       setEditingEntry(null);
       setHours("");
@@ -474,6 +500,8 @@ export default function DashboardPage() {
       setMileageSectionOpen(false);
       // Reset absence reason
       setSelectedAbsenceReasonId("");
+      // Default phase from project's current phase
+      setSelectedPhaseId(proj?.currentPhase?.id || "");
     }
     setModalOpen(true);
   }
@@ -506,6 +534,7 @@ export default function DashboardPage() {
             mileageRoundTrip,
             mileageSource: mileageSource || null,
             absenceReasonId: isAbsenceProject(selectedProjectId) ? selectedAbsenceReasonId : null,
+            ...(shouldShowPhaseSelector(selectedProjectId) && selectedPhaseId && { phaseId: selectedPhaseId }),
           }),
         });
       } else {
@@ -525,6 +554,7 @@ export default function DashboardPage() {
             mileageRoundTrip,
             mileageSource: mileageSource || null,
             absenceReasonId: isAbsenceProject(selectedProjectId) ? selectedAbsenceReasonId : null,
+            ...(shouldShowPhaseSelector(selectedProjectId) && selectedPhaseId && { phaseId: selectedPhaseId }),
             ...(selectedEmployeeId && { userId: selectedEmployeeId }),
           }),
         });
@@ -1331,7 +1361,12 @@ export default function DashboardPage() {
               <Label>{tc("project")}</Label>
               <Select
                 value={selectedProjectId}
-                onValueChange={setSelectedProjectId}
+                onValueChange={(val) => {
+                  setSelectedProjectId(val);
+                  // Update phase default when project changes
+                  const proj = projects.find((p) => p.id === val);
+                  setSelectedPhaseId(proj?.currentPhase?.id || "");
+                }}
                 disabled={!!editingEntry}
               >
                 <SelectTrigger>
@@ -1373,6 +1408,42 @@ export default function DashboardPage() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            )}
+
+            {/* Phase Selector - only shown for phase-enabled non-absence projects */}
+            {shouldShowPhaseSelector(selectedProjectId) && (
+              <div className="space-y-2">
+                <Label>{t("phase")}</Label>
+                {editingEntry?.phaseName && !companyPhases.find(p => p.id === editingEntry.phaseId) ? (
+                  <div className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm text-muted-foreground">
+                    {editingEntry.phaseName}
+                    <span className="rounded border px-1.5 py-0.5 text-xs">{t("phaseInactive")}</span>
+                  </div>
+                ) : (
+                  <Select
+                    value={selectedPhaseId || "__no_phase__"}
+                    onValueChange={(val) => setSelectedPhaseId(val === "__no_phase__" ? "" : val)}
+                    disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={t("selectPhase")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {companyPhases.map((phase) => (
+                        <SelectItem key={phase.id} value={phase.id}>
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="h-2.5 w-2.5 rounded-full"
+                              style={{ backgroundColor: phase.color }}
+                            />
+                            {phase.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             )}
 

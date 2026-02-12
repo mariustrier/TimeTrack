@@ -39,7 +39,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 
 ### API Routes (78 route files across 19 domains)
 - `app/api/` - All scoped by companyId (via `getAuthUser()` which auto-overrides for support mode)
-- Key domains: `time-entries`, `projects`, `team`, `admin`, `expenses`, `vacations`, `contracts`, `resource-allocations`, `analytics`, `ai`, `insights`, `mileage`, `auth`, `cron`, `super-admin`, `super-admin/access`, `admin/support-access`, `user`, `upload`, `absence-reasons`, `admin/phases`
+- Key domains: `time-entries`, `projects`, `team`, `admin`, `expenses`, `vacations`, `contracts`, `resource-allocations`, `analytics`, `ai`, `insights`, `mileage`, `auth`, `cron`, `super-admin`, `super-admin/access`, `admin/support-access`, `user`, `upload`, `absence-reasons`, `admin/phases`, `phases`
 
 ### Components
 - `components/admin/` - AdminOverview, AdminApprovals, AdminVacations, AdminBackups, AdminAuditLog, TeamUtilizationBars, PhaseMigrationDialog
@@ -93,6 +93,7 @@ Company, User (`isHourly`, `weeklyTarget`, `vacationDays`, `deletedAt`, etc.), P
 - Mileage tracking in time entry modal (OpenRouteService API)
 - Absence reason selection for absence project entries (comment optional for absence, required for other projects)
 - **Phase label** per project row: shows current phase badge (skipped for system-managed projects like Absence)
+- **Phase override**: Time entry modal shows a phase selector dropdown for phase-enabled projects (not Absence). Defaults to project's current phase, but user can select any active phase. Colored dots match phase colors. Editable on draft entries, read-only on submitted/approved/locked. Inactive phases shown as static text. Phase updates when switching projects.
 - **Admin log on behalf**: Admins/managers can select an employee from a dropdown to view their timesheet, create entries, and submit days/weeks under their account. Audit log tracks on-behalf submissions.
 - **Calendar week picker**: Week navigation uses a calendar popover (click the date range to open) with left/right arrows and a "Today" button
 
@@ -136,7 +137,7 @@ Company, User (`isHourly`, `weeklyTarget`, `vacationDays`, `deletedAt`, etc.), P
   - Phase column in projects table with **PhaseProgress dropdown** — compact badge showing current phase name, click opens dropdown listing all phases (completed phases show checkmark, current highlighted, "Advance to [next]" action at bottom). Replaces the old horizontal stepper that rendered one button per phase.
   - **Final phase completion popup**: Asks if user wants to archive the project (set inactive)
   - Auto-advance: "Complete Phase" moves to next by sortOrder; last phase → "All Phases Complete"
-  - Time entries auto-get `phaseId` + `phaseName` snapshot from project's current phase
+  - Time entries default to project's current phase but users can **override the phase** via a dropdown in the time entry modal. Both `phaseId` and `phaseName` (denormalized snapshot) are stored. Phase can be changed on draft entries.
   - Migration dialog when enabling phases with existing projects
   - Analytics: phase distribution + velocity charts in Project Insights
   - AI insights: phase bottleneck detection, completion celebrations

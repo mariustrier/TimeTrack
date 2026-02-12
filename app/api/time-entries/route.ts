@@ -163,6 +163,7 @@ export async function POST(req: Request) {
       mileageRoundTrip,
       mileageSource,
       absenceReasonId,
+      phaseId: requestedPhaseId,
       userId: targetUserId,
     } = result.data;
 
@@ -240,6 +241,36 @@ export async function POST(req: Request) {
       }
     }
 
+    // Resolve phase for the time entry
+    let entryPhaseId: string | null = null;
+    let entryPhaseName: string | null = null;
+
+    if (project.phasesEnabled && !isAbsenceProject) {
+      if (requestedPhaseId) {
+        // User explicitly selected a phase — validate it
+        const phase = await db.phase.findFirst({
+          where: {
+            id: requestedPhaseId,
+            companyId: user.companyId,
+            active: true,
+          },
+          select: { id: true, name: true },
+        });
+        if (!phase) {
+          return NextResponse.json(
+            { error: "Phase not found or inactive" },
+            { status: 400 }
+          );
+        }
+        entryPhaseId = phase.id;
+        entryPhaseName = phase.name;
+      } else if (project.currentPhase) {
+        // Default to project's current phase
+        entryPhaseId = project.currentPhase.id;
+        entryPhaseName = project.currentPhase.name;
+      }
+    }
+
     // Default billing status from project's billable flag
     // Absence entries are always non-billable
     const defaultBillingStatus = isAbsenceProject
@@ -264,9 +295,9 @@ export async function POST(req: Request) {
         mileageRoundTrip: mileageRoundTrip ?? false,
         mileageSource: mileageSource ?? null,
         absenceReasonId: isAbsenceProject ? absenceReasonId : null,
-        ...(project.phasesEnabled && project.currentPhase && !isAbsenceProject && {
-          phaseId: project.currentPhase.id,
-          phaseName: project.currentPhase.name,
+        ...(entryPhaseId && {
+          phaseId: entryPhaseId,
+          phaseName: entryPhaseName,
         }),
       },
       include: {

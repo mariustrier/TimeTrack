@@ -19,6 +19,8 @@ export const createTimeEntrySchema = z.object({
   mileageSource: z.enum(["manual", "calculated"]).optional().nullable(),
   // Absence tracking
   absenceReasonId: z.string().optional().nullable(),
+  // Phase override (defaults to project's current phase if not provided)
+  phaseId: z.string().optional().nullable(),
   // Admin: log on behalf of employee
   userId: z.string().min(1).optional(),
 });
@@ -39,6 +41,8 @@ export const updateTimeEntrySchema = z.object({
   mileageSource: z.enum(["manual", "calculated"]).optional().nullable(),
   // Absence tracking
   absenceReasonId: z.string().optional().nullable(),
+  // Phase override (defaults to entry's current phase if not provided)
+  phaseId: z.string().optional().nullable(),
 });
 
 // --- Projects ---

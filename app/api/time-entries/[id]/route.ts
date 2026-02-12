@@ -49,6 +49,7 @@ export async function PUT(
       mileageStops,
       mileageRoundTrip,
       mileageSource,
+      phaseId: requestedPhaseId,
     } = result.data;
 
     // Approval status guards
@@ -124,12 +125,37 @@ export async function PUT(
     if (mileageRoundTrip !== undefined && entry.approvalStatus === "draft") {
       data.mileageRoundTrip = mileageRoundTrip ?? false;
     }
+    // Phase override (only editable when draft, like hours/comment)
+    if (requestedPhaseId !== undefined && entry.approvalStatus === "draft") {
+      if (requestedPhaseId === null) {
+        data.phaseId = null;
+        data.phaseName = null;
+      } else {
+        const phase = await db.phase.findFirst({
+          where: {
+            id: requestedPhaseId,
+            companyId: user.companyId,
+            active: true,
+          },
+          select: { id: true, name: true },
+        });
+        if (!phase) {
+          return NextResponse.json(
+            { error: "Phase not found or inactive" },
+            { status: 400 }
+          );
+        }
+        data.phaseId = phase.id;
+        data.phaseName = phase.name;
+      }
+    }
 
     const updated = await db.timeEntry.update({
       where: { id: params.id },
       data,
       include: {
         project: { select: { id: true, name: true, color: true, billable: true } },
+        phase: { select: { id: true, name: true } },
       },
     });
 
