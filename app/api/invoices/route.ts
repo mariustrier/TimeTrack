@@ -46,7 +46,7 @@ export async function POST(req: Request) {
 
     const {
       projectId, periodStart, periodEnd, clientName, clientAddress, clientCvr, clientEan,
-      paymentTermsDays, note, groupBy, includeExpenses, timeEntryIds, expenseIds,
+      paymentTermsDays, note, groupBy, includeExpenses, phaseId, timeEntryIds, expenseIds,
     } = result.data;
 
     // Validate project
@@ -67,6 +67,9 @@ export async function POST(req: Request) {
       invoiceId: null,
       date: { gte: new Date(periodStart), lte: new Date(periodEnd) },
     };
+    if (phaseId) {
+      timeWhere.phaseId = phaseId;
+    }
     if (timeEntryIds && timeEntryIds.length > 0) {
       timeWhere.id = { in: timeEntryIds };
     }

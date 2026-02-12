@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     const result = validate(invoicePreviewSchema, body);
     if (!result.success) return result.response;
 
-    const { projectId, periodStart, periodEnd, groupBy, includeExpenses, timeEntryIds, expenseIds } = result.data;
+    const { projectId, periodStart, periodEnd, groupBy, includeExpenses, phaseId, timeEntryIds, expenseIds } = result.data;
 
     const project = await db.project.findFirst({
       where: { id: projectId, companyId: user.companyId },
@@ -33,6 +33,7 @@ export async function POST(req: Request) {
       invoiceId: null,
       date: { gte: new Date(periodStart), lte: new Date(periodEnd) },
     };
+    if (phaseId) timeWhere.phaseId = phaseId;
     if (timeEntryIds && timeEntryIds.length > 0) timeWhere.id = { in: timeEntryIds };
 
     const entries = await db.timeEntry.findMany({

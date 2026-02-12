@@ -294,6 +294,7 @@ export const createInvoiceSchema = z.object({
   note: z.string().max(2000).optional().nullable(),
   groupBy: z.enum(["employee", "phase", "description", "flat"]),
   includeExpenses: z.boolean(),
+  phaseId: z.string().optional().nullable(),
   timeEntryIds: z.array(z.string()).optional(),
   expenseIds: z.array(z.string()).optional(),
 });

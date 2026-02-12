@@ -67,6 +67,8 @@ export function InvoiceCreateDialog({
   const [periodEnd, setPeriodEnd] = useState(format(endOfMonth(lastMonth), "yyyy-MM-dd"));
   const [groupBy, setGroupBy] = useState<"employee" | "phase" | "description" | "flat">("employee");
   const [includeExpenses, setIncludeExpenses] = useState(true);
+  const [phaseId, setPhaseId] = useState<string | null>(null);
+  const [phases, setPhases] = useState<{ id: string; name: string; color: string | null }[]>([]);
 
   // Step 2: Preview lines
   const [lines, setLines] = useState<PreviewLine[]>([]);
@@ -84,7 +86,7 @@ export function InvoiceCreateDialog({
   const [savingDefault, setSavingDefault] = useState(false);
   const [note, setNote] = useState("");
 
-  // Fetch company default payment days on open
+  // Fetch company default payment days and project phases on open
   useEffect(() => {
     if (!open) return;
     fetch("/api/billing/settings")
@@ -94,6 +96,12 @@ export function InvoiceCreateDialog({
           setPaymentDays(String(data.defaultPaymentDays));
           setDefaultPaymentDays(data.defaultPaymentDays);
         }
+      })
+      .catch(() => {});
+    fetch(`/api/admin/phases`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (Array.isArray(data)) setPhases(data);
       })
       .catch(() => {});
   }, [open]);
@@ -110,6 +118,7 @@ export function InvoiceCreateDialog({
           periodEnd,
           groupBy,
           includeExpenses,
+          phaseId: phaseId || undefined,
         }),
       });
 
@@ -209,6 +218,7 @@ export function InvoiceCreateDialog({
           periodEnd,
           groupBy,
           includeExpenses,
+          phaseId: phaseId || undefined,
           clientName,
           clientAddress: clientAddress || undefined,
           clientCvr: clientCvr || undefined,
@@ -286,14 +296,38 @@ export function InvoiceCreateDialog({
                 </SelectContent>
               </Select>
             </div>
-            <label className="flex items-center gap-2 cursor-pointer">
+            {phases.length > 0 && (
+              <div>
+                <Label>{t("filterByPhase")}</Label>
+                <Select value={phaseId || "all"} onValueChange={(v) => setPhaseId(v === "all" ? null : v)}>
+                  <SelectTrigger className="w-64">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t("allPhases")}</SelectItem>
+                    {phases.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        <span className="flex items-center gap-2">
+                          {p.color && <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: p.color }} />}
+                          {p.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <label className="flex items-center gap-3 cursor-pointer rounded-lg border p-3 hover:bg-muted/50 transition-colors">
               <input
                 type="checkbox"
                 checked={includeExpenses}
                 onChange={(e) => setIncludeExpenses(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300"
+                className="h-4 w-4 rounded border-input accent-brand-500"
               />
-              <span className="text-sm">{t("includeExpenses")}</span>
+              <div>
+                <span className="text-sm font-medium">{t("includeExpenses")}</span>
+                <p className="text-xs text-muted-foreground">{t("includeExpensesHint")}</p>
+              </div>
             </label>
           </div>
         )}
