@@ -1434,6 +1434,8 @@
     "notSynced": "Not synced",
     "paymentTerms": "Payment terms (days)",
     "paymentTermsDays": "{days} days net",
+    "setAsDefault": "Set as default",
+    "defaultPaymentSaved": "{days} days saved as default",
     "companyDetails": "Your Company (Invoice Sender)",
     "companyCvr": "CVR Number",
     "companyAddress": "Address",

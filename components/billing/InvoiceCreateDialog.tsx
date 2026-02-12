@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import {
   Dialog,
@@ -27,7 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowRight, ArrowLeft, FileText, Eye, Trash2, Plus } from "lucide-react";
+import { ArrowRight, ArrowLeft, FileText, Eye, Trash2, Plus, Star } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "@/lib/i18n";
 
@@ -80,7 +80,23 @@ export function InvoiceCreateDialog({
   const [clientAddress, setClientAddress] = useState("");
   const [clientCvr, setClientCvr] = useState("");
   const [paymentDays, setPaymentDays] = useState("8");
+  const [defaultPaymentDays, setDefaultPaymentDays] = useState(8);
+  const [savingDefault, setSavingDefault] = useState(false);
   const [note, setNote] = useState("");
+
+  // Fetch company default payment days on open
+  useEffect(() => {
+    if (!open) return;
+    fetch("/api/billing/settings")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.defaultPaymentDays) {
+          setPaymentDays(String(data.defaultPaymentDays));
+          setDefaultPaymentDays(data.defaultPaymentDays);
+        }
+      })
+      .catch(() => {});
+  }, [open]);
 
   async function handlePreview() {
     setLoading(true);
@@ -158,6 +174,27 @@ export function InvoiceCreateDialog({
     setSubtotal(newSubtotal);
     setVatAmount(newVat);
     setTotal(Math.round((newSubtotal + newVat) * 100) / 100);
+  }
+
+  async function handleSetDefaultPayment() {
+    const days = parseInt(paymentDays);
+    if (!days || days < 1) return;
+    setSavingDefault(true);
+    try {
+      const res = await fetch("/api/billing/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ defaultPaymentDays: days }),
+      });
+      if (res.ok) {
+        setDefaultPaymentDays(days);
+        toast.success(t("defaultPaymentSaved", { days: String(days) }));
+      }
+    } catch {
+      toast.error(t("saveFailed"));
+    } finally {
+      setSavingDefault(false);
+    }
   }
 
   async function handleCreate() {
@@ -357,7 +394,22 @@ export function InvoiceCreateDialog({
               </div>
               <div>
                 <Label>{t("paymentTerms")}</Label>
-                <Input type="number" value={paymentDays} onChange={(e) => setPaymentDays(e.target.value)} min={1} />
+                <div className="flex gap-2">
+                  <Input type="number" value={paymentDays} onChange={(e) => setPaymentDays(e.target.value)} min={1} className="flex-1" />
+                  {parseInt(paymentDays) !== defaultPaymentDays && parseInt(paymentDays) > 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSetDefaultPayment}
+                      disabled={savingDefault}
+                      className="whitespace-nowrap text-xs h-9"
+                    >
+                      <Star className="mr-1 h-3.5 w-3.5" />
+                      {savingDefault ? t("saving") : t("setAsDefault")}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
             <div>

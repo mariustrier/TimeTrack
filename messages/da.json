@@ -1434,6 +1434,8 @@
     "notSynced": "Ikke synkroniseret",
     "paymentTerms": "Betalingsbetingelser (dage)",
     "paymentTermsDays": "Netto {days} dage",
+    "setAsDefault": "Sæt som standard",
+    "defaultPaymentSaved": "{days} dage gemt som standard",
     "companyDetails": "Dit firma (afsender på faktura)",
     "companyCvr": "CVR-nummer",
     "companyAddress": "Adresse",
