@@ -358,7 +358,7 @@ export function BillingSettings() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">{t("accountingSystem")}</CardTitle>
             {isConnected && (
-              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700">
                 <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
                 {t("connected")} — {settings.accountingSystem}
               </Badge>

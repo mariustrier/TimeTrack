@@ -184,7 +184,7 @@ export async function POST(req: Request) {
       const rate = getBillRate(entries[0] || { user: { hourlyRate: 0 } } as typeof entries[number]);
       if (totalHours > 0) {
         lines.push({
-          description: "Konsulentarbejde",
+          description: project.name,
           quantity: Math.round(totalHours * 100) / 100,
           unitPrice: rate,
           amount: Math.round(totalHours * rate * 100) / 100,
@@ -208,6 +208,10 @@ export async function POST(req: Request) {
         expenseIds: [exp.id],
         phaseName: null,
       });
+    }
+
+    if (lines.length === 0) {
+      return NextResponse.json({ error: "No billable entries or expenses found for this period" }, { status: 400 });
     }
 
     const subtotal = Math.round(lines.reduce((s, l) => s + l.amount, 0) * 100) / 100;

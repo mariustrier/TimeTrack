@@ -109,7 +109,7 @@ export async function POST(req: Request) {
       const totalHours = entries.reduce((s, e) => s + e.hours, 0);
       const rate = entries.length > 0 ? getBillRate(entries[0]) : 0;
       if (totalHours > 0) {
-        lines.push({ description: "Konsulentarbejde", quantity: Math.round(totalHours * 100) / 100, unitPrice: rate, amount: Math.round(totalHours * rate * 100) / 100, type: "time", phaseName: null });
+        lines.push({ description: project.name, quantity: Math.round(totalHours * 100) / 100, unitPrice: rate, amount: Math.round(totalHours * rate * 100) / 100, type: "time", phaseName: null });
       }
     }
 

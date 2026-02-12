@@ -122,47 +122,64 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Uint8Arr
   page.drawText("Beløb", { x: colAmount, y: tableTop, size: 9, font: fontBold, color: darkGray });
   y = tableTop - 20;
 
-  // Table rows
+  // Table rows — with multi-page support
+  let currentPage = page;
   for (const line of data.lines) {
-    if (y < 120) break; // Leave room for totals
+    if (y < 80) {
+      // Add new page and repeat table header
+      currentPage = doc.addPage([595, 842]);
+      y = height - margin;
+      currentPage.drawRectangle({ x: margin, y: y - 4, width: 495, height: 18, color: lightGray });
+      currentPage.drawText("Beskrivelse", { x: colDesc + 4, y, size: 9, font: fontBold, color: darkGray });
+      currentPage.drawText("Antal", { x: colQty, y, size: 9, font: fontBold, color: darkGray });
+      currentPage.drawText("Stk. pris", { x: colPrice, y, size: 9, font: fontBold, color: darkGray });
+      currentPage.drawText("Beløb", { x: colAmount, y, size: 9, font: fontBold, color: darkGray });
+      y -= 20;
+    }
     const desc = line.description.length > 45 ? line.description.substring(0, 42) + "..." : line.description;
-    page.drawText(desc, { x: colDesc + 4, y, size: 9, font, color: darkGray });
-    page.drawText(formatDanish(line.quantity, 2), { x: colQty, y, size: 9, font, color: darkGray });
-    page.drawText(formatDanish(line.unitPrice, 2), { x: colPrice, y, size: 9, font, color: darkGray });
-    page.drawText(formatDanish(line.amount, 2), { x: colAmount, y, size: 9, font, color: darkGray });
+    currentPage.drawText(desc, { x: colDesc + 4, y, size: 9, font, color: darkGray });
+    currentPage.drawText(formatDanish(line.quantity, 2), { x: colQty, y, size: 9, font, color: darkGray });
+    currentPage.drawText(formatDanish(line.unitPrice, 2), { x: colPrice, y, size: 9, font, color: darkGray });
+    currentPage.drawText(formatDanish(line.amount, 2), { x: colAmount, y, size: 9, font, color: darkGray });
     y -= 16;
+  }
+
+  // Ensure enough space for totals + bank details + note (~150px)
+  if (y < 150) {
+    currentPage = doc.addPage([595, 842]);
+    y = height - margin;
   }
 
   // --- Separator ---
   y -= 8;
-  page.drawLine({ start: { x: colPrice - 20, y }, end: { x: 545, y }, thickness: 0.5, color: lightGray });
+  currentPage.drawLine({ start: { x: colPrice - 20, y }, end: { x: 545, y }, thickness: 0.5, color: lightGray });
   y -= 16;
 
   // --- Totals ---
-  page.drawText("Subtotal ekskl. moms:", { x: colPrice - 20, y, size: 9, font, color: midGray });
-  page.drawText(`${formatDanish(data.subtotal)} ${data.currency}`, { x: colAmount, y, size: 9, font, color: darkGray });
+  currentPage.drawText("Subtotal ekskl. moms:", { x: colPrice - 20, y, size: 9, font, color: midGray });
+  currentPage.drawText(`${formatDanish(data.subtotal)} ${data.currency}`, { x: colAmount, y, size: 9, font, color: darkGray });
   y -= 16;
 
-  page.drawText(`${formatDanish(data.vatRate, 0)}% moms:`, { x: colPrice - 20, y, size: 9, font, color: midGray });
-  page.drawText(`${formatDanish(data.vatAmount)} ${data.currency}`, { x: colAmount, y, size: 9, font, color: darkGray });
+  currentPage.drawText(`${formatDanish(data.vatRate, 0)}% moms:`, { x: colPrice - 20, y, size: 9, font, color: midGray });
+  currentPage.drawText(`${formatDanish(data.vatAmount)} ${data.currency}`, { x: colAmount, y, size: 9, font, color: darkGray });
   y -= 4;
-  page.drawLine({ start: { x: colPrice - 20, y }, end: { x: 545, y }, thickness: 0.5, color: lightGray });
+  currentPage.drawLine({ start: { x: colPrice - 20, y }, end: { x: 545, y }, thickness: 0.5, color: lightGray });
   y -= 16;
 
-  page.drawText("Total inkl. moms:", { x: colPrice - 20, y, size: 10, font: fontBold, color: darkGray });
-  page.drawText(`${formatDanish(data.total)} ${data.currency}`, { x: colAmount, y, size: 10, font: fontBold, color: darkGray });
+  currentPage.drawText("Total inkl. moms:", { x: colPrice - 20, y, size: 10, font: fontBold, color: darkGray });
+  currentPage.drawText(`${formatDanish(data.total)} ${data.currency}`, { x: colAmount, y, size: 10, font: fontBold, color: darkGray });
 
   // --- Bank details ---
   y -= 40;
   if (data.companyBankReg || data.companyBankAccount) {
-    page.drawText("Betalingsoplysninger", { x: margin, y, size: 9, font: fontBold, color: darkGray });
+    currentPage.drawText("Betalingsoplysninger", { x: margin, y, size: 9, font: fontBold, color: darkGray });
     y -= 14;
     if (data.companyBankReg) {
-      page.drawText(`Reg.nr.: ${data.companyBankReg}`, { x: margin, y, size: 9, font, color: midGray });
+      currentPage.drawText(`Reg.nr.: ${data.companyBankReg}`, { x: margin, y, size: 9, font, color: midGray });
       y -= 12;
     }
     if (data.companyBankAccount) {
-      page.drawText(`Kontonr.: ${data.companyBankAccount}`, { x: margin, y, size: 9, font, color: midGray });
+      currentPage.drawText(`Kontonr.: ${data.companyBankAccount}`, { x: margin, y, size: 9, font, color: midGray });
       y -= 12;
     }
   }
@@ -173,7 +190,7 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Uint8Arr
     const noteLines = data.note.split("\n");
     for (const nl of noteLines) {
       if (y < 40) break;
-      page.drawText(nl, { x: margin, y, size: 8, font, color: midGray });
+      currentPage.drawText(nl, { x: margin, y, size: 8, font, color: midGray });
       y -= 11;
     }
   }
