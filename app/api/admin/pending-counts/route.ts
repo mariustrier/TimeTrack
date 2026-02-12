@@ -93,6 +93,20 @@ export async function GET() {
         where: { companyId: user.companyId, dismissed: false, seenAt: null },
       });
       counts.aiAssistant = insightCount;
+
+      // Count projects with uninvoiced approved billable entries
+      const uninvoicedProjects = await db.timeEntry.groupBy({
+        by: ["projectId"],
+        where: {
+          companyId: user.companyId,
+          approvalStatus: "approved",
+          billingStatus: "billable",
+          invoiceId: null,
+        },
+      });
+      if (uninvoicedProjects.length > 0) {
+        counts.billing = uninvoicedProjects.length;
+      }
     }
 
     return NextResponse.json({ counts });

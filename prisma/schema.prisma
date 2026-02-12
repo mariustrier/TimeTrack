@@ -31,6 +31,20 @@ model Company {
   // Project phases
   phasesEnabled Boolean @default(false)
 
+  // Invoice settings
+  invoicePrefix       String?     // e.g., "CT-" for invoice display (optional)
+  nextInvoiceNumber   Int         @default(1)
+  defaultPaymentDays  Int         @default(8)
+  companyAddress      String?     // Seller address for invoices
+  companyCvr          String?     // Company's own CVR number
+  companyBankAccount  String?     // Bank details for payment
+  companyBankReg      String?     // Registration number
+  invoiceFooterNote   String?     // Default footer text
+
+  // Accounting integration
+  accountingSystem        String?     // "e-conomic" | "billy" | "dinero" | null
+  accountingCredentials   String?     // Encrypted JSON with system-specific credentials
+
   users               User[]
   projects            Project[]
   timeEntries         TimeEntry[]
@@ -45,6 +59,8 @@ model Company {
   companyHolidays     CompanyHoliday[]
   phases              Phase[]
   supportAccesses     SupportAccess[]
+  invoices            Invoice[]
+  customerMappings    CustomerMapping[]
 }
 
 model User {
@@ -142,6 +158,7 @@ model Project {
   milestones          ProjectMilestone[]
   contracts           Contract[]
   expenses            Expense[]
+  invoices            Invoice[]
 
   @@index([companyId])
 }
@@ -187,11 +204,16 @@ model TimeEntry {
   phaseId   String?
   phaseName String?  // Denormalized snapshot of phase name at time of entry
 
+  // Invoice tracking
+  invoiceId   String?
+  invoicedAt  DateTime?
+
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
   company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
   absenceReason AbsenceReason? @relation(fields: [absenceReasonId], references: [id], onDelete: SetNull)
   phase         Phase?         @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+  invoice       Invoice?       @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([projectId])
@@ -365,9 +387,14 @@ model Expense {
   deletedAt       DateTime?
   deletedBy       String?
 
+  // Invoice tracking
+  invoiceId   String?
+  invoicedAt  DateTime?
+
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invoice Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
 
   @@index([companyId, approvalStatus, date])
   @@index([userId])
@@ -540,5 +567,100 @@ model CompanyHoliday {
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@unique([companyId, month, day, year])
+  @@index([companyId])
+}
+
+// ─── INVOICES ───
+// Invoice drafts created from approved time entries + expenses
+model Invoice {
+  id              String          @id @default(cuid())
+  companyId       String
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  // Invoice identity
+  invoiceNumber   Int             // Sequential per company
+  status          String          @default("draft") // draft | sent | paid | void
+
+  // Client info (denormalized from project)
+  projectId       String
+  project         Project         @relation(fields: [projectId], references: [id])
+  clientName      String
+  clientAddress   String?
+  clientCvr       String?         // Client's CVR number
+  clientEan       String?         // Client's EAN number (public sector)
+
+  // Dates
+  invoiceDate     DateTime        @default(now())
+  dueDate         DateTime
+  periodStart     DateTime
+  periodEnd       DateTime
+
+  // Financials (all amounts in company currency, excl. VAT)
+  subtotal        Float
+  vatRate         Float           @default(25) // Danish MOMS
+  vatAmount       Float
+  total           Float
+  currency        String          @default("DKK")
+
+  // Payment terms
+  paymentTermsDays Int            @default(8) // Danish standard: "Netto 8 dage"
+
+  // Optional note
+  note            String?
+
+  // Accounting system sync
+  externalId      String?         // ID in the accounting system
+  externalSystem  String?         // "e-conomic" | "billy" | "dinero"
+  syncedAt        DateTime?
+
+  // Relations
+  lines           InvoiceLine[]
+  timeEntries     TimeEntry[]
+  expenses        Expense[]
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([companyId])
+  @@index([projectId])
+  @@unique([companyId, invoiceNumber])
+}
+
+model InvoiceLine {
+  id              String          @id @default(cuid())
+  invoiceId       String
+  invoice         Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  sortOrder       Int             @default(0)
+  description     String
+  quantity        Float           // Hours or count
+  unitPrice       Float           // Bill rate
+  amount          Float           // quantity × unitPrice
+
+  // Source tracking
+  type            String          @default("time") // "time" | "expense" | "manual"
+  timeEntryIds    String[]        // Array of TimeEntry IDs in this line
+  expenseIds      String[]        // Array of Expense IDs in this line
+
+  // Optional phase info
+  phaseName       String?
+
+  @@index([invoiceId])
+}
+
+// ─── CUSTOMER MAPPING ───
+// Maps Cloud Timer project clients to accounting system customers
+model CustomerMapping {
+  id              String   @id @default(cuid())
+  companyId       String
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  clientName      String   // Client name in Cloud Timer
+  externalCustomerId   String   // Customer ID in accounting system
+  externalCustomerName String   // Customer name in accounting system
+
+  createdAt       DateTime @default(now())
+
+  @@unique([companyId, clientName])
   @@index([companyId])
 }

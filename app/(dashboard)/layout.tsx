@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { Sidebar } from "@/components/layout/sidebar";
+import { Sidebar } from "@/components/layout/Sidebar";
 import { isSuperAdmin } from "@/lib/auth";
 import { Toaster } from "sonner";
 import { LocaleProvider } from "@/lib/i18n";

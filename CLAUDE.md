@@ -33,18 +33,20 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 5. `app/(dashboard)/ai/` - AI-powered business insights *(admin/manager)*
 6. `app/(dashboard)/analytics/` - **Tabbed**: Employee | Team | Project | Company insights *(admin/manager)*
 7. `app/(dashboard)/expenses/` - Expense tracking with receipt uploads
-8. `app/(dashboard)/vacations/` - **Tabbed**: My Requests | Planner | Team Calendar
-9. `app/(dashboard)/settings/` - Tour replay, data export, account deletion
-10. `app/(dashboard)/super-admin/` - Platform-level admin with support access requests *(superAdmin only)*
+8. `app/(dashboard)/billing/` - **Tabbed**: Uninvoiced | Invoices | Settings *(admin/manager)*
+9. `app/(dashboard)/vacations/` - **Tabbed**: My Requests | Planner | Team Calendar
+10. `app/(dashboard)/settings/` - Tour replay, data export, account deletion
+11. `app/(dashboard)/super-admin/` - Platform-level admin with support access requests *(superAdmin only)*
 
-### API Routes (78 route files across 19 domains)
+### API Routes (90 route files across 23 domains)
 - `app/api/` - All scoped by companyId (via `getAuthUser()` which auto-overrides for support mode)
-- Key domains: `time-entries`, `projects`, `team`, `admin`, `expenses`, `vacations`, `contracts`, `resource-allocations`, `analytics`, `ai`, `insights`, `mileage`, `auth`, `cron`, `super-admin`, `super-admin/access`, `admin/support-access`, `user`, `upload`, `absence-reasons`, `admin/phases`, `phases`, `admin/expense-categories`
+- Key domains: `time-entries`, `projects`, `team`, `admin`, `expenses`, `vacations`, `contracts`, `resource-allocations`, `analytics`, `ai`, `insights`, `mileage`, `auth`, `cron`, `super-admin`, `super-admin/access`, `admin/support-access`, `user`, `upload`, `absence-reasons`, `admin/phases`, `phases`, `admin/expense-categories`, `invoices`, `accounting`, `billing`
 
 ### Components
 - `components/admin/` - AdminOverview, AdminApprovals, AdminVacations, AdminBackups, AdminAuditLog, TeamUtilizationBars, PhaseMigrationDialog
 - `components/approvals/` - TimeEntryApprovals, ExpenseApprovals (nested tabs within admin)
 - `components/analytics/` - EmployeeInsights, TeamInsights, ProjectInsights, CompanyInsights
+- `components/billing/` - UninvoicedTab, InvoicesTab, InvoiceCreateDialog, InvoiceDetailDialog, BillingSettings
 - `components/contracts/` - ContractSection (upload, AI extraction, manual entry)
 - `components/projects/` - ProjectsList, ProjectTimeline, PhaseProgress
 - `components/project-timeline/` - TimelineGrid, MilestoneDialog
@@ -71,9 +73,11 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `lib/expense-utils.ts` - Expense formatting helpers
 - `lib/analytics-utils.ts` - Analytics data processing
 - `lib/economic-import.ts` - e-conomic Projektkort XLSX parser
+- `lib/invoice-pdf.ts` - Server-side A4 invoice PDF generation (pdf-lib)
+- `lib/accounting/` - Accounting system adapter pattern (e-conomic, Billy, Dinero) + AES-256-GCM credential encryption
 
-### Database (17 models)
-Company, User (`isHourly`, `weeklyTarget`, `vacationDays`, `vacationTrackingUnit`, `vacationHoursPerYear`, `deletedAt`, etc.), Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense, CompanyExpense, ExpenseCategory, AbsenceReason, ResourceAllocation, ProjectMilestone, Phase, SupportAccess
+### Database (20 models)
+Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPaymentDays`, `companyAddress`, `companyCvr`, `companyBankAccount`, `companyBankReg`, `invoiceFooterNote`, `accountingSystem`, `accountingCredentials`), User (`isHourly`, `weeklyTarget`, `vacationDays`, `vacationTrackingUnit`, `vacationHoursPerYear`, `deletedAt`, etc.), Project, TimeEntry (`invoiceId`, `invoicedAt`), VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense (`invoiceId`, `invoicedAt`), CompanyExpense, ExpenseCategory, AbsenceReason, ResourceAllocation, ProjectMilestone, Phase, SupportAccess, Invoice, InvoiceLine, CustomerMapping
 
 ### Tests
 - `__tests__/lib/` - 199 unit tests across 10 suites (Vitest)
@@ -105,6 +109,17 @@ Company, User (`isHourly`, `weeklyTarget`, `vacationDays`, `vacationTrackingUnit
 - Admin auto-approve threshold setting
 - Receipt management (PDF/images via Vercel Blob)
 - **Company expenses**: Custom categories managed via `ExpenseCategory` model (company-scoped). 6 default categories seeded on first access (Rent, Insurance, Utilities, Software Subscriptions, Salaries & Benefits, Other). Admin CRUD via "Manage Categories" dialog on company expenses page. Soft-delete for categories in use, hard-delete if unused. Category filter dropdown on company expenses page.
+
+### Billing / Fakturering
+- **Uninvoiced tab**: Cards per project showing uninvoiced approved billable hours, amounts, employee count, expense totals. "Create Invoice" opens multi-step dialog.
+- **Invoice creation (3-step wizard)**: Step 1 — select period, grouping (employee/phase/description/flat), include expenses. Step 2 — review/edit line items (add/remove/modify lines), see subtotal/25% MOMS/total. Step 3 — client info (name, CVR, address), payment terms, note, final summary.
+- **Invoice model**: Draft → Sent → Paid → Void lifecycle. Atomic invoice number increment via Prisma `$transaction`. Links to time entries and expenses (marks them as invoiced).
+- **PDF generation**: Server-side A4 Danish invoice PDFs via pdf-lib — company header, "FAKTURA" title, client info, line items table, subtotal/MOMS/total, bank details, footer note. Danish number formatting (period thousands, comma decimals).
+- **Bill rate priority**: Employee rate (EMPLOYEE_RATES mode) → project rate (PROJECT_RATE mode) → company default rate
+- **Accounting integrations (adapter pattern)**: e-conomic (REST API, token auth), Billy (X-Access-Token), Dinero (OAuth2 via Visma Connect). Credentials encrypted at rest with AES-256-GCM (`ACCOUNTING_ENCRYPTION_KEY` env var).
+- **Customer mapping**: Maps Cloud Timer client names to external accounting system customer IDs. Used during invoice sync to push drafts.
+- **Billing settings**: Company details (address, CVR, bank account/reg, payment terms, invoice prefix, footer note), accounting system connection + test, customer mapping management.
+- **Sidebar badge**: Shows count of projects with uninvoiced approved billable entries.
 
 ### Vacations
 - Request with start/end date, type (vacation/sick/personal), note
@@ -243,6 +258,7 @@ Company, User (`isHourly`, `weeklyTarget`, `vacationDays`, `vacationTrackingUnit
 - `RESEND_API_KEY` - Resend email service
 - `RESEND_FROM_EMAIL` - Sender address (e.g., `Cloud Timer <noreply@cloudtimer.dk>`)
 - `SUPER_ADMIN_EMAIL` - Email address for platform super admin (enables `/super-admin` page + support access)
+- `ACCOUNTING_ENCRYPTION_KEY` - Hex-encoded 32-byte key for AES-256-GCM encryption of accounting credentials
 
 ## Known Gaps (potential future work)
 

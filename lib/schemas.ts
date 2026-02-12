@@ -279,3 +279,75 @@ export const phaseMigrationSchema = z.object({
     to: z.string().min(1),
   })).optional(),
 });
+
+// --- Invoices ---
+
+export const createInvoiceSchema = z.object({
+  projectId: z.string().min(1),
+  periodStart: z.string().min(1),
+  periodEnd: z.string().min(1),
+  clientName: z.string().max(200).optional(),
+  clientAddress: z.string().max(500).optional(),
+  clientCvr: z.string().max(20).optional(),
+  clientEan: z.string().max(20).optional(),
+  paymentTermsDays: z.coerce.number().int().positive().max(365).optional(),
+  note: z.string().max(2000).optional().nullable(),
+  groupBy: z.enum(["employee", "phase", "description", "flat"]),
+  includeExpenses: z.boolean(),
+  timeEntryIds: z.array(z.string()).optional(),
+  expenseIds: z.array(z.string()).optional(),
+});
+
+export const updateInvoiceSchema = z.object({
+  clientName: z.string().max(200).optional(),
+  clientAddress: z.string().max(500).optional(),
+  clientCvr: z.string().max(20).optional(),
+  clientEan: z.string().max(20).optional(),
+  paymentTermsDays: z.coerce.number().int().positive().max(365).optional(),
+  note: z.string().max(2000).optional().nullable(),
+  status: z.enum(["draft", "sent", "paid", "void"]).optional(),
+  lines: z.array(z.object({
+    id: z.string().optional(),
+    description: z.string().min(1).max(500),
+    quantity: z.coerce.number(),
+    unitPrice: z.coerce.number(),
+    type: z.enum(["time", "expense", "manual"]).optional(),
+    phaseName: z.string().max(100).optional().nullable(),
+  })).optional(),
+});
+
+export const invoicePreviewSchema = createInvoiceSchema;
+
+// --- Company Billing Settings ---
+
+export const updateCompanyBillingSchema = z.object({
+  companyAddress: z.string().max(500).optional().nullable(),
+  companyCvr: z.string().max(20).optional().nullable(),
+  companyBankAccount: z.string().max(50).optional().nullable(),
+  companyBankReg: z.string().max(20).optional().nullable(),
+  defaultPaymentDays: z.coerce.number().int().positive().max(365).optional(),
+  invoiceFooterNote: z.string().max(2000).optional().nullable(),
+  invoicePrefix: z.string().max(20).optional().nullable(),
+  accountingSystem: z.enum(["e-conomic", "billy", "dinero"]).optional().nullable(),
+});
+
+// --- Accounting ---
+
+export const accountingCredentialsSchema = z.object({
+  system: z.enum(["e-conomic", "billy", "dinero"]),
+  // e-conomic
+  appSecretToken: z.string().optional(),
+  agreementGrantToken: z.string().optional(),
+  // Billy
+  accessToken: z.string().optional(),
+  organizationId: z.string().optional(),
+  // Dinero
+  clientId: z.string().optional(),
+  clientSecret: z.string().optional(),
+});
+
+export const customerMappingSchema = z.object({
+  clientName: z.string().min(1).max(200),
+  externalCustomerId: z.string().min(1).max(100),
+  externalCustomerName: z.string().min(1).max(200),
+});
