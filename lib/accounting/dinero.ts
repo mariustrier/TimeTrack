@@ -1,21 +1,54 @@
 import type { AccountingAdapter, AccountingCredentials, ExternalCustomer, InvoiceWithLines } from "./types";
 
+type CredentialUpdateCallback = (credentials: AccountingCredentials) => Promise<void>;
+
 export class DineroAdapter implements AccountingAdapter {
   private organizationId: string;
   private clientId: string;
   private clientSecret: string;
+  private accessToken?: string;
+  private refreshToken?: string;
+  private tokenExpiresAt?: Date;
+  private onCredentialUpdate?: CredentialUpdateCallback;
 
-  constructor(credentials: AccountingCredentials) {
-    if (!credentials.clientId || !credentials.clientSecret || !credentials.organizationId) {
-      throw new Error("Dinero requires clientId, clientSecret, and organizationId");
+  constructor(credentials: AccountingCredentials, onCredentialUpdate?: CredentialUpdateCallback) {
+    if (!credentials.organizationId) {
+      throw new Error("Dinero requires organizationId");
     }
     this.organizationId = credentials.organizationId;
-    this.clientId = credentials.clientId;
-    this.clientSecret = credentials.clientSecret;
+    this.clientId = credentials.clientId || "";
+    this.clientSecret = credentials.clientSecret || "";
+    this.accessToken = credentials.accessToken;
+    this.refreshToken = credentials.refreshToken;
+    this.tokenExpiresAt = credentials.tokenExpiresAt ? new Date(credentials.tokenExpiresAt) : undefined;
+    this.onCredentialUpdate = onCredentialUpdate;
+
+    // Must have either OAuth tokens or client credentials
+    if (!this.accessToken && (!this.clientId || !this.clientSecret)) {
+      throw new Error("Dinero requires either OAuth tokens or clientId + clientSecret");
+    }
   }
 
   private async getAccessToken(): Promise<string> {
-    // Dinero uses Visma Connect OAuth2
+    // If we have an OAuth access token, check if it needs refreshing
+    if (this.accessToken && this.refreshToken) {
+      const bufferMs = 5 * 60 * 1000; // 5 minute buffer
+      const isExpired = this.tokenExpiresAt && this.tokenExpiresAt.getTime() - bufferMs < Date.now();
+
+      if (!isExpired) {
+        return this.accessToken;
+      }
+
+      // Refresh the token
+      return this.refreshAccessToken();
+    }
+
+    // If we have an OAuth access token without refresh (shouldn't happen, but handle it)
+    if (this.accessToken) {
+      return this.accessToken;
+    }
+
+    // Fall back to client_credentials flow (legacy)
     const res = await fetch("https://connect.visma.com/connect/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -29,6 +62,50 @@ export class DineroAdapter implements AccountingAdapter {
     if (!res.ok) throw new Error(`Dinero OAuth failed: ${res.status}`);
     const data = await res.json();
     return data.access_token;
+  }
+
+  private async refreshAccessToken(): Promise<string> {
+    if (!this.refreshToken || !this.clientId || !this.clientSecret) {
+      throw new Error("Cannot refresh: missing refreshToken or client credentials");
+    }
+
+    const res = await fetch("https://connect.visma.com/connect/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: this.refreshToken,
+        client_id: this.clientId,
+        client_secret: this.clientSecret,
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Dinero token refresh failed: ${res.status}`);
+    }
+
+    const data = await res.json();
+    this.accessToken = data.access_token;
+    if (data.refresh_token) {
+      this.refreshToken = data.refresh_token;
+    }
+    const expiresIn = data.expires_in || 3600;
+    this.tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
+
+    // Persist the refreshed tokens
+    if (this.onCredentialUpdate) {
+      await this.onCredentialUpdate({
+        system: "dinero",
+        accessToken: this.accessToken,
+        refreshToken: this.refreshToken,
+        tokenExpiresAt: this.tokenExpiresAt.toISOString(),
+        organizationId: this.organizationId,
+        clientId: this.clientId,
+        clientSecret: this.clientSecret,
+      });
+    }
+
+    return this.accessToken!;
   }
 
   private async headers() {

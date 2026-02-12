@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Save, Plug, TestTube, Trash2, Plus } from "lucide-react";
+import { Save, Plug, TestTube, Trash2, Plus, Unplug, ExternalLink, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslations } from "@/lib/i18n";
 
@@ -54,6 +55,7 @@ interface ExternalCustomer {
 
 export function BillingSettings() {
   const t = useTranslations("billing");
+  const searchParams = useSearchParams();
   const [settings, setSettings] = useState<BillingSettingsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -71,6 +73,7 @@ export function BillingSettings() {
   const [accountingSystem, setAccountingSystem] = useState<string>("none");
   const [credFields, setCredFields] = useState<Record<string, string>>({});
   const [testing, setTesting] = useState(false);
+  const [connecting, setConnecting] = useState(false);
 
   // Customer mappings
   const [mappings, setMappings] = useState<CustomerMapping[]>([]);
@@ -123,11 +126,35 @@ export function BillingSettings() {
     fetchMappings();
   }, [fetchSettings, fetchMappings]);
 
+  // Show toast for OAuth callback results
+  useEffect(() => {
+    const connected = searchParams.get("connected");
+    const error = searchParams.get("error");
+    if (connected) {
+      toast.success(t("oauthSuccess", { system: connected }));
+      // Clean URL without reload
+      window.history.replaceState({}, "", "/billing?tab=settings");
+    }
+    if (error) {
+      const messages: Record<string, string> = {
+        oauth: t("oauthError"),
+        denied: t("oauthDenied"),
+        connection: t("connectionFailed", { error: "Connection test failed" }),
+        token: t("oauthError"),
+        organization: t("oauthOrgError"),
+      };
+      toast.error(messages[error] || t("oauthError"));
+      window.history.replaceState({}, "", "/billing?tab=settings");
+    }
+  }, [searchParams, t]);
+
   useEffect(() => {
     if (accountingSystem && accountingSystem !== "none") {
       fetchExternalCustomers();
     }
   }, [accountingSystem, fetchExternalCustomers]);
+
+  const isConnected = settings?.accountingSystem && settings.accountingSystem !== "none";
 
   async function handleSave() {
     setSaving(true);
@@ -142,12 +169,10 @@ export function BillingSettings() {
         invoicePrefix: invoicePrefix || null,
       };
 
-      // Include accounting credentials if system is set and has credentials
-      if (accountingSystem !== "none" && Object.keys(credFields).length > 0) {
+      // Include accounting credentials for Billy (manual entry only)
+      if (accountingSystem === "billy" && Object.keys(credFields).length > 0) {
         body.accountingCredentials = { system: accountingSystem, ...credFields };
         body.accountingSystem = accountingSystem;
-      } else if (accountingSystem === "none") {
-        body.accountingSystem = null;
       }
 
       const res = await fetch("/api/billing/settings", {
@@ -169,14 +194,64 @@ export function BillingSettings() {
     }
   }
 
+  async function handleOAuthConnect(system: "e-conomic" | "dinero") {
+    setConnecting(true);
+    try {
+      const endpoint = system === "e-conomic"
+        ? "/api/accounting/economic/authorize"
+        : "/api/accounting/dinero/authorize";
+
+      const res = await fetch(endpoint);
+      if (!res.ok) {
+        const data = await res.json();
+        toast.error(data.error || t("oauthError"));
+        return;
+      }
+
+      const { url } = await res.json();
+      window.location.href = url;
+    } catch {
+      toast.error(t("oauthError"));
+      setConnecting(false);
+    }
+  }
+
+  async function handleDisconnect() {
+    if (!confirm(t("disconnectConfirm"))) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/billing/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountingSystem: null }),
+      });
+      if (res.ok) {
+        toast.success(t("disconnected"));
+        setAccountingSystem("none");
+        setCredFields({});
+        fetchSettings();
+      }
+    } catch {
+      toast.error(t("saveFailed"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleTestConnection() {
     if (accountingSystem === "none") return;
     setTesting(true);
     try {
+      // For Billy: test with provided credentials
+      // For e-conomic/Dinero: test with saved credentials (from OAuth)
+      const body = accountingSystem === "billy"
+        ? { system: accountingSystem, ...credFields }
+        : { system: accountingSystem };
+
       const res = await fetch("/api/accounting/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ system: accountingSystem, ...credFields }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (data.ok) {
@@ -280,84 +355,101 @@ export function BillingSettings() {
       {/* Accounting System */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">{t("accountingSystem")}</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">{t("accountingSystem")}</CardTitle>
+            {isConnected && (
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+                {t("connected")} — {settings.accountingSystem}
+              </Badge>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <Label>{t("selectSystem")}</Label>
-            <Select value={accountingSystem} onValueChange={setAccountingSystem}>
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">{t("noSystem")}</SelectItem>
-                <SelectItem value="e-conomic">e-conomic</SelectItem>
-                <SelectItem value="billy">Billy</SelectItem>
-                <SelectItem value="dinero">Dinero</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {accountingSystem === "e-conomic" && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label>App Secret Token</Label>
-                <Input type="password" value={credFields.appSecretToken || ""} onChange={(e) => setCredFields({ ...credFields, appSecretToken: e.target.value })} />
-              </div>
-              <div>
-                <Label>Agreement Grant Token</Label>
-                <Input type="password" value={credFields.agreementGrantToken || ""} onChange={(e) => setCredFields({ ...credFields, agreementGrantToken: e.target.value })} />
+          {/* Connected state */}
+          {isConnected ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                {t("connectedTo", { system: settings.accountingSystem || "" })}
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={handleTestConnection} disabled={testing}>
+                  <TestTube className="mr-2 h-4 w-4" />
+                  {testing ? t("testing") : t("testConnection")}
+                </Button>
+                <Button variant="outline" onClick={handleDisconnect} disabled={saving} className="text-red-600 hover:text-red-700">
+                  <Unplug className="mr-2 h-4 w-4" />
+                  {t("disconnect")}
+                </Button>
               </div>
             </div>
-          )}
+          ) : (
+            /* Not connected — show connection options */
+            <div className="space-y-6">
+              <p className="text-sm text-muted-foreground">{t("chooseSystem")}</p>
 
-          {accountingSystem === "billy" && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label>Access Token</Label>
-                <Input type="password" value={credFields.accessToken || ""} onChange={(e) => setCredFields({ ...credFields, accessToken: e.target.value })} />
+              {/* e-conomic OAuth */}
+              <div className="rounded-lg border p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium">e-conomic</h4>
+                    <p className="text-sm text-muted-foreground">{t("economicDescription")}</p>
+                  </div>
+                  <Button onClick={() => handleOAuthConnect("e-conomic")} disabled={connecting}>
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    {connecting ? t("redirecting") : t("connectEconomic")}
+                  </Button>
+                </div>
               </div>
-              <div>
-                <Label>Organization ID</Label>
-                <Input value={credFields.organizationId || ""} onChange={(e) => setCredFields({ ...credFields, organizationId: e.target.value })} />
-              </div>
-            </div>
-          )}
 
-          {accountingSystem === "dinero" && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <Label>Client ID</Label>
-                <Input value={credFields.clientId || ""} onChange={(e) => setCredFields({ ...credFields, clientId: e.target.value })} />
+              {/* Dinero OAuth */}
+              <div className="rounded-lg border p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium">Dinero</h4>
+                    <p className="text-sm text-muted-foreground">{t("dineroDescription")}</p>
+                  </div>
+                  <Button onClick={() => handleOAuthConnect("dinero")} disabled={connecting}>
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    {connecting ? t("redirecting") : t("connectDinero")}
+                  </Button>
+                </div>
               </div>
-              <div>
-                <Label>Client Secret</Label>
-                <Input type="password" value={credFields.clientSecret || ""} onChange={(e) => setCredFields({ ...credFields, clientSecret: e.target.value })} />
-              </div>
-              <div>
-                <Label>Organization ID</Label>
-                <Input value={credFields.organizationId || ""} onChange={(e) => setCredFields({ ...credFields, organizationId: e.target.value })} />
-              </div>
-            </div>
-          )}
 
-          {accountingSystem !== "none" && (
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleTestConnection} disabled={testing}>
-                <TestTube className="mr-2 h-4 w-4" />
-                {testing ? t("testing") : t("testConnection")}
-              </Button>
-              <Button onClick={handleSave} disabled={saving}>
-                <Plug className="mr-2 h-4 w-4" />
-                {t("connectSystem")}
-              </Button>
+              {/* Billy manual entry */}
+              <div className="rounded-lg border p-4 space-y-4">
+                <div>
+                  <h4 className="font-medium">Billy</h4>
+                  <p className="text-sm text-muted-foreground">{t("billyDescription")}</p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label>Access Token</Label>
+                    <Input type="password" value={credFields.accessToken || ""} onChange={(e) => setCredFields({ ...credFields, accessToken: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Organization ID</Label>
+                    <Input value={credFields.organizationId || ""} onChange={(e) => setCredFields({ ...credFields, organizationId: e.target.value })} />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => { setAccountingSystem("billy"); handleTestConnection(); }} disabled={testing || !credFields.accessToken}>
+                    <TestTube className="mr-2 h-4 w-4" />
+                    {testing ? t("testing") : t("testConnection")}
+                  </Button>
+                  <Button onClick={() => { setAccountingSystem("billy"); handleSave(); }} disabled={saving || !credFields.accessToken}>
+                    <Plug className="mr-2 h-4 w-4" />
+                    {t("connectBilly")}
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </CardContent>
       </Card>
 
       {/* Customer Mapping */}
-      {accountingSystem !== "none" && (
+      {isConnected && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">{t("customerMapping")}</CardTitle>

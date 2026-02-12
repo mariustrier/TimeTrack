@@ -1494,6 +1494,23 @@
     "from": "From",
     "to": "To",
     "paymentInfo": "Payment Details",
-    "moms": "moms"
+    "moms": "moms",
+    "connectEconomic": "Connect e-conomic",
+    "connectDinero": "Connect Dinero",
+    "connectBilly": "Connect Billy",
+    "connected": "Connected",
+    "connectedTo": "Your accounting system ({system}) is connected.",
+    "chooseSystem": "Connect your accounting system to sync invoices automatically.",
+    "economicDescription": "Sign in to grant Cloud Timer access to your e-conomic account.",
+    "dineroDescription": "Sign in via Visma Connect to authorize access to Dinero.",
+    "billyDescription": "Enter your API credentials from Billy's settings.",
+    "disconnect": "Disconnect",
+    "disconnected": "Accounting system disconnected",
+    "disconnectConfirm": "Are you sure you want to disconnect your accounting system? Customer mappings will be kept.",
+    "redirecting": "Redirecting...",
+    "oauthSuccess": "Successfully connected to {system}!",
+    "oauthError": "Failed to connect. Please try again.",
+    "oauthDenied": "Authorization was denied. Please try again.",
+    "oauthOrgError": "Could not determine your organization. Please try again."
   }
 }

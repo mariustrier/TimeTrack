@@ -664,3 +664,14 @@ model CustomerMapping {
   @@unique([companyId, clientName])
   @@index([companyId])
 }
+
+// ─── OAUTH STATE ───
+// Temporary CSRF protection tokens for accounting system OAuth flows
+model OAuthState {
+  id        String   @id @default(cuid())
+  state     String   @unique
+  companyId String
+  provider  String   // "e-conomic" or "dinero"
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}

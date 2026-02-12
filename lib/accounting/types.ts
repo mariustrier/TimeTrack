@@ -45,7 +45,9 @@ export interface AccountingCredentials {
   // Billy
   accessToken?: string;
   organizationId?: string;
-  // Dinero
+  // Dinero (legacy: clientId+clientSecret, OAuth: accessToken+refreshToken)
   clientId?: string;
   clientSecret?: string;
+  refreshToken?: string;
+  tokenExpiresAt?: string; // ISO date string
 }

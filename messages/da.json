@@ -1494,6 +1494,23 @@
     "from": "Fra",
     "to": "Til",
     "paymentInfo": "Betalingsoplysninger",
-    "moms": "moms"
+    "moms": "moms",
+    "connectEconomic": "Forbind e-conomic",
+    "connectDinero": "Forbind Dinero",
+    "connectBilly": "Forbind Billy",
+    "connected": "Forbundet",
+    "connectedTo": "Dit regnskabssystem ({system}) er forbundet.",
+    "chooseSystem": "Forbind dit regnskabssystem for automatisk at synkronisere fakturaer.",
+    "economicDescription": "Log ind for at give Cloud Timer adgang til din e-conomic konto.",
+    "dineroDescription": "Log ind via Visma Connect for at autorisere adgang til Dinero.",
+    "billyDescription": "Indtast dine API-legitimationsoplysninger fra Billys indstillinger.",
+    "disconnect": "Afbryd forbindelse",
+    "disconnected": "Regnskabssystem afbrudt",
+    "disconnectConfirm": "Er du sikker på, at du vil afbryde forbindelsen til dit regnskabssystem? Kundemappinger bevares.",
+    "redirecting": "Omdirigerer...",
+    "oauthSuccess": "Forbundet til {system}!",
+    "oauthError": "Forbindelse mislykkedes. Prøv igen.",
+    "oauthDenied": "Autorisation blev afvist. Prøv igen.",
+    "oauthOrgError": "Kunne ikke bestemme din organisation. Prøv igen."
   }
 }

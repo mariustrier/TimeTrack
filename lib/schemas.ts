@@ -341,9 +341,11 @@ export const accountingCredentialsSchema = z.object({
   // Billy
   accessToken: z.string().optional(),
   organizationId: z.string().optional(),
-  // Dinero
+  // Dinero (legacy: clientId+clientSecret, OAuth: accessToken+refreshToken)
   clientId: z.string().optional(),
   clientSecret: z.string().optional(),
+  refreshToken: z.string().optional(),
+  tokenExpiresAt: z.string().optional(),
 });
 
 export const customerMappingSchema = z.object({

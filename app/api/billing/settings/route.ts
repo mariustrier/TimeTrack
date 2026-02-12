@@ -56,6 +56,17 @@ export async function PUT(req: Request) {
       });
     }
 
+    // Handle disconnect: clearing accountingSystem also clears credentials
+    if (body.accountingSystem === null) {
+      await db.company.update({
+        where: { id: user.companyId },
+        data: {
+          accountingSystem: null,
+          accountingCredentials: null,
+        },
+      });
+    }
+
     // Handle billing settings
     const settingsBody = { ...body };
     delete settingsBody.accountingCredentials;
