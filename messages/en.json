@@ -1029,7 +1029,16 @@
     "noExpenses": "No Company Expenses",
     "noExpensesDescription": "Add recurring and one-time company expenses to track true overhead.",
     "expenseSaved": "Company expense saved",
-    "expenseDeleted": "Company expense deleted"
+    "expenseDeleted": "Company expense deleted",
+    "manageCategories": "Manage Categories",
+    "addCategory": "Add Category",
+    "editCategory": "Edit Category",
+    "categoryName": "Category Name",
+    "categorySaved": "Category saved",
+    "categoryDeleted": "Category deleted",
+    "categoryDeactivated": "Category deactivated (used by existing expenses)",
+    "categoryExists": "Category already exists",
+    "newCategoryPlaceholder": "e.g. Marketing"
   },
   "settings": {
     "title": "Settings",

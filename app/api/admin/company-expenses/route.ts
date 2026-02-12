@@ -51,7 +51,17 @@ export async function POST(req: Request) {
     const body = await req.json();
     const result = validate(createCompanyExpenseSchema, body);
     if (!result.success) return result.response;
-    const { amount, description, category, date, recurring, frequency, receiptUrl, receiptFileName, receiptFileSize } = result.data;
+    const { amount, description, category, date, recurring, frequency, receiptUrl, receiptFileName, receiptFileSize, expenseCategoryId } = result.data;
+
+    // Validate category exists if expenseCategoryId is provided
+    if (expenseCategoryId) {
+      const cat = await db.expenseCategory.findFirst({
+        where: { id: expenseCategoryId, companyId: user.companyId, active: true },
+      });
+      if (!cat) {
+        return NextResponse.json({ error: "Category not found" }, { status: 400 });
+      }
+    }
 
     const expense = await db.companyExpense.create({
       data: {
@@ -63,6 +73,7 @@ export async function POST(req: Request) {
         frequency: frequency || null,
         companyId: user.companyId,
         createdBy: user.id,
+        ...(expenseCategoryId && { expenseCategoryId }),
         ...(receiptUrl && { receiptUrl, receiptFileName, receiptFileSize }),
       },
     });

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import Link from "next/link";
-import { Building2, Plus, Pencil, Trash2, Paperclip, ArrowLeft } from "lucide-react";
+import { Building2, Plus, Pencil, Trash2, Paperclip, ArrowLeft, Settings } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -49,10 +49,17 @@ interface CompanyExpenseItem {
   receiptUrl: string | null;
   receiptFileName: string | null;
   receiptFileSize: number | null;
+  expenseCategoryId: string | null;
   createdAt: string;
 }
 
-const CATEGORIES = ["rent", "insurance", "utilities", "software", "salaries", "other"] as const;
+interface ExpenseCategory {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  sortOrder: number;
+}
+
 const FREQUENCIES = ["monthly", "quarterly", "yearly"] as const;
 
 export default function CompanyExpensesPage() {
@@ -61,6 +68,7 @@ export default function CompanyExpensesPage() {
   const tc = useTranslations("common");
 
   const [expenses, setExpenses] = useState<CompanyExpenseItem[]>([]);
+  const [categories, setCategories] = useState<ExpenseCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [currency, setCurrency] = useState("DKK");
   const [masterCurrency, setMasterCurrency] = useState("DKK");
@@ -70,7 +78,8 @@ export default function CompanyExpensesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<CompanyExpenseItem | null>(null);
   const [formDescription, setFormDescription] = useState("");
-  const [formCategory, setFormCategory] = useState<string>("other");
+  const [formCategory, setFormCategory] = useState<string>("");
+  const [formCategoryId, setFormCategoryId] = useState<string>("");
   const [formAmount, setFormAmount] = useState("");
   const [formDate, setFormDate] = useState("");
   const [formRecurring, setFormRecurring] = useState(false);
@@ -88,13 +97,16 @@ export default function CompanyExpensesPage() {
   const [formReceiptFileSize, setFormReceiptFileSize] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  const CATEGORY_LABELS: Record<string, string> = {
-    rent: t("rent"),
-    insurance: t("insurance"),
-    utilities: t("utilities"),
-    software: t("software"),
-    salaries: t("salaries"),
-    other: t("other"),
+  // Category management dialog
+  const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [editingCategory, setEditingCategory] = useState<ExpenseCategory | null>(null);
+  const [editCategoryName, setEditCategoryName] = useState("");
+  const [savingCategory, setSavingCategory] = useState(false);
+
+  // Helper: get display label for a category
+  const getCategoryLabel = (categoryName: string) => {
+    return categoryName || tc("unknown");
   };
 
   const FREQUENCY_LABELS: Record<string, string> = {
@@ -133,8 +145,21 @@ export default function CompanyExpensesPage() {
     }
   }
 
+  async function fetchCategories() {
+    try {
+      const res = await fetch("/api/admin/expense-categories");
+      if (res.ok) {
+        const data = await res.json();
+        setCategories(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch categories:", error);
+    }
+  }
+
   useEffect(() => {
     fetchCurrency();
+    fetchCategories();
     fetchExpenses();
   }, []);
 
@@ -194,7 +219,10 @@ export default function CompanyExpensesPage() {
   function openAddDialog() {
     setEditingExpense(null);
     setFormDescription("");
-    setFormCategory("other");
+    // Default to first category
+    const defaultCat = categories[0];
+    setFormCategory(defaultCat?.name || "Other");
+    setFormCategoryId(defaultCat?.id || "");
     setFormAmount("");
     setFormDate(format(new Date(), "yyyy-MM-dd"));
     setFormRecurring(false);
@@ -210,6 +238,7 @@ export default function CompanyExpensesPage() {
     setEditingExpense(expense);
     setFormDescription(expense.description);
     setFormCategory(expense.category);
+    setFormCategoryId(expense.expenseCategoryId || "");
     setFormAmount(String(expense.amount));
     setFormDate(expense.date.slice(0, 10));
     setFormRecurring(expense.recurring);
@@ -227,6 +256,7 @@ export default function CompanyExpensesPage() {
       const body = {
         description: formDescription.trim(),
         category: formCategory,
+        expenseCategoryId: formCategoryId || null,
         amount: parseFloat(formAmount),
         date: formDate,
         recurring: formRecurring,
@@ -290,6 +320,80 @@ export default function CompanyExpensesPage() {
       toast.error("Failed to delete");
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function handleAddCategory() {
+    if (!newCategoryName.trim()) return;
+    setSavingCategory(true);
+    try {
+      const res = await fetch("/api/admin/expense-categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newCategoryName.trim() }),
+      });
+      if (res.ok) {
+        toast.success(t("categorySaved"));
+        setNewCategoryName("");
+        fetchCategories();
+      } else {
+        const data = await res.json();
+        toast.error(data.error === "Category already exists" ? t("categoryExists") : data.error || "Failed to save");
+      }
+    } catch {
+      toast.error("Failed to save");
+    } finally {
+      setSavingCategory(false);
+    }
+  }
+
+  async function handleUpdateCategory() {
+    if (!editingCategory || !editCategoryName.trim()) return;
+    setSavingCategory(true);
+    try {
+      const res = await fetch(`/api/admin/expense-categories/${editingCategory.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editCategoryName.trim() }),
+      });
+      if (res.ok) {
+        toast.success(t("categorySaved"));
+        setEditingCategory(null);
+        setEditCategoryName("");
+        fetchCategories();
+      } else {
+        const data = await res.json();
+        toast.error(data.error === "Category already exists" ? t("categoryExists") : data.error || "Failed to save");
+      }
+    } catch {
+      toast.error("Failed to save");
+    } finally {
+      setSavingCategory(false);
+    }
+  }
+
+  async function handleDeleteCategory(id: string) {
+    setSavingCategory(true);
+    try {
+      const res = await fetch(`/api/admin/expense-categories/${id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.deactivated) {
+          toast.success(t("categoryDeactivated"));
+        } else {
+          toast.success(t("categoryDeleted"));
+        }
+        fetchCategories();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to delete");
+      }
+    } catch {
+      toast.error("Failed to delete");
+    } finally {
+      setSavingCategory(false);
     }
   }
 
@@ -358,21 +462,29 @@ export default function CompanyExpensesPage() {
         </Card>
       </div>
 
-      {/* Category Filter */}
+      {/* Category Filter + Manage */}
       <div className="flex items-center gap-2">
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[200px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{tc("all")}</SelectItem>
-            {CATEGORIES.map((cat) => (
-              <SelectItem key={cat} value={cat}>
-                {CATEGORY_LABELS[cat]}
+            {categories.map((cat) => (
+              <SelectItem key={cat.id} value={cat.name}>
+                {cat.name}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setManageCategoriesOpen(true)}
+        >
+          <Settings className="mr-1 h-3.5 w-3.5" />
+          {t("manageCategories")}
+        </Button>
       </div>
 
       {/* Table */}
@@ -415,7 +527,7 @@ export default function CompanyExpensesPage() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">
-                        {CATEGORY_LABELS[expense.category] || expense.category}
+                        {getCategoryLabel(expense.category)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right font-medium">
@@ -501,14 +613,24 @@ export default function CompanyExpensesPage() {
             {/* Category */}
             <div className="space-y-2">
               <Label>{te("category")}</Label>
-              <Select value={formCategory} onValueChange={setFormCategory}>
+              <Select
+                value={formCategoryId || "__none__"}
+                onValueChange={(val) => {
+                  if (val === "__none__") return;
+                  const cat = categories.find((c) => c.id === val);
+                  if (cat) {
+                    setFormCategoryId(cat.id);
+                    setFormCategory(cat.name);
+                  }
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {CATEGORIES.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {CATEGORY_LABELS[cat]}
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -659,6 +781,109 @@ export default function CompanyExpensesPage() {
               {deleting ? tc("deleting") : tc("delete")}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Categories Dialog */}
+      <Dialog open={manageCategoriesOpen} onOpenChange={(open) => {
+        setManageCategoriesOpen(open);
+        if (!open) {
+          setEditingCategory(null);
+          setEditCategoryName("");
+          setNewCategoryName("");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("manageCategories")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* Existing categories list */}
+            <div className="space-y-2">
+              {categories.map((cat) => (
+                <div key={cat.id} className="flex items-center justify-between rounded-md border px-3 py-2">
+                  {editingCategory?.id === cat.id ? (
+                    <div className="flex flex-1 items-center gap-2">
+                      <Input
+                        value={editCategoryName}
+                        onChange={(e) => setEditCategoryName(e.target.value)}
+                        className="h-8"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleUpdateCategory();
+                          if (e.key === "Escape") setEditingCategory(null);
+                        }}
+                      />
+                      <Button
+                        size="sm"
+                        onClick={handleUpdateCategory}
+                        disabled={savingCategory || !editCategoryName.trim()}
+                      >
+                        {tc("save")}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setEditingCategory(null)}
+                      >
+                        {tc("cancel")}
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="text-sm text-foreground">
+                        {cat.name}
+                        {cat.isDefault && (
+                          <Badge variant="secondary" className="ml-2 text-xs">
+                            Default
+                          </Badge>
+                        )}
+                      </span>
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setEditingCategory(cat);
+                            setEditCategoryName(cat.name);
+                          }}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDeleteCategory(cat.id)}
+                          disabled={savingCategory}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Add new category */}
+            <div className="flex items-center gap-2">
+              <Input
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder={t("newCategoryPlaceholder")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddCategory();
+                }}
+              />
+              <Button
+                onClick={handleAddCategory}
+                disabled={savingCategory || !newCategoryName.trim()}
+              >
+                <Plus className="mr-1 h-4 w-4" />
+                {t("addCategory")}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

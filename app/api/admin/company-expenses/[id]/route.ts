@@ -24,7 +24,7 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { amount, description, category, date, recurring, frequency, receiptUrl, receiptFileName, receiptFileSize, amendmentReason } = body;
+    const { amount, description, category, date, recurring, frequency, receiptUrl, receiptFileName, receiptFileSize, amendmentReason, expenseCategoryId } = body;
 
     // Bogføringsloven: finalized expenses require an amendment reason
     if (expense.isFinalized) {
@@ -55,6 +55,7 @@ export async function PUT(
           ...(recurring !== undefined && { recurring: !!recurring }),
           ...(frequency !== undefined && { frequency: frequency || null }),
           ...(receiptUrl !== undefined && { receiptUrl: receiptUrl || null, receiptFileName: receiptFileName || null, receiptFileSize: receiptFileSize || null }),
+          ...(expenseCategoryId !== undefined && { expenseCategoryId: expenseCategoryId || null }),
         },
       });
 
@@ -106,6 +107,7 @@ export async function PUT(
         ...(recurring !== undefined && { recurring: !!recurring }),
         ...(frequency !== undefined && { frequency: frequency || null }),
         ...(receiptUrl !== undefined && { receiptUrl: receiptUrl || null, receiptFileName: receiptFileName || null, receiptFileSize: receiptFileSize || null }),
+        ...(expenseCategoryId !== undefined && { expenseCategoryId: expenseCategoryId || null }),
       },
     });
 

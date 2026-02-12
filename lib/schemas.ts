@@ -127,20 +127,25 @@ export const createVacationSchema = z.object({
 export const createCompanyExpenseSchema = z.object({
   amount: z.coerce.number().positive(),
   description: z.string().min(1).max(500),
-  category: z.enum([
-    "rent",
-    "insurance",
-    "utilities",
-    "software",
-    "salaries",
-    "other",
-  ]),
+  category: z.string().min(1).max(100),
+  expenseCategoryId: z.string().optional().nullable(),
   date: z.string().min(1),
   recurring: z.boolean().optional(),
   frequency: z.enum(["monthly", "quarterly", "yearly"]).optional().nullable(),
   receiptUrl: z.string().url().optional().nullable(),
   receiptFileName: z.string().optional().nullable(),
   receiptFileSize: z.coerce.number().int().nonnegative().optional().nullable(),
+});
+
+// --- Expense Categories ---
+
+export const createExpenseCategorySchema = z.object({
+  name: z.string().min(1).max(100),
+});
+
+export const updateExpenseCategorySchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  active: z.boolean().optional(),
 });
 
 // --- Approval Actions ---

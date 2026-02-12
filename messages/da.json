@@ -61,7 +61,7 @@
     "account": "Konto",
     "aiAssistant": "AI Assistent",
     "platform": "Platform",
-    "expenses": "Udgifter",
+    "expenses": "Udlæg",
     "expenseApprovals": "Udgiftsgodkendelser",
     "companyExpenses": "Virksomhedsudgifter",
     "settings": "Indstillinger",
@@ -969,7 +969,7 @@
     "noCompaniesDescription": "Firmaer vises her, når brugere tilmelder sig."
   },
   "expenses": {
-    "title": "Udgifter",
+    "title": "Udlæg",
     "myExpenses": "Mine udgifter",
     "addExpense": "Tilføj udgift",
     "editExpense": "Rediger udgift",
@@ -1029,7 +1029,16 @@
     "noExpenses": "Ingen virksomhedsudgifter",
     "noExpensesDescription": "Tilføj tilbagevendende og engangsudgifter for at spore reelle faste udgifter.",
     "expenseSaved": "Virksomhedsudgift gemt",
-    "expenseDeleted": "Virksomhedsudgift slettet"
+    "expenseDeleted": "Virksomhedsudgift slettet",
+    "manageCategories": "Administrer kategorier",
+    "addCategory": "Tilføj kategori",
+    "editCategory": "Rediger kategori",
+    "categoryName": "Kategorinavn",
+    "categorySaved": "Kategori gemt",
+    "categoryDeleted": "Kategori slettet",
+    "categoryDeactivated": "Kategori deaktiveret (bruges af eksisterende udgifter)",
+    "categoryExists": "Kategorien findes allerede",
+    "newCategoryPlaceholder": "f.eks. Markedsføring"
   },
   "settings": {
     "title": "Indstillinger",

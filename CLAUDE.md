@@ -39,7 +39,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 
 ### API Routes (78 route files across 19 domains)
 - `app/api/` - All scoped by companyId (via `getAuthUser()` which auto-overrides for support mode)
-- Key domains: `time-entries`, `projects`, `team`, `admin`, `expenses`, `vacations`, `contracts`, `resource-allocations`, `analytics`, `ai`, `insights`, `mileage`, `auth`, `cron`, `super-admin`, `super-admin/access`, `admin/support-access`, `user`, `upload`, `absence-reasons`, `admin/phases`, `phases`
+- Key domains: `time-entries`, `projects`, `team`, `admin`, `expenses`, `vacations`, `contracts`, `resource-allocations`, `analytics`, `ai`, `insights`, `mileage`, `auth`, `cron`, `super-admin`, `super-admin/access`, `admin/support-access`, `user`, `upload`, `absence-reasons`, `admin/phases`, `phases`, `admin/expense-categories`
 
 ### Components
 - `components/admin/` - AdminOverview, AdminApprovals, AdminVacations, AdminBackups, AdminAuditLog, TeamUtilizationBars, PhaseMigrationDialog
@@ -72,8 +72,8 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `lib/analytics-utils.ts` - Analytics data processing
 - `lib/economic-import.ts` - e-conomic Projektkort XLSX parser
 
-### Database (16 models)
-Company, User (`isHourly`, `weeklyTarget`, `vacationDays`, `deletedAt`, etc.), Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense, CompanyExpense, AbsenceReason, ResourceAllocation, ProjectMilestone, Phase, SupportAccess
+### Database (17 models)
+Company, User (`isHourly`, `weeklyTarget`, `vacationDays`, `deletedAt`, etc.), Project, TimeEntry, VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense, CompanyExpense, ExpenseCategory, AbsenceReason, ResourceAllocation, ProjectMilestone, Phase, SupportAccess
 
 ### Tests
 - `__tests__/lib/` - 185 unit tests across 10 suites (Vitest)
@@ -103,6 +103,7 @@ Company, User (`isHourly`, `weeklyTarget`, `vacationDays`, `deletedAt`, etc.), P
 - Editable until approved by admin
 - Admin auto-approve threshold setting
 - Receipt management (PDF/images via Vercel Blob)
+- **Company expenses**: Custom categories managed via `ExpenseCategory` model (company-scoped). 6 default categories seeded on first access (Rent, Insurance, Utilities, Software Subscriptions, Salaries & Benefits, Other). Admin CRUD via "Manage Categories" dialog on company expenses page. Soft-delete for categories in use, hard-delete if unused. Category filter dropdown on company expenses page.
 
 ### Vacations
 - Request with start/end date, type (vacation/sick/personal), note

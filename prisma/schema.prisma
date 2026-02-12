@@ -40,6 +40,7 @@ model Company {
   insights            ContractInsight[]
   expenses            Expense[]
   companyExpenses     CompanyExpense[]
+  expenseCategories   ExpenseCategory[]
   absenceReasons      AbsenceReason[]
   companyHolidays     CompanyHoliday[]
   phases              Phase[]
@@ -394,9 +395,32 @@ model CompanyExpense {
   deletedAt       DateTime?
   deletedBy       String?
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  expenseCategoryId String?
+  company           Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  expenseCategory   ExpenseCategory? @relation(fields: [expenseCategoryId], references: [id], onDelete: SetNull)
 
   @@index([companyId, date])
+  @@index([expenseCategoryId])
+}
+
+// ─── EXPENSE CATEGORIES ───
+// Company-scoped custom categories for company expenses
+
+model ExpenseCategory {
+  id        String   @id @default(cuid())
+  name      String
+  isDefault Boolean  @default(false)
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  companyId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyExpenses CompanyExpense[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
 }
 
 model AbsenceReason {
