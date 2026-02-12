@@ -38,9 +38,9 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 10. `app/(dashboard)/settings/` - Tour replay, data export, account deletion
 11. `app/(dashboard)/super-admin/` - Platform-level admin with support access requests *(superAdmin only)*
 
-### API Routes (90 route files across 23 domains)
+### API Routes (106 route files across 28 domains)
 - `app/api/` - All scoped by companyId (via `getAuthUser()` which auto-overrides for support mode)
-- Key domains: `time-entries`, `projects`, `team`, `admin`, `expenses`, `vacations`, `contracts`, `resource-allocations`, `analytics`, `ai`, `insights`, `mileage`, `auth`, `cron`, `super-admin`, `super-admin/access`, `admin/support-access`, `user`, `upload`, `absence-reasons`, `admin/phases`, `phases`, `admin/expense-categories`, `invoices`, `accounting`, `billing`
+- Key domains: `time-entries`, `projects`, `team`, `admin`, `expenses`, `vacations`, `contracts`, `resource-allocations`, `analytics`, `ai`, `insights`, `mileage`, `auth`, `cron`, `super-admin`, `super-admin/access`, `admin/support-access`, `user`, `upload`, `absence-reasons`, `admin/phases`, `phases`, `admin/expense-categories`, `invoices`, `billing`, `accounting/test`, `accounting/customers`, `accounting/mappings`, `accounting/economic` (authorize + callback), `accounting/dinero` (authorize + callback)
 
 ### Components
 - `components/admin/` - AdminOverview, AdminApprovals, AdminVacations, AdminBackups, AdminAuditLog, TeamUtilizationBars, PhaseMigrationDialog
@@ -73,11 +73,16 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `lib/expense-utils.ts` - Expense formatting helpers
 - `lib/analytics-utils.ts` - Analytics data processing
 - `lib/economic-import.ts` - e-conomic Projektkort XLSX parser
-- `lib/invoice-pdf.ts` - Server-side A4 invoice PDF generation (pdf-lib)
-- `lib/accounting/` - Accounting system adapter pattern (e-conomic, Billy, Dinero) + AES-256-GCM credential encryption
+- `lib/invoice-pdf.ts` - Server-side A4 invoice PDF generation (pdf-lib), multi-page support, Danish formatting
+- `lib/accounting/` - Accounting system adapter pattern + AES-256-GCM credential encryption:
+  - `lib/accounting/types.ts` - `AccountingCredentials` type (system, accessToken, refreshToken, tokenExpiresAt, etc.)
+  - `lib/accounting/encryption.ts` - `encrypt()`/`decrypt()` using `ACCOUNTING_ENCRYPTION_KEY`
+  - `lib/accounting/economic.ts` - e-conomic REST API adapter (token auth, never expires)
+  - `lib/accounting/billy.ts` - Billy API adapter (X-Access-Token header)
+  - `lib/accounting/dinero.ts` - Dinero API adapter via Visma Connect (OAuth2 + auto-refresh, also supports legacy client_credentials)
 
-### Database (20 models)
-Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPaymentDays`, `companyAddress`, `companyCvr`, `companyBankAccount`, `companyBankReg`, `invoiceFooterNote`, `accountingSystem`, `accountingCredentials`), User (`isHourly`, `weeklyTarget`, `vacationDays`, `vacationTrackingUnit`, `vacationHoursPerYear`, `deletedAt`, etc.), Project, TimeEntry (`invoiceId`, `invoicedAt`), VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense (`invoiceId`, `invoicedAt`), CompanyExpense, ExpenseCategory, AbsenceReason, ResourceAllocation, ProjectMilestone, Phase, SupportAccess, Invoice, InvoiceLine, CustomerMapping
+### Database (23 models)
+Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPaymentDays`, `companyAddress`, `companyCvr`, `companyBankAccount`, `companyBankReg`, `invoiceFooterNote`, `accountingSystem`, `accountingCredentials`), User (`isHourly`, `weeklyTarget`, `vacationDays`, `vacationTrackingUnit`, `vacationHoursPerYear`, `deletedAt`, etc.), Project, TimeEntry (`invoiceId`, `invoicedAt`), VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense (`invoiceId`, `invoicedAt`), CompanyExpense, ExpenseCategory, AbsenceReason, ResourceAllocation, ProjectMilestone, Phase, SupportAccess, CompanyHoliday, Invoice, InvoiceLine, CustomerMapping, OAuthState
 
 ### Tests
 - `__tests__/lib/` - 199 unit tests across 10 suites (Vitest)
@@ -111,14 +116,29 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
 - **Company expenses**: Custom categories managed via `ExpenseCategory` model (company-scoped). 6 default categories seeded on first access (Rent, Insurance, Utilities, Software Subscriptions, Salaries & Benefits, Other). Admin CRUD via "Manage Categories" dialog on company expenses page. Soft-delete for categories in use, hard-delete if unused. Category filter dropdown on company expenses page.
 
 ### Billing / Fakturering
-- **Uninvoiced tab**: Cards per project showing uninvoiced approved billable hours, amounts, employee count, expense totals. "Create Invoice" opens multi-step dialog.
-- **Invoice creation (3-step wizard)**: Step 1 — select period, grouping (employee/phase/description/flat), include expenses. Step 2 — review/edit line items (add/remove/modify lines), see subtotal/25% MOMS/total. Step 3 — client info (name, CVR, address), payment terms, note, final summary.
-- **Invoice model**: Draft → Sent → Paid → Void lifecycle. Atomic invoice number increment via Prisma `$transaction`. Links to time entries and expenses (marks them as invoiced).
-- **PDF generation**: Server-side A4 Danish invoice PDFs via pdf-lib — company header, "FAKTURA" title, client info, line items table, subtotal/MOMS/total, bank details, footer note. Danish number formatting (period thousands, comma decimals).
+- **Info banner**: Blue notice on billing page explaining that invoices are drafts for use with a registered accounting system, per Danish law (bogføringsloven).
+- **Uninvoiced tab**: Cards per project showing uninvoiced approved billable hours, amounts, employee count, expense totals. "Create Invoice" opens multi-step dialog. Uses `Banknote` icon (not DollarSign) for currency-neutral display.
+- **Invoice creation (3-step wizard)**:
+  - Step 1 (Scope) — select period (defaults to last month), grouping (employee/phase/description/flat), **phase filter** (dropdown with colored dots to invoice only a specific phase, or "All phases"), include expenses checkbox with hint text.
+  - Step 2 (Review) — editable line items table (add/remove/modify lines), see subtotal/25% MOMS/total. Quantity and unit price step by 1 (not 0.01). Flat grouping uses project name as description (not hardcoded text).
+  - Step 3 (Confirm) — client info (name, CVR, address), payment terms with **"Set as default" button** (appears when value differs from company default, saves via billing settings API for future invoices), invoice note, final summary.
+- **Payment terms default**: Dialog fetches company's saved `defaultPaymentDays` on open instead of hardcoding 8. "Set as default" button persists changes for all future invoices.
+- **Empty invoice validation**: API returns 400 error if no billable entries or expenses found for the selected period/filters.
+- **Invoice model**: Draft → Sent → Paid → Void lifecycle. Atomic invoice number increment via Prisma `$transaction`. Links to time entries and expenses (marks them as invoiced). Audit log entry on creation.
+- **PDF generation**: Server-side A4 Danish invoice PDFs via pdf-lib — company header, "FAKTURA" title, client info, line items table, subtotal/MOMS/total, bank details, footer note. Danish number formatting (period thousands, comma decimals). **Multi-page support**: long invoices flow onto additional pages with repeated table headers; totals and bank details automatically move to new page if insufficient space.
 - **Bill rate priority**: Employee rate (EMPLOYEE_RATES mode) → project rate (PROJECT_RATE mode) → company default rate
-- **Accounting integrations (adapter pattern)**: e-conomic (REST API, token auth), Billy (X-Access-Token), Dinero (OAuth2 via Visma Connect). Credentials encrypted at rest with AES-256-GCM (`ACCOUNTING_ENCRYPTION_KEY` env var).
-- **Customer mapping**: Maps Cloud Timer client names to external accounting system customer IDs. Used during invoice sync to push drafts.
-- **Billing settings**: Company details (address, CVR, bank account/reg, payment terms, invoice prefix, footer note), accounting system connection + test, customer mapping management.
+- **Accounting integrations (adapter pattern)**: Credentials encrypted at rest with AES-256-GCM (`ACCOUNTING_ENCRYPTION_KEY` env var).
+  - **e-conomic**: OAuth-style grant token flow — "Connect" button redirects to e-conomic installation page, customer grants access, callback receives `agreementGrantToken`. Token never expires. Routes: `/api/accounting/economic/authorize` + `/api/accounting/economic/callback`.
+  - **Dinero**: Standard OAuth2 Authorization Code flow via Visma Connect — "Connect" button redirects to Visma login, customer authorizes, callback exchanges code for access + refresh tokens. Access tokens expire in ~1 hour, auto-refreshed via `DineroAdapter.refreshAccessToken()` with 5-minute buffer. Routes: `/api/accounting/dinero/authorize` + `/api/accounting/dinero/callback`.
+  - **Billy**: Manual token entry only (no OAuth available). Access Token + Organization ID entered directly in settings.
+  - **OAuthState model**: CSRF protection during OAuth flows — random state token stored in DB with companyId, provider, and 10-minute expiry. Validated on callback.
+  - **Test connection**: Works with both manual credentials (Billy) and saved/encrypted credentials (e-conomic, Dinero) via `/api/accounting/test`.
+- **Customer mapping**: Maps Cloud Timer client names to external accounting system customer IDs. Used during invoice sync to push drafts. CRUD via `/api/accounting/mappings`.
+- **Billing settings (BillingSettings component)**:
+  - **Company details card**: Labeled "Your Company (Invoice Sender)" / "Dit firma (afsender på faktura)" — address, CVR, bank account/reg, payment terms, invoice prefix, footer note.
+  - **Accounting system card**: Shows green "Connected" badge with dark mode support when connected. "Test Connection" and "Disconnect" buttons for connected state. Three provider options (e-conomic, Dinero with OAuth; Billy with manual entry) for unconnected state.
+  - **Customer mapping card**: Appears when connected. Table of existing mappings with delete, add new mapping via client name + external customer dropdown.
+  - **OAuth callback handling**: Reads `?connected=` and `?error=` query params from URL on mount → shows success/error toast, cleans URL.
 - **Sidebar badge**: Shows count of projects with uninvoiced approved billable entries.
 
 ### Vacations
@@ -235,6 +255,14 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
 - Address autocomplete + distance calculation via OpenRouteService API
 - Rate limited: 20 requests/minute per company
 
+## Build Constraints & Gotchas
+
+- **Case-sensitive file imports**: Vercel runs Linux (case-sensitive). Windows dev is case-insensitive. File names must match import casing exactly (e.g., `Sidebar.tsx` for `import from '@/components/layout/Sidebar'`). Use `git mv` to rename if needed.
+- **Strict mode function declarations**: Next.js build rejects `function foo() {}` inside `if`/`else`/`for` blocks. Use `const foo = () => {}` arrow functions instead.
+- **Map iteration**: `for...of` on `Map` objects may fail in production builds. Use `Record<string, T>` with `Object.values().forEach()` / `Object.keys().forEach()` instead.
+- **Uint8Array as response body**: `new NextResponse(uint8Array)` fails type check. Wrap with `Buffer.from(uint8Array)`.
+- **Prisma uses `db push`**: Schema changes use `npx prisma db push` (NOT migrations). No migration history.
+
 ## Validation & Rate Limiting
 
 - Zod validation on all mutation API routes via `validate()` helper
@@ -259,6 +287,8 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
 - `RESEND_FROM_EMAIL` - Sender address (e.g., `Cloud Timer <noreply@cloudtimer.dk>`)
 - `SUPER_ADMIN_EMAIL` - Email address for platform super admin (enables `/super-admin` page + support access)
 - `ACCOUNTING_ENCRYPTION_KEY` - Hex-encoded 32-byte key for AES-256-GCM encryption of accounting credentials
+- `ECONOMIC_APP_SECRET_TOKEN` / `ECONOMIC_APP_PUBLIC_TOKEN` - e-conomic developer app credentials (for OAuth grant flow)
+- `DINERO_CLIENT_ID` / `DINERO_CLIENT_SECRET` - Visma Connect OAuth2 credentials (for Dinero integration)
 
 ## Known Gaps (potential future work)
 
