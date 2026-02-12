@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { getEffectiveWeeklyCapacity } from "@/lib/calculations";
 
 // Types for the insight data package
 export interface TeamMember {
@@ -328,7 +329,8 @@ export async function gatherInsightData(companyId: string): Promise<InsightDataP
     const weeklyHoursMap = userWeeklyHours.get(user.id) || new Map();
     const weekCount = Math.max(weeklyHoursMap.size, 1);
     const avgHours = totalHours / weekCount;
-    const utilizationPercent = (avgHours / user.weeklyTarget) * 100;
+    const effectiveTarget = getEffectiveWeeklyCapacity(user);
+    const utilizationPercent = (avgHours / effectiveTarget) * 100;
 
     return {
       id: user.id,
@@ -567,7 +569,7 @@ export async function gatherInsightData(companyId: string): Promise<InsightDataP
         userAllocations.set(user.id, {
           name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Unknown",
           allocated: 0,
-          target: user.weeklyTarget / 5, // Daily target
+          target: getEffectiveWeeklyCapacity(user) / 5, // Daily target
         });
       }
 
@@ -641,8 +643,9 @@ export async function gatherInsightData(companyId: string): Promise<InsightDataP
       }
     }
 
-    const availableHours = user.weeklyTarget - allocatedThisWeek;
-    if (availableHours > user.weeklyTarget * 0.5) { // More than 50% capacity available
+    const effectiveCap = getEffectiveWeeklyCapacity(user);
+    const availableHours = effectiveCap - allocatedThisWeek;
+    if (availableHours > effectiveCap * 0.5) { // More than 50% capacity available
       unassignedUsers.push({
         name: userName,
         weeklyTarget: user.weeklyTarget,
@@ -682,7 +685,7 @@ export async function gatherInsightData(companyId: string): Promise<InsightDataP
     },
     team: {
       members: teamMembers,
-      totalCapacityHoursWeekly: teamMembers.reduce((sum, m) => sum + m.weeklyTarget, 0),
+      totalCapacityHoursWeekly: users.reduce((sum, u) => sum + getEffectiveWeeklyCapacity(u), 0),
     },
     workloadMetrics: {
       weeklyHoursByUser,

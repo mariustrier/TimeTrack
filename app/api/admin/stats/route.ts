@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser, isAdminOrManager } from "@/lib/auth";
 import { expandRecurringExpenses } from "@/lib/expense-utils";
+import { getEffectiveWeeklyCapacity } from "@/lib/calculations";
 
 export async function GET(req: Request) {
   try {
@@ -99,7 +100,7 @@ export async function GET(req: Request) {
         costRate: member.costRate,
         weeklyTarget: member.weeklyTarget,
         isHourly: member.isHourly,
-        utilization: member.isHourly ? null : (member.weeklyTarget > 0 ? (hours / member.weeklyTarget) * 100 : 0),
+        utilization: member.isHourly ? null : (hours / getEffectiveWeeklyCapacity(member)) * 100,
       };
     });
 
@@ -198,7 +199,7 @@ export async function GET(req: Request) {
       };
     });
 
-    const targetHours = members.reduce((sum, m) => sum + (m.isHourly ? 0 : m.weeklyTarget), 0);
+    const targetHours = members.reduce((sum, m) => sum + (m.isHourly ? 0 : getEffectiveWeeklyCapacity(m)), 0);
 
     // Fetch approved project expenses for the date range
     const expenseDateFilter: Record<string, unknown> = {};

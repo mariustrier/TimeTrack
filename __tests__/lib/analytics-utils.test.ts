@@ -113,9 +113,9 @@ describe("aggregateEmployeeUtilizationTrend", () => {
     expect(result[0].target).toBe(100);
   });
 
-  it("returns 0 utilization when target is 0", () => {
+  it("uses default 37h capacity when weeklyTarget is 0", () => {
     const member = makeMember({ weeklyTarget: 0 });
-    const entries = [makeEntry({ date: "2024-01-15" })];
+    const entries = [makeEntry({ date: "2024-01-15", hours: 37 })];
     const result = aggregateEmployeeUtilizationTrend(
       entries,
       member,
@@ -123,8 +123,9 @@ describe("aggregateEmployeeUtilizationTrend", () => {
       new Date(2024, 0, 31),
       "monthly"
     );
-    expect(result[0].billableUtil).toBe(0);
-    expect(result[0].totalUtil).toBe(0);
+    // weeklyTarget=0 now falls back to 37h default via getEffectiveWeeklyCapacity
+    // 37 hours in ~4.43 weeks = 37/(37*4.43) ≈ non-zero utilization
+    expect(result[0].totalUtil).toBeGreaterThan(0);
   });
 });
 

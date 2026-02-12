@@ -4,6 +4,38 @@ import { getAuthUser } from "@/lib/auth";
 import { validate } from "@/lib/validate";
 import { updateResourceAllocationSchema } from "@/lib/schemas";
 
+const userSelect = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  email: true,
+  imageUrl: true,
+  weeklyTarget: true,
+  isHourly: true,
+  employmentType: true,
+};
+
+const projectSelect = {
+  id: true,
+  name: true,
+  color: true,
+  client: true,
+};
+
+function addDays(date: Date, days: number): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function isSameDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
 export async function GET(
   req: Request,
   { params }: { params: { id: string } }
@@ -21,23 +53,8 @@ export async function GET(
     const allocation = await db.resourceAllocation.findFirst({
       where: { id: params.id, companyId: user.companyId },
       include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            imageUrl: true,
-          },
-        },
-        project: {
-          select: {
-            id: true,
-            name: true,
-            color: true,
-            client: true,
-          },
-        },
+        user: { select: userSelect },
+        project: { select: projectSelect },
       },
     });
 
@@ -78,8 +95,113 @@ export async function PUT(
     const result = validate(updateResourceAllocationSchema, body);
     if (!result.success) return result.response;
 
-    const { startDate, endDate, hoursPerDay, totalHours, status, notes } = result.data;
+    const { startDate, endDate, hoursPerDay, totalHours, status, notes, editDate } = result.data;
 
+    // ── Single-day edit within a multi-day span ──
+    if (editDate) {
+      const editDay = new Date(editDate);
+      editDay.setHours(0, 0, 0, 0);
+
+      const existingStart = new Date(existing.startDate);
+      existingStart.setHours(0, 0, 0, 0);
+      const existingEnd = new Date(existing.endDate);
+      existingEnd.setHours(0, 0, 0, 0);
+
+      if (editDay < existingStart || editDay > existingEnd) {
+        return NextResponse.json({ error: "editDate is outside the allocation range" }, { status: 400 });
+      }
+
+      // If the allocation is already a single day, just update it normally
+      if (isSameDay(existingStart, existingEnd)) {
+        const allocation = await db.resourceAllocation.update({
+          where: { id: params.id },
+          data: {
+            hoursPerDay: hoursPerDay ?? existing.hoursPerDay,
+            status: status ?? existing.status,
+            notes: notes !== undefined ? notes : existing.notes,
+            totalHours: null,
+          },
+          include: {
+            user: { select: userSelect },
+            project: { select: projectSelect },
+          },
+        });
+        return NextResponse.json(allocation);
+      }
+
+      // Split: delete original, create up to 3 new allocations
+      const hasBefore = editDay > existingStart;
+      const hasAfter = editDay < existingEnd;
+
+      const creates: Parameters<typeof db.resourceAllocation.create>[0]["data"][] = [];
+
+      // "Before" segment
+      if (hasBefore) {
+        creates.push({
+          companyId: user.companyId,
+          userId: existing.userId,
+          projectId: existing.projectId,
+          startDate: existingStart,
+          endDate: addDays(editDay, -1),
+          hoursPerDay: existing.hoursPerDay,
+          totalHours: null,
+          status: existing.status,
+          notes: existing.notes,
+        });
+      }
+
+      // "Edited day" segment
+      creates.push({
+        companyId: user.companyId,
+        userId: existing.userId,
+        projectId: existing.projectId,
+        startDate: editDay,
+        endDate: editDay,
+        hoursPerDay: hoursPerDay ?? existing.hoursPerDay,
+        totalHours: null,
+        status: status ?? existing.status,
+        notes: notes !== undefined ? notes : existing.notes,
+      });
+
+      // "After" segment
+      if (hasAfter) {
+        creates.push({
+          companyId: user.companyId,
+          userId: existing.userId,
+          projectId: existing.projectId,
+          startDate: addDays(editDay, 1),
+          endDate: existingEnd,
+          hoursPerDay: existing.hoursPerDay,
+          totalHours: null,
+          status: existing.status,
+          notes: existing.notes,
+        });
+      }
+
+      // Execute in transaction
+      const results = await db.$transaction(async (tx) => {
+        await tx.resourceAllocation.delete({ where: { id: params.id } });
+        const created = [];
+        for (const data of creates) {
+          created.push(await tx.resourceAllocation.create({ data }));
+        }
+        return created;
+      });
+
+      // Return the edited-day allocation (index 0 if no before, 1 if before)
+      const editedIndex = hasBefore ? 1 : 0;
+      const editedAlloc = await db.resourceAllocation.findUnique({
+        where: { id: results[editedIndex].id },
+        include: {
+          user: { select: userSelect },
+          project: { select: projectSelect },
+        },
+      });
+
+      return NextResponse.json(editedAlloc);
+    }
+
+    // ── Standard full-allocation update ──
     const updateData: Record<string, unknown> = {};
     if (startDate !== undefined) updateData.startDate = new Date(startDate);
     if (endDate !== undefined) updateData.endDate = new Date(endDate);
@@ -111,23 +233,8 @@ export async function PUT(
       where: { id: params.id },
       data: updateData,
       include: {
-        user: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            imageUrl: true,
-          },
-        },
-        project: {
-          select: {
-            id: true,
-            name: true,
-            color: true,
-            client: true,
-          },
-        },
+        user: { select: userSelect },
+        project: { select: projectSelect },
       },
     });
 
@@ -160,6 +267,73 @@ export async function DELETE(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
+    // Check for ?date= query param — single-day removal from a span
+    const { searchParams } = new URL(req.url);
+    const dateParam = searchParams.get("date");
+
+    if (dateParam) {
+      const removeDay = new Date(dateParam);
+      removeDay.setHours(0, 0, 0, 0);
+
+      const existingStart = new Date(existing.startDate);
+      existingStart.setHours(0, 0, 0, 0);
+      const existingEnd = new Date(existing.endDate);
+      existingEnd.setHours(0, 0, 0, 0);
+
+      if (removeDay < existingStart || removeDay > existingEnd) {
+        return NextResponse.json({ error: "date is outside the allocation range" }, { status: 400 });
+      }
+
+      // If single-day allocation, just delete
+      if (isSameDay(existingStart, existingEnd)) {
+        await db.resourceAllocation.delete({ where: { id: params.id } });
+        return NextResponse.json({ success: true });
+      }
+
+      // Split: remove the day, keep before and/or after segments
+      const hasBefore = removeDay > existingStart;
+      const hasAfter = removeDay < existingEnd;
+
+      await db.$transaction(async (tx) => {
+        await tx.resourceAllocation.delete({ where: { id: params.id } });
+
+        if (hasBefore) {
+          await tx.resourceAllocation.create({
+            data: {
+              companyId: user.companyId,
+              userId: existing.userId,
+              projectId: existing.projectId,
+              startDate: existingStart,
+              endDate: addDays(removeDay, -1),
+              hoursPerDay: existing.hoursPerDay,
+              totalHours: null,
+              status: existing.status,
+              notes: existing.notes,
+            },
+          });
+        }
+
+        if (hasAfter) {
+          await tx.resourceAllocation.create({
+            data: {
+              companyId: user.companyId,
+              userId: existing.userId,
+              projectId: existing.projectId,
+              startDate: addDays(removeDay, 1),
+              endDate: existingEnd,
+              hoursPerDay: existing.hoursPerDay,
+              totalHours: null,
+              status: existing.status,
+              notes: existing.notes,
+            },
+          });
+        }
+      });
+
+      return NextResponse.json({ success: true });
+    }
+
+    // Standard full-allocation delete
     await db.resourceAllocation.delete({
       where: { id: params.id },
     });

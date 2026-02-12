@@ -864,7 +864,10 @@
     "period": "Period",
     "weeks": "wk",
     "months": "mo",
-    "hourly": "Hourly"
+    "hourly": "Hourly",
+    "searchEmployee": "Search...",
+    "allProjects": "All projects",
+    "desktopRecommended": "Desktop recommended for the best experience"
   },
   "timeline": {
     "title": "Project Timeline",

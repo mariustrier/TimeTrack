@@ -864,7 +864,10 @@
     "period": "Periode",
     "weeks": "uge",
     "months": "mdr",
-    "hourly": "Timelønnet"
+    "hourly": "Timelønnet",
+    "searchEmployee": "Søg...",
+    "allProjects": "Alle projekter",
+    "desktopRecommended": "Desktop anbefales for den bedste oplevelse"
   },
   "timeline": {
     "title": "Projekt Tidslinje",

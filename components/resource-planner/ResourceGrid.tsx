@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { useDateLocale, useLocale, useTranslations } from "@/lib/i18n";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { isCompanyHoliday, getCompanyHolidayName, type CustomHoliday } from "@/lib/holidays";
-import { getDailyTarget } from "@/lib/calculations";
+import { getDailyTarget, getEffectiveWeeklyCapacity } from "@/lib/calculations";
 import type { ViewMode } from "@/components/resource-planner/ViewControls";
 
 interface Employee {
@@ -355,7 +355,7 @@ export function ResourceGrid({
                     </Avatar>
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{getDisplayName(employee)}</p>
-                      <p className="text-xs text-muted-foreground">{employee.isHourly ? t("hourly") : `${employee.weeklyTarget}h/week`}</p>
+                      <p className="text-xs text-muted-foreground">{employee.isHourly ? t("hourly") : `${getEffectiveWeeklyCapacity(employee)}h/week`}</p>
                     </div>
                   </div>
                 </td>
@@ -581,7 +581,7 @@ export function ResourceGrid({
                   </Avatar>
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{getDisplayName(employee)}</p>
-                    <p className="text-xs text-muted-foreground">{employee.weeklyTarget}h/week</p>
+                    <p className="text-xs text-muted-foreground">{getEffectiveWeeklyCapacity(employee)}h/week</p>
                   </div>
                 </div>
               </td>

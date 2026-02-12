@@ -1,4 +1,5 @@
 import { format, startOfMonth, eachMonthOfInterval, eachWeekOfInterval, startOfWeek, differenceInDays } from "date-fns";
+import { getEffectiveWeeklyCapacity } from "@/lib/calculations";
 
 // --- Types ---
 
@@ -127,7 +128,7 @@ export function aggregateEmployeeUtilizationTrend(
       .filter((e) => e.billingStatus === "billable")
       .reduce((s, e) => s + e.hours, 0);
     const weeks = weeksInPeriod(key, granularity);
-    const expected = member.weeklyTarget * weeks;
+    const expected = getEffectiveWeeklyCapacity(member) * weeks;
 
     return {
       period: periodLabel(key, granularity),
@@ -189,7 +190,7 @@ export function aggregateTeamUtilization(
     const billableHours = memberEntries
       .filter((e) => e.billingStatus === "billable")
       .reduce((s, e) => s + e.hours, 0);
-    const expected = member.weeklyTarget * totalWeeks;
+    const expected = getEffectiveWeeklyCapacity(member) * totalWeeks;
 
     return {
       name: memberName(member),

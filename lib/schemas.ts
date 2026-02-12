@@ -201,6 +201,7 @@ export const updateResourceAllocationSchema = z.object({
   totalHours: z.coerce.number().positive().optional().nullable(),
   status: z.enum(["tentative", "confirmed", "completed"]).optional(),
   notes: z.string().max(500).optional().nullable(),
+  editDate: z.string().optional(), // ISO date — if set, only edit this day within the span (splits the allocation)
 });
 
 // --- Project Milestones ---

@@ -57,6 +57,7 @@ export async function GET(req: Request) {
             imageUrl: true,
             weeklyTarget: true,
             isHourly: true,
+            employmentType: true,
           },
         },
         project: {

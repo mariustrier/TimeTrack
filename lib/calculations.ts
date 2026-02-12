@@ -1,5 +1,15 @@
 import { isCompanyHoliday, isDanishHoliday, type CustomHoliday } from "./holidays";
 
+/** Danish standard full-time work week (hours). Used as fallback for employees without a weeklyTarget. */
+export const DEFAULT_WEEKLY_CAPACITY = 37;
+
+/** Returns effective weekly capacity: the employee's weeklyTarget if set and positive, otherwise 37h. */
+export function getEffectiveWeeklyCapacity(user: { weeklyTarget?: number | null }): number {
+  return (user.weeklyTarget && user.weeklyTarget > 0)
+    ? user.weeklyTarget
+    : DEFAULT_WEEKLY_CAPACITY;
+}
+
 /**
  * Returns the expected working hours for a given date.
  * Returns 0 for weekends and holidays, otherwise Mon-Thu or Friday target.

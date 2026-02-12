@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   startOfWeek,
   endOfWeek,
@@ -10,24 +10,18 @@ import {
   subMonths,
   format,
   eachDayOfInterval,
-  isWeekend,
 } from "date-fns";
-import {
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Slider } from "@/components/ui/slider";
-import { useTranslations, useDateLocale } from "@/lib/i18n";
-import { ResourceGrid } from "@/components/resource-planner/ResourceGrid";
-import { AllocationDialog } from "@/components/resource-planner/AllocationDialog";
-import { ViewControls } from "@/components/resource-planner/ViewControls";
-import { CapacitySummary } from "@/components/resource-planner/CapacitySummary";
-import { getDailyTarget } from "@/lib/calculations";
+import { useTranslations } from "@/lib/i18n";
+import { PlannerGrid } from "@/components/resource-planner/PlannerGrid";
+import { PlannerControls } from "@/components/resource-planner/PlannerControls";
+import { PlannerSummary } from "@/components/resource-planner/PlannerSummary";
+import { AllocationPopover } from "@/components/resource-planner/AllocationPopover";
+import { getDailyTarget, getEffectiveWeeklyCapacity } from "@/lib/calculations";
 import { isCompanyHoliday, type CustomHoliday } from "@/lib/holidays";
+import { isWeekend } from "date-fns";
 
 export interface Employee {
   id: string;
@@ -36,6 +30,8 @@ export interface Employee {
   email: string;
   imageUrl: string | null;
   weeklyTarget: number;
+  isHourly?: boolean;
+  employmentType?: string;
 }
 
 export interface Project {
@@ -59,13 +55,6 @@ export interface ResourceAllocation {
   project: Project;
 }
 
-export interface TimeEntryForAllocation {
-  userId: string;
-  projectId: string;
-  date: string;
-  hours: number;
-}
-
 export interface VacationPeriod {
   id: string;
   userId: string;
@@ -77,41 +66,76 @@ export interface VacationPeriod {
 
 type ViewMode = "week" | "twoWeeks" | "month";
 
+interface PopoverState {
+  open: boolean;
+  position: { top: number; left: number } | null;
+  mode: "create" | "edit";
+  employeeId: string;
+  date: string;
+  allocation: {
+    id: string;
+    projectId: string;
+    hoursPerDay: number;
+    status: "tentative" | "confirmed" | "completed";
+    notes: string | null;
+    isMultiDay: boolean;
+  } | null;
+}
+
+const INITIAL_POPOVER: PopoverState = {
+  open: false,
+  position: null,
+  mode: "create",
+  employeeId: "",
+  date: "",
+  allocation: null,
+};
+
 export function ResourcePlanner() {
   const t = useTranslations("resourcePlanner");
-  const dateLocale = useDateLocale();
 
   const [viewMode, setViewMode] = useState<ViewMode>("twoWeeks");
   const [currentDate, setCurrentDate] = useState(() => new Date());
-  const [spans, setSpans] = useState<Record<ViewMode, number>>({ week: 1, twoWeeks: 2, month: 3 });
+  const [spans, setSpans] = useState<Record<ViewMode, number>>({
+    week: 1,
+    twoWeeks: 2,
+    month: 3,
+  });
 
-  const spanConfig: Record<ViewMode, { min: number; max: number; step: number; unit: "weeks" | "months" }> = {
+  const spanConfig: Record<
+    ViewMode,
+    { min: number; max: number; step: number; unit: "weeks" | "months" }
+  > = {
     week: { min: 1, max: 4, step: 1, unit: "weeks" },
     twoWeeks: { min: 1, max: 4, step: 1, unit: "weeks" },
     month: { min: 2, max: 6, step: 1, unit: "months" },
   };
 
   const currentSpan = spans[viewMode];
-  const { min, max, step, unit } = spanConfig[viewMode];
+
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [allocations, setAllocations] = useState<ResourceAllocation[]>([]);
-  const [timeEntries, setTimeEntries] = useState<TimeEntryForAllocation[]>([]);
   const [vacations, setVacations] = useState<VacationPeriod[]>([]);
   const [disabledHolidayCodes, setDisabledHolidayCodes] = useState<string[]>([]);
   const [customHolidays, setCustomHolidays] = useState<CustomHoliday[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Dialog state
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedAllocation, setSelectedAllocation] = useState<ResourceAllocation | null>(null);
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  // Filters
+  const [projectFilter, setProjectFilter] = useState<string | null>(null);
+  const [employeeSearch, setEmployeeSearch] = useState("");
 
-  // Calculate date range based on view mode and span
+  // Popover state
+  const [popover, setPopover] = useState<PopoverState>(INITIAL_POPOVER);
+
+  // Undo delete state
+  const undoRef = useRef<{ timeout: ReturnType<typeof setTimeout>; allocationId: string } | null>(
+    null
+  );
+
+  // Calculate date range
   const getDateRange = useCallback(() => {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-
     switch (viewMode) {
       case "week":
         return {
@@ -137,7 +161,6 @@ export function ResourcePlanner() {
   const dateRange = getDateRange();
   const days = eachDayOfInterval({ start: dateRange.start, end: dateRange.end });
 
-  // Convert to strings to use as stable dependencies
   const startStr = format(dateRange.start, "yyyy-MM-dd");
   const endStr = format(dateRange.end, "yyyy-MM-dd");
 
@@ -146,14 +169,14 @@ export function ResourcePlanner() {
     try {
       setLoading(true);
 
-      const [employeesRes, projectsRes, allocationsRes, timeEntriesRes, vacationsRes, holidaysRes] = await Promise.all([
-        fetch("/api/team"),
-        fetch("/api/projects"),
-        fetch(`/api/resource-allocations?startDate=${startStr}&endDate=${endStr}`),
-        fetch(`/api/time-entries/for-allocations?startDate=${startStr}&endDate=${endStr}`),
-        fetch(`/api/vacations?status=approved&startDate=${startStr}&endDate=${endStr}`),
-        fetch("/api/admin/holidays"),
-      ]);
+      const [employeesRes, projectsRes, allocationsRes, vacationsRes, holidaysRes] =
+        await Promise.all([
+          fetch("/api/team"),
+          fetch("/api/projects"),
+          fetch(`/api/resource-allocations?startDate=${startStr}&endDate=${endStr}`),
+          fetch(`/api/vacations?status=approved&startDate=${startStr}&endDate=${endStr}`),
+          fetch("/api/admin/holidays"),
+        ]);
 
       if (!employeesRes.ok || !projectsRes.ok || !allocationsRes.ok) {
         throw new Error("Failed to fetch data");
@@ -165,32 +188,28 @@ export function ResourcePlanner() {
         allocationsRes.json(),
       ]);
 
-      // Time entries might not exist yet, that's ok
-      let timeEntriesData: TimeEntryForAllocation[] = [];
-      if (timeEntriesRes.ok) {
-        timeEntriesData = await timeEntriesRes.json();
-      }
-
-      // Vacations
       if (vacationsRes.ok) {
         setVacations(await vacationsRes.json());
       }
 
-      // Holidays config
       if (holidaysRes.ok) {
         const hData = await holidaysRes.json();
         setDisabledHolidayCodes(hData.disabledHolidays ?? []);
         setCustomHolidays(
-          (hData.customHolidays ?? []).map((ch: { name: string; month: number; day: number; year?: number | null }) => ({
-            name: ch.name, month: ch.month, day: ch.day, year: ch.year,
-          })),
+          (hData.customHolidays ?? []).map(
+            (ch: { name: string; month: number; day: number; year?: number | null }) => ({
+              name: ch.name,
+              month: ch.month,
+              day: ch.day,
+              year: ch.year,
+            })
+          )
         );
       }
 
       setEmployees(employeesData);
       setProjects(projectsData.filter((p: Project & { archived?: boolean }) => !p.archived));
       setAllocations(allocationsData);
-      setTimeEntries(timeEntriesData);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error(t("fetchError") || "Failed to load data");
@@ -203,7 +222,7 @@ export function ResourcePlanner() {
     fetchData();
   }, [fetchData]);
 
-  // Navigation - step adapts to span
+  // Navigation
   const goToPrevious = () => {
     if (viewMode === "month") {
       setCurrentDate((d) => subMonths(d, Math.max(1, Math.ceil(currentSpan / 2))));
@@ -220,57 +239,96 @@ export function ResourcePlanner() {
     }
   };
 
-  const goToToday = () => {
-    setCurrentDate(new Date());
+  const goToToday = () => setCurrentDate(new Date());
+
+  // ── Popover handlers ──
+
+  const handleEmptyCellClick = (employeeId: string, date: Date, rect: DOMRect) => {
+    const emp = employees.find((e) => e.id === employeeId);
+    const effectiveCap = emp ? getEffectiveWeeklyCapacity(emp) : 37;
+    const dailyTarget = getDailyTarget(date, effectiveCap);
+
+    setPopover({
+      open: true,
+      position: { top: rect.bottom + 4, left: rect.left },
+      mode: "create",
+      employeeId,
+      date: format(date, "yyyy-MM-dd"),
+      allocation: null,
+    });
   };
 
-  // Allocation handlers
-  const handleCellClick = (employee: Employee, date: Date) => {
-    setSelectedAllocation(null);
-    setSelectedEmployee(employee);
-    setSelectedDate(date);
-    setDialogOpen(true);
+  const handleAllocationClick = (
+    allocation: ResourceAllocation,
+    date: Date,
+    rect: DOMRect
+  ) => {
+    const isMultiDay =
+      allocation.startDate.split("T")[0] !== allocation.endDate.split("T")[0];
+
+    setPopover({
+      open: true,
+      position: { top: rect.bottom + 4, left: rect.left },
+      mode: "edit",
+      employeeId: allocation.userId,
+      date: format(date, "yyyy-MM-dd"),
+      allocation: {
+        id: allocation.id,
+        projectId: allocation.projectId,
+        hoursPerDay: allocation.hoursPerDay,
+        status: allocation.status,
+        notes: allocation.notes,
+        isMultiDay,
+      },
+    });
   };
 
-  const handleAllocationClick = (allocation: ResourceAllocation) => {
-    setSelectedAllocation(allocation);
-    setSelectedEmployee(null);
-    setSelectedDate(null);
-    setDialogOpen(true);
-  };
-
-  const handleSaveAllocation = async (data: {
-    userId: string;
+  const handlePopoverSave = async (data: {
     projectId: string;
-    startDate: string;
-    endDate: string;
-    hoursPerDay?: number;
-    totalHours?: number | null;
+    hoursPerDay: number;
     status: string;
     notes: string | null;
+    editDate?: string;
   }) => {
     try {
-      if (selectedAllocation) {
+      if (popover.mode === "edit" && popover.allocation) {
         // Update existing
-        const res = await fetch(`/api/resource-allocations/${selectedAllocation.id}`, {
+        const body: Record<string, unknown> = {
+          hoursPerDay: data.hoursPerDay,
+          status: data.status,
+          notes: data.notes,
+        };
+        if (data.editDate) {
+          body.editDate = data.editDate;
+        }
+
+        const res = await fetch(`/api/resource-allocations/${popover.allocation.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
+          body: JSON.stringify(body),
         });
         if (!res.ok) throw new Error("Failed to update allocation");
         toast.success(t("allocationUpdated") || "Allocation updated");
       } else {
-        // Create new
+        // Create new — single day allocation
         const res = await fetch("/api/resource-allocations", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
+          body: JSON.stringify({
+            userId: popover.employeeId,
+            projectId: data.projectId,
+            startDate: popover.date,
+            endDate: popover.date,
+            hoursPerDay: data.hoursPerDay,
+            status: data.status,
+            notes: data.notes,
+          }),
         });
         if (!res.ok) throw new Error("Failed to create allocation");
         toast.success(t("allocationCreated") || "Allocation created");
       }
 
-      setDialogOpen(false);
+      setPopover(INITIAL_POPOVER);
       fetchData();
     } catch (error) {
       console.error("Error saving allocation:", error);
@@ -278,146 +336,202 @@ export function ResourcePlanner() {
     }
   };
 
-  const handleDeleteAllocation = async (id: string) => {
-    try {
-      const res = await fetch(`/api/resource-allocations/${id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed to delete allocation");
-      toast.success(t("allocationDeleted") || "Allocation deleted");
-      setDialogOpen(false);
-      fetchData();
-    } catch (error) {
-      console.error("Error deleting allocation:", error);
-      toast.error(t("deleteError") || "Failed to delete allocation");
-    }
-  };
+  const handleAllocationDelete = async (allocationId: string, date?: string) => {
+    // Optimistic: remove from state
+    const deletedAlloc = allocations.find((a) => a.id === allocationId);
+    setAllocations((prev) => prev.filter((a) => a.id !== allocationId));
+    setPopover(INITIAL_POPOVER);
 
-  // Calculate utilization for capacity summary (holiday-aware)
-  const calculateUtilization = () => {
-    const utilizationMap: Record<string, { allocated: number; target: number }> = {};
-
-    employees.forEach((emp) => {
-      const target = days.reduce(
-        (sum, day) => sum + getDailyTarget(day, emp.weeklyTarget, disabledHolidayCodes, customHolidays),
-        0,
-      );
-      utilizationMap[emp.id] = {
-        allocated: 0,
-        target,
-      };
+    const toastId = toast(t("allocationDeleted") || "Allocation deleted", {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          // Cancel the actual delete
+          if (undoRef.current?.allocationId === allocationId) {
+            clearTimeout(undoRef.current.timeout);
+            undoRef.current = null;
+          }
+          // Restore optimistically
+          if (deletedAlloc) {
+            setAllocations((prev) => [...prev, deletedAlloc]);
+          }
+        },
+      },
+      duration: 3000,
     });
 
-    allocations.forEach((alloc) => {
-      const allocStart = new Date(alloc.startDate);
-      const allocEnd = new Date(alloc.endDate);
+    // Schedule actual delete after 3s
+    const timeout = setTimeout(async () => {
+      try {
+        const url = date
+          ? `/api/resource-allocations/${allocationId}?date=${date}`
+          : `/api/resource-allocations/${allocationId}`;
+        const res = await fetch(url, { method: "DELETE" });
+        if (!res.ok) throw new Error("Failed to delete");
+        fetchData(); // Refresh to get accurate state
+      } catch (error) {
+        console.error("Error deleting allocation:", error);
+        toast.error(t("deleteError") || "Failed to delete allocation");
+        // Restore on error
+        if (deletedAlloc) {
+          setAllocations((prev) => [...prev, deletedAlloc]);
+        }
+      }
+      undoRef.current = null;
+    }, 3200);
 
-      days.forEach((day) => {
-        if (isWeekend(day)) return;
-        if (isCompanyHoliday(day, disabledHolidayCodes, customHolidays)) return;
-        if (day >= allocStart && day <= allocEnd) {
-          if (utilizationMap[alloc.userId]) {
-            utilizationMap[alloc.userId].allocated += alloc.hoursPerDay;
-          }
+    undoRef.current = { timeout, allocationId };
+  };
+
+  // ── Filter employees ──
+  const filteredEmployees = employees.filter((emp) => {
+    // Name search
+    if (employeeSearch) {
+      const name = `${emp.firstName || ""} ${emp.lastName || ""} ${emp.email}`.toLowerCase();
+      if (!name.includes(employeeSearch.toLowerCase())) return false;
+    }
+    // Project filter: only show employees that have allocations for the selected project
+    if (projectFilter) {
+      const hasAlloc = allocations.some(
+        (a) => a.userId === emp.id && a.projectId === projectFilter
+      );
+      if (!hasAlloc) return false;
+    }
+    return true;
+  });
+
+  // Filter allocations by project
+  const filteredAllocations = projectFilter
+    ? allocations.filter((a) => a.projectId === projectFilter)
+    : allocations;
+
+  // ── Calculate summary stats ──
+  let summaryAllocated = 0;
+  let summaryCapacity = 0;
+  let overbookedCount = 0;
+  let availableCount = 0;
+
+  filteredEmployees.forEach((emp) => {
+    const effectiveCap = getEffectiveWeeklyCapacity(emp);
+    let empAllocated = 0;
+    let empCapacity = 0;
+
+    days.forEach((day) => {
+      if (isWeekend(day)) return;
+      if (isCompanyHoliday(day, disabledHolidayCodes, customHolidays)) return;
+      const target = getDailyTarget(day, effectiveCap, disabledHolidayCodes, customHolidays);
+      empCapacity += target;
+
+      const dateStr = format(day, "yyyy-MM-dd");
+      filteredAllocations.forEach((a) => {
+        if (a.userId !== emp.id) return;
+        const start = a.startDate.split("T")[0];
+        const end = a.endDate.split("T")[0];
+        if (dateStr >= start && dateStr <= end) {
+          empAllocated += a.hoursPerDay;
         }
       });
     });
 
-    return utilizationMap;
-  };
+    summaryAllocated += empAllocated;
+    summaryCapacity += empCapacity;
 
-  const utilization = calculateUtilization();
+    if (empCapacity > 0) {
+      const util = (empAllocated / empCapacity) * 100;
+      if (util > 100) overbookedCount++;
+      else if (util < 50) availableCount++;
+    }
+  });
+
+  const teamUtilization = summaryCapacity > 0 ? (summaryAllocated / summaryCapacity) * 100 : 0;
+
+  // Get default hours for popover
+  const getDefaultHours = () => {
+    if (!popover.employeeId) return 7.5;
+    const emp = employees.find((e) => e.id === popover.employeeId);
+    if (!emp) return 7.5;
+    const effectiveCap = getEffectiveWeeklyCapacity(emp);
+    if (popover.date) {
+      const date = new Date(popover.date);
+      return getDailyTarget(date, effectiveCap, disabledHolidayCodes, customHolidays) || 7.5;
+    }
+    return effectiveCap / 5;
+  };
 
   if (loading) {
     return (
       <div className="space-y-6 p-6">
-        <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-[600px] w-full" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-[500px] w-full" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-        </div>
-
-        <div className="flex items-center gap-4">
-          <ViewControls
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
-          />
-          <div className="flex items-center gap-2">
-            <Slider
-              value={[currentSpan]}
-              onValueChange={([v]) => setSpans((s) => ({ ...s, [viewMode]: v }))}
-              min={min}
-              max={max}
-              step={step}
-              className="w-[100px]"
-            />
-            <span className="text-xs text-muted-foreground w-10 text-right">
-              {currentSpan} {t(unit) || (unit === "weeks" ? "wk" : "mo")}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={goToPrevious}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" onClick={goToToday}>
-              {t("today") || "Today"}
-            </Button>
-            <Button variant="outline" size="icon" onClick={goToNext}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <span className="text-sm font-medium text-muted-foreground">
-            {format(dateRange.start, "MMM d", { locale: dateLocale })} - {format(dateRange.end, "MMM d, yyyy", { locale: dateLocale })}
-          </span>
-        </div>
-      </div>
-
-      {/* Capacity Summary */}
-      <CapacitySummary
-        employees={employees}
-        utilization={utilization}
+    <div className="space-y-4 p-6">
+      {/* Controls */}
+      <PlannerControls
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        currentSpan={currentSpan}
+        onSpanChange={(v) => setSpans((s) => ({ ...s, [viewMode]: v }))}
+        spanConfig={spanConfig[viewMode]}
+        dateRange={dateRange}
+        onPrevious={goToPrevious}
+        onNext={goToNext}
+        onToday={goToToday}
+        projects={projects}
+        projectFilter={projectFilter}
+        onProjectFilterChange={setProjectFilter}
+        employeeSearch={employeeSearch}
+        onEmployeeSearchChange={setEmployeeSearch}
       />
 
-      {/* Main Grid */}
+      {/* Summary */}
+      <PlannerSummary
+        utilizationPercent={teamUtilization}
+        overbookedCount={overbookedCount}
+        availableCount={availableCount}
+      />
+
+      {/* Grid */}
       <Card>
         <CardContent className="p-0">
-          <ResourceGrid
-            employees={employees}
-            projects={projects}
-            allocations={allocations}
-            timeEntries={timeEntries}
+          <PlannerGrid
+            employees={filteredEmployees}
+            allocations={filteredAllocations}
             vacations={vacations}
-            disabledHolidayCodes={disabledHolidayCodes}
-            customHolidays={customHolidays}
             days={days}
             viewMode={viewMode}
-            onCellClick={handleCellClick}
+            disabledHolidayCodes={disabledHolidayCodes}
+            customHolidays={customHolidays}
+            onEmptyCellClick={handleEmptyCellClick}
             onAllocationClick={handleAllocationClick}
+            onAllocationDelete={handleAllocationDelete}
           />
         </CardContent>
       </Card>
 
-      {/* Allocation Dialog */}
-      <AllocationDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        allocation={selectedAllocation}
-        employee={selectedEmployee}
-        date={selectedDate}
-        employees={employees}
+      {/* Inline Popover */}
+      <AllocationPopover
+        open={popover.open}
+        position={popover.position}
+        mode={popover.mode}
+        employeeId={popover.employeeId}
+        date={popover.date}
+        allocation={popover.allocation}
         projects={projects}
-        onSave={handleSaveAllocation}
-        onDelete={handleDeleteAllocation}
+        defaultHoursPerDay={getDefaultHours()}
+        onSave={handlePopoverSave}
+        onDelete={handleAllocationDelete}
+        onClose={() => setPopover(INITIAL_POPOVER)}
       />
+
+      {/* Mobile notice */}
+      <p className="text-xs text-muted-foreground text-center md:hidden">
+        {t("desktopRecommended") || "Desktop recommended for the best experience"}
+      </p>
     </div>
   );
 }
