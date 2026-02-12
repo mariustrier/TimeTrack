@@ -16,61 +16,47 @@ import {
   isWithinInterval,
   getISOWeek,
 } from "date-fns";
-import {
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { useTranslations, useDateLocale } from "@/lib/i18n";
 import { TimelineGrid } from "@/components/project-timeline/TimelineGrid";
-import { MilestoneDialog } from "@/components/project-timeline/MilestoneDialog";
-import { TimelineViewControls, type TimelineViewMode } from "@/components/project-timeline/TimelineViewControls";
-
-export interface Project {
-  id: string;
-  name: string;
-  color: string;
-  client: string | null;
-  startDate: string | null;
-  endDate: string | null;
-  budgetHours: number | null;
-  hoursUsed: number;
-  archived: boolean;
-}
-
-export interface Milestone {
-  id: string;
-  projectId: string;
-  title: string;
-  dueDate: string;
-  completed: boolean;
-  completedAt: string | null;
-  sortOrder: number;
-}
-
-export interface TimelineColumn {
-  key: string;
-  label: string;
-  start: Date;
-  end: Date;
-  containsToday: boolean;
-  month: Date;
-}
+import { TimelineFilters } from "@/components/project-timeline/TimelineFilters";
+import { ConflictPanel } from "@/components/project-timeline/ConflictPanel";
+import type {
+  TimelineProject,
+  TimelineMilestone,
+  TimelineColumn,
+  TimelineConflict,
+  TimelineViewMode,
+  VisibilityToggles,
+  CompanyPhase,
+} from "@/components/project-timeline/types";
 
 export function ProjectTimeline() {
   const t = useTranslations("timeline");
   const dateLocale = useDateLocale();
 
   const [currentDate, setCurrentDate] = useState(() => new Date());
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [projects, setProjects] = useState<TimelineProject[]>([]);
+  const [milestones, setMilestones] = useState<TimelineMilestone[]>([]);
+  const [phases, setPhases] = useState<CompanyPhase[]>([]);
+  const [conflicts, setConflicts] = useState<TimelineConflict[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<TimelineViewMode>("day");
   const [spans, setSpans] = useState<Record<TimelineViewMode, number>>({ day: 3, week: 6, month: 12 });
+
+  // Filters
+  const [clientFilter, setClientFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("active");
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [visibility, setVisibility] = useState<VisibilityToggles>({
+    phases: true,
+    team: false,
+    burndown: false,
+    conflicts: true,
+  });
 
   const spanConfig: Record<TimelineViewMode, { min: number; max: number; step: number }> = {
     day: { min: 1, max: 6, step: 1 },
@@ -79,14 +65,14 @@ export function ProjectTimeline() {
   };
 
   const currentSpan = spans[viewMode];
-  const { min, max, step } = spanConfig[viewMode];
 
-  // Dialog state
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null);
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
-  // Calculate visible date range based on view mode and span
+  // Calculate visible date range
   const dateRange = useMemo(() => {
     const half = Math.floor(currentSpan / 2);
     const remainder = currentSpan - half;
@@ -110,7 +96,7 @@ export function ProjectTimeline() {
     }
   }, [currentDate, viewMode, currentSpan]);
 
-  // Generate columns based on view mode
+  // Generate columns
   const columns = useMemo((): TimelineColumn[] => {
     const today = new Date();
 
@@ -154,115 +140,65 @@ export function ProjectTimeline() {
     }
   }, [dateRange, viewMode, dateLocale]);
 
-  // Fetch data
+  // Build includes based on visibility
+  const includes = useMemo(() => {
+    const parts: string[] = [];
+    if (visibility.phases) parts.push("phases");
+    if (visibility.team) parts.push("allocations");
+    if (visibility.burndown) parts.push("burndown");
+    if (visibility.conflicts) parts.push("conflicts");
+    return parts.join(",");
+  }, [visibility]);
+
+  // Fetch data from enriched timeline endpoint
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
 
-      const projectsRes = await fetch("/api/projects");
-      if (!projectsRes.ok) throw new Error("Failed to fetch projects");
+      const params = new URLSearchParams({
+        startDate: format(dateRange.start, "yyyy-MM-dd"),
+        endDate: format(dateRange.end, "yyyy-MM-dd"),
+        status: statusFilter,
+      });
+      if (includes) params.set("include", includes);
+      if (clientFilter && clientFilter !== "all") params.set("client", clientFilter);
+      if (debouncedSearch) params.set("search", debouncedSearch);
 
-      const projectsData = await projectsRes.json();
-      const activeProjects = projectsData.filter((p: Project & { systemManaged?: boolean }) => !p.archived && !p.systemManaged);
-      setProjects(activeProjects);
+      const res = await fetch(`/api/projects/timeline?${params.toString()}`);
+      if (!res.ok) throw new Error("Failed to fetch timeline data");
 
-      // Fetch milestones for all projects
-      const milestonePromises = activeProjects.map((p: Project) =>
-        fetch(`/api/projects/${p.id}/milestones`).then((r) => r.json())
-      );
-      const allMilestones = await Promise.all(milestonePromises);
-      setMilestones(allMilestones.flat());
+      const data = await res.json();
+      setProjects(data.projects || []);
+      setMilestones(data.milestones || []);
+      setPhases(data.phases || []);
+      setConflicts(data.conflicts || []);
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Error fetching timeline data:", error);
       toast.error(t("fetchError") || "Failed to load data");
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [dateRange, includes, clientFilter, statusFilter, debouncedSearch, t]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // Navigation - always 1 month at a time
+  // Navigation
   const goToPrevious = () => setCurrentDate((d) => subMonths(d, 1));
   const goToNext = () => setCurrentDate((d) => addMonths(d, 1));
   const goToToday = () => setCurrentDate(new Date());
 
-  // Milestone handlers
-  const handleAddMilestone = (project: Project) => {
-    setSelectedProject(project);
-    setSelectedMilestone(null);
-    setDialogOpen(true);
-  };
+  // Unique clients for filter
+  const clients = useMemo(() => {
+    const uniqueClients = new Set<string>();
+    projects.forEach((p) => {
+      if (p.client) uniqueClients.add(p.client);
+    });
+    return Array.from(uniqueClients).sort();
+  }, [projects]);
 
-  const handleEditMilestone = (milestone: Milestone) => {
-    const project = projects.find((p) => p.id === milestone.projectId);
-    setSelectedProject(project || null);
-    setSelectedMilestone(milestone);
-    setDialogOpen(true);
-  };
-
-  const handleSaveMilestone = async (data: {
-    projectId: string;
-    title: string;
-    dueDate: string;
-    completed?: boolean;
-  }) => {
-    try {
-      if (selectedMilestone) {
-        // Update existing
-        const res = await fetch(`/api/projects/${data.projectId}/milestones`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            milestoneId: selectedMilestone.id,
-            title: data.title,
-            dueDate: data.dueDate,
-            completed: data.completed,
-          }),
-        });
-        if (!res.ok) throw new Error("Failed to update milestone");
-        toast.success(t("milestoneUpdated") || "Milestone updated");
-      } else {
-        // Create new
-        const res = await fetch(`/api/projects/${data.projectId}/milestones`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: data.title,
-            dueDate: data.dueDate,
-          }),
-        });
-        if (!res.ok) throw new Error("Failed to create milestone");
-        toast.success(t("milestoneCreated") || "Milestone created");
-      }
-
-      setDialogOpen(false);
-      fetchData();
-    } catch (error) {
-      console.error("Error saving milestone:", error);
-      toast.error(t("saveError") || "Failed to save milestone");
-    }
-  };
-
-  const handleDeleteMilestone = async (milestoneId: string, projectId: string) => {
-    try {
-      const res = await fetch(
-        `/api/projects/${projectId}/milestones?milestoneId=${milestoneId}`,
-        { method: "DELETE" }
-      );
-      if (!res.ok) throw new Error("Failed to delete milestone");
-      toast.success(t("milestoneDeleted") || "Milestone deleted");
-      setDialogOpen(false);
-      fetchData();
-    } catch (error) {
-      console.error("Error deleting milestone:", error);
-      toast.error(t("deleteError") || "Failed to delete milestone");
-    }
-  };
-
-  // Update project dates
+  // Update project dates (from drag)
   const handleUpdateProjectDates = async (
     projectId: string,
     startDate: string | null,
@@ -283,7 +219,113 @@ export function ProjectTimeline() {
     }
   };
 
-  if (loading) {
+  // Update milestone date (from drag)
+  const handleUpdateMilestoneDate = async (
+    milestoneId: string,
+    projectId: string,
+    dueDate: string
+  ) => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/milestones`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ milestoneId, dueDate }),
+      });
+      if (!res.ok) throw new Error("Failed to update milestone");
+      toast.success(t("milestoneUpdated") || "Milestone updated");
+      fetchData();
+    } catch (error) {
+      console.error("Error updating milestone:", error);
+      toast.error(t("updateError") || "Failed to update milestone");
+    }
+  };
+
+  // Save milestone (from popover)
+  const handleSaveMilestone = async (data: {
+    projectId: string;
+    milestoneId?: string;
+    title: string;
+    dueDate: string;
+    completed?: boolean;
+  }) => {
+    try {
+      if (data.milestoneId) {
+        const res = await fetch(`/api/projects/${data.projectId}/milestones`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            milestoneId: data.milestoneId,
+            title: data.title,
+            dueDate: data.dueDate,
+            completed: data.completed,
+          }),
+        });
+        if (!res.ok) throw new Error("Failed to update milestone");
+        toast.success(t("milestoneUpdated") || "Milestone updated");
+      } else {
+        const res = await fetch(`/api/projects/${data.projectId}/milestones`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: data.title, dueDate: data.dueDate }),
+        });
+        if (!res.ok) throw new Error("Failed to create milestone");
+        toast.success(t("milestoneCreated") || "Milestone created");
+      }
+      fetchData();
+    } catch (error) {
+      console.error("Error saving milestone:", error);
+      toast.error(t("saveError") || "Failed to save milestone");
+    }
+  };
+
+  // Delete milestone
+  const handleDeleteMilestone = async (milestoneId: string, projectId: string) => {
+    try {
+      const res = await fetch(
+        `/api/projects/${projectId}/milestones?milestoneId=${milestoneId}`,
+        { method: "DELETE" }
+      );
+      if (!res.ok) throw new Error("Failed to delete milestone");
+      toast.success(t("milestoneDeleted") || "Milestone deleted");
+      fetchData();
+    } catch (error) {
+      console.error("Error deleting milestone:", error);
+      toast.error(t("deleteError") || "Failed to delete milestone");
+    }
+  };
+
+  // Auto-populate phases for a project
+  const handleAutoPopulatePhases = async (projectId: string) => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/project-phases`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "auto-populate" }),
+      });
+      if (!res.ok) throw new Error("Failed to auto-populate phases");
+      toast.success(t("phaseDateUpdated") || "Phase dates created");
+      fetchData();
+    } catch (error) {
+      console.error("Error auto-populating phases:", error);
+      toast.error(t("updateError") || "Failed to create phase dates");
+    }
+  };
+
+  // Scroll to a project row
+  const handleConflictClick = (projectId: string) => {
+    const row = document.getElementById(`project-row-${projectId}`);
+    if (row) {
+      row.scrollIntoView({ behavior: "smooth", block: "center" });
+      row.classList.add("bg-amber-50", "dark:bg-amber-950/30");
+      setTimeout(() => {
+        row.classList.remove("bg-amber-50", "dark:bg-amber-950/30");
+      }, 2000);
+    }
+  };
+
+  const dateRangeLabel = `${format(dateRange.start, "MMM yyyy", { locale: dateLocale })} - ${format(dateRange.end, "MMM yyyy", { locale: dateLocale })}`;
+
+  if (loading && projects.length === 0) {
     return (
       <div className="space-y-6 p-6">
         <Skeleton className="h-10 w-64" />
@@ -293,42 +335,28 @@ export function ProjectTimeline() {
   }
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <TimelineViewControls viewMode={viewMode} onViewModeChange={setViewMode} />
-          <div className="flex items-center gap-2">
-            <Slider
-              value={[currentSpan]}
-              onValueChange={([v]) => setSpans((s) => ({ ...s, [viewMode]: v }))}
-              min={min}
-              max={max}
-              step={step}
-              className="w-[100px]"
-            />
-            <span className="text-xs text-muted-foreground w-10 text-right">{currentSpan} {t("months") || "mo"}</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={goToPrevious}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" onClick={goToToday}>
-              {t("today") || "Today"}
-            </Button>
-            <Button variant="outline" size="icon" onClick={goToNext}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <span className="text-sm font-medium text-muted-foreground">
-            {format(dateRange.start, "MMM yyyy", { locale: dateLocale })} - {format(dateRange.end, "MMM yyyy", { locale: dateLocale })}
-          </span>
-        </div>
-      </div>
+    <div className="space-y-4 p-6">
+      {/* Controls */}
+      <TimelineFilters
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        currentSpan={currentSpan}
+        spanConfig={spanConfig[viewMode]}
+        onSpanChange={(v) => setSpans((s) => ({ ...s, [viewMode]: v }))}
+        clients={clients}
+        selectedClient={clientFilter}
+        onClientChange={setClientFilter}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        search={search}
+        onSearchChange={setSearch}
+        visibility={visibility}
+        onVisibilityChange={setVisibility}
+        onPrevious={goToPrevious}
+        onNext={goToNext}
+        onToday={goToToday}
+        dateRangeLabel={dateRangeLabel}
+      />
 
       {/* Timeline Grid */}
       <Card>
@@ -339,22 +367,24 @@ export function ProjectTimeline() {
             columns={columns}
             viewMode={viewMode}
             dateRange={dateRange}
-            onAddMilestone={handleAddMilestone}
-            onEditMilestone={handleEditMilestone}
+            visibility={visibility}
+            conflicts={conflicts}
             onUpdateProjectDates={handleUpdateProjectDates}
+            onUpdateMilestoneDate={handleUpdateMilestoneDate}
+            onSaveMilestone={handleSaveMilestone}
+            onDeleteMilestone={handleDeleteMilestone}
+            onAutoPopulatePhases={handleAutoPopulatePhases}
           />
         </CardContent>
       </Card>
 
-      {/* Milestone Dialog */}
-      <MilestoneDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        project={selectedProject}
-        milestone={selectedMilestone}
-        onSave={handleSaveMilestone}
-        onDelete={handleDeleteMilestone}
-      />
+      {/* Conflict Panel */}
+      {visibility.conflicts && conflicts.length > 0 && (
+        <ConflictPanel
+          conflicts={conflicts}
+          onConflictClick={handleConflictClick}
+        />
+      )}
     </div>
   );
 }

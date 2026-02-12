@@ -70,6 +70,24 @@ export const updateProjectSchema = createProjectSchema.partial().extend({
   locked: z.boolean().optional(),
   archived: z.boolean().optional(),
   phasesEnabled: z.boolean().optional(),
+  startDate: z.string().optional().nullable(),
+  endDate: z.string().optional().nullable(),
+});
+
+// --- Project Phase Segments ---
+
+export const createProjectPhaseSchema = z.object({
+  phaseId: z.string().min(1),
+  startDate: z.string().min(1),
+  endDate: z.string().min(1),
+  status: z.enum(["active", "completed"]).optional(),
+});
+
+export const updateProjectPhaseSchema = z.object({
+  projectPhaseId: z.string().min(1),
+  startDate: z.string().min(1).optional(),
+  endDate: z.string().min(1).optional(),
+  status: z.enum(["active", "completed"]).optional(),
 });
 
 // --- Team Members ---

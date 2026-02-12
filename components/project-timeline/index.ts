@@ -1,2 +1,11 @@
 export { TimelineGrid } from "./TimelineGrid";
+export { TimelineFilters } from "./TimelineFilters";
+export { ProjectBar } from "./ProjectBar";
+export { MilestonePopover } from "./MilestonePopover";
 export { MilestoneDialog } from "./MilestoneDialog";
+export { AllocationSubRow } from "./AllocationSubRow";
+export { BurndownSparkline } from "./BurndownSparkline";
+export { ConflictPanel } from "./ConflictPanel";
+export { ConflictIndicator } from "./ConflictIndicator";
+export { useTimelineDrag } from "./useTimelineDrag";
+export type * from "./types";

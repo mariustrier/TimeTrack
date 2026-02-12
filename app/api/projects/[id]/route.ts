@@ -27,7 +27,7 @@ export async function PUT(
     const body = await req.json();
     const result = validate(updateProjectSchema, body);
     if (!result.success) return result.response;
-    const { name, client, color, budgetHours, billable, currency, pricingType, fixedPrice, rateMode, projectRate, locked, archived, phasesEnabled } = result.data;
+    const { name, client, color, budgetHours, billable, currency, pricingType, fixedPrice, rateMode, projectRate, locked, archived, phasesEnabled, startDate, endDate } = result.data;
 
     // Prevent deactivating system-managed projects
     if (project.systemManaged && body.active === false) {
@@ -62,6 +62,9 @@ export async function PUT(
         ...(rateMode !== undefined && { rateMode }),
         ...(projectRate !== undefined && { projectRate: projectRate ?? null }),
         ...(phasesEnabled !== undefined && { phasesEnabled }),
+        // Timeline dates
+        ...(startDate !== undefined && { startDate: startDate ? new Date(startDate) : null }),
+        ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null }),
         // Lock state
         ...(locked !== undefined && {
           locked,

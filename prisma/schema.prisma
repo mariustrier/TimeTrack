@@ -156,6 +156,7 @@ model Project {
   allocations         ProjectAllocation[]
   resourceAllocations ResourceAllocation[]
   milestones          ProjectMilestone[]
+  projectPhases       ProjectPhase[]
   contracts           Contract[]
   expenses            Expense[]
   invoices            Invoice[]
@@ -483,12 +484,32 @@ model Phase {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  company            Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  currentForProjects Project[]   @relation("CurrentPhase")
+  company            Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  currentForProjects Project[]      @relation("CurrentPhase")
   timeEntries        TimeEntry[]
+  projectPhases      ProjectPhase[]
 
   @@unique([companyId, name])
   @@index([companyId])
+}
+
+// ─── PROJECT PHASE SEGMENTS ───
+// Per-project phase date ranges for timeline visualization
+model ProjectPhase {
+  id        String   @id @default(cuid())
+  projectId String
+  phaseId   String
+  startDate DateTime
+  endDate   DateTime
+  status    String   @default("active") // "active" | "completed"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phase   Phase   @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@unique([projectId, phaseId])
 }
 
 // ─── SUPPORT ACCESS ───
