@@ -1433,7 +1433,7 @@
     "notSynced": "Not synced",
     "paymentTerms": "Payment terms (days)",
     "paymentTermsDays": "{days} days net",
-    "companyDetails": "Company Details",
+    "companyDetails": "Your Company (Invoice Sender)",
     "companyCvr": "CVR Number",
     "companyAddress": "Address",
     "bankAccount": "Bank Account",

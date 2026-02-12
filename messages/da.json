@@ -1433,7 +1433,7 @@
     "notSynced": "Ikke synkroniseret",
     "paymentTerms": "Betalingsbetingelser (dage)",
     "paymentTermsDays": "Netto {days} dage",
-    "companyDetails": "Firmaoplysninger",
+    "companyDetails": "Dit firma (afsender på faktura)",
     "companyCvr": "CVR-nummer",
     "companyAddress": "Adresse",
     "bankAccount": "Kontonummer",
