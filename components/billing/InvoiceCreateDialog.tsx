@@ -291,7 +291,7 @@ export function InvoiceCreateDialog({
                           value={line.quantity}
                           onChange={(e) => updateLine(i, "quantity", e.target.value)}
                           className="h-8 w-20 text-right ml-auto"
-                          step="0.01"
+                          step="1"
                         />
                       </TableCell>
                       <TableCell className="text-right">
@@ -300,7 +300,7 @@ export function InvoiceCreateDialog({
                           value={line.unitPrice}
                           onChange={(e) => updateLine(i, "unitPrice", e.target.value)}
                           className="h-8 w-24 text-right ml-auto"
-                          step="0.01"
+                          step="1"
                         />
                       </TableCell>
                       <TableCell className="text-right font-medium">
