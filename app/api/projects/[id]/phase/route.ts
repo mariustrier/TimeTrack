@@ -75,6 +75,19 @@ export async function PUT(
         },
       });
 
+      // Auto-complete matching phase deadline
+      if (project.currentPhaseId) {
+        await db.projectMilestone.updateMany({
+          where: {
+            projectId: params.id,
+            type: "phase",
+            phaseId: project.currentPhaseId,
+            completed: false,
+          },
+          data: { completed: true, completedAt: new Date() },
+        });
+      }
+
       return NextResponse.json(updated);
     }
 

@@ -228,6 +228,11 @@ export const createMilestoneSchema = z.object({
   title: z.string().min(1).max(200),
   dueDate: z.string().min(1), // yyyy-MM-dd
   sortOrder: z.coerce.number().int().nonnegative().optional(),
+  type: z.enum(["phase", "custom"]).optional(),
+  phaseId: z.string().optional().nullable(),
+  description: z.string().max(1000).optional().nullable(),
+  icon: z.enum(["flag", "handshake", "rocket", "eye", "calendar"]).optional().nullable(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().nullable(),
 });
 
 export const updateMilestoneSchema = z.object({
@@ -235,6 +240,11 @@ export const updateMilestoneSchema = z.object({
   dueDate: z.string().min(1).optional(),
   completed: z.boolean().optional(),
   sortOrder: z.coerce.number().int().nonnegative().optional(),
+  type: z.enum(["phase", "custom"]).optional(),
+  phaseId: z.string().optional().nullable(),
+  description: z.string().max(1000).optional().nullable(),
+  icon: z.enum(["flag", "handshake", "rocket", "eye", "calendar"]).optional().nullable(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().nullable(),
 });
 
 // --- Project Activities (Gantt) ---

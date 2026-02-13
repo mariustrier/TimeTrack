@@ -262,36 +262,56 @@ export function ProjectTimeline() {
     }
   };
 
-  // Save milestone (from popover)
+  // Save milestone (from popover — supports both plain milestones and deadlines)
   const handleSaveMilestone = async (data: {
     projectId: string;
     milestoneId?: string;
     title: string;
     dueDate: string;
     completed?: boolean;
+    type?: "phase" | "custom";
+    phaseId?: string | null;
+    description?: string | null;
+    icon?: string | null;
+    color?: string | null;
   }) => {
     try {
+      const body: Record<string, unknown> = {
+        title: data.title,
+        dueDate: data.dueDate,
+      };
+      if (data.completed !== undefined) body.completed = data.completed;
+      if (data.type !== undefined) body.type = data.type;
+      if (data.phaseId !== undefined) body.phaseId = data.phaseId;
+      if (data.description !== undefined) body.description = data.description;
+      if (data.icon !== undefined) body.icon = data.icon;
+      if (data.color !== undefined) body.color = data.color;
+
       if (data.milestoneId) {
+        body.milestoneId = data.milestoneId;
         const res = await fetch(`/api/projects/${data.projectId}/milestones`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            milestoneId: data.milestoneId,
-            title: data.title,
-            dueDate: data.dueDate,
-            completed: data.completed,
-          }),
+          body: JSON.stringify(body),
         });
         if (!res.ok) throw new Error("Failed to update milestone");
-        toast.success(t("milestoneUpdated") || "Milestone updated");
+        const isDeadline = data.type === "phase" || data.icon || data.description;
+        toast.success(isDeadline
+          ? t("deadlineUpdated") || "Deadline updated"
+          : t("milestoneUpdated") || "Milestone updated"
+        );
       } else {
         const res = await fetch(`/api/projects/${data.projectId}/milestones`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: data.title, dueDate: data.dueDate }),
+          body: JSON.stringify(body),
         });
         if (!res.ok) throw new Error("Failed to create milestone");
-        toast.success(t("milestoneCreated") || "Milestone created");
+        const isDeadline = data.type === "phase" || data.icon || data.description;
+        toast.success(isDeadline
+          ? t("deadlineCreated") || "Deadline created"
+          : t("milestoneCreated") || "Milestone created"
+        );
       }
       fetchData();
     } catch (error) {

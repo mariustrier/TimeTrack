@@ -2,7 +2,7 @@
 
 import { Fragment, useState, useEffect, useMemo, useCallback } from "react";
 import { format } from "date-fns";
-import { Plus } from "lucide-react";
+import { Plus, Flag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "@/lib/i18n";
 import { toast } from "sonner";
@@ -10,12 +10,16 @@ import { ActivityCategoryHeader } from "./ActivityCategoryHeader";
 import { ActivityRow } from "./ActivityRow";
 import { ActivityProgressBar } from "./ActivityProgressBar";
 import { ActivityPopover } from "./ActivityPopover";
+import { DeadlinePopover } from "./DeadlinePopover";
+import { DeadlineMarker } from "./DeadlineMarker";
 import type {
   TimelineProject,
   TimelineActivity,
+  TimelineMilestone,
   TimelineColumn,
   CompanyPhase,
   DragState,
+  DeadlineIcon,
 } from "./types";
 
 interface ActivityGanttSectionProps {
@@ -23,6 +27,20 @@ interface ActivityGanttSectionProps {
   columns: TimelineColumn[];
   companyPhases: CompanyPhase[];
   teamMembers: { id: string; name: string; imageUrl: string | null }[];
+  milestones: TimelineMilestone[];
+  onSaveDeadline: (data: {
+    projectId: string;
+    milestoneId?: string;
+    title: string;
+    dueDate: string;
+    completed?: boolean;
+    type: "phase" | "custom";
+    phaseId?: string | null;
+    description?: string | null;
+    icon?: DeadlineIcon | null;
+    color?: string | null;
+  }) => void;
+  onDeleteDeadline: (milestoneId: string, projectId: string) => void;
   startDrag: (
     type: DragState["type"],
     entityId: string,
@@ -39,6 +57,9 @@ export function ActivityGanttSection({
   columns,
   companyPhases,
   teamMembers,
+  milestones,
+  onSaveDeadline,
+  onDeleteDeadline,
   startDrag,
   dragState,
 }: ActivityGanttSectionProps) {
@@ -52,6 +73,33 @@ export function ActivityGanttSection({
     activity: TimelineActivity | null;
     defaultDate?: string;
   }>({ open: false, position: null, activity: null });
+
+  const [deadlinePopover, setDeadlinePopover] = useState<{
+    open: boolean;
+    position: { top: number; left: number } | null;
+    milestone: TimelineMilestone | null;
+    defaultDate?: string;
+  }>({ open: false, position: null, milestone: null });
+
+  // Existing phase deadlines (for filtering dropdown)
+  const existingPhaseDeadlines = useMemo(() => {
+    return milestones
+      .filter((m) => m.type === "phase" && m.phaseId)
+      .map((m) => m.phaseId!);
+  }, [milestones]);
+
+  // Deadlines that have type/icon/description (not plain milestones)
+  const deadlines = useMemo(() => {
+    return milestones.filter((m) => m.type === "phase" || m.icon || m.description);
+  }, [milestones]);
+
+  // Helper: check if a deadline falls in column
+  const getDeadlinesForColumn = useCallback((col: TimelineColumn) => {
+    return deadlines.filter((m) => {
+      const dueDate = new Date(m.dueDate + "T00:00:00");
+      return dueDate >= col.start && dueDate <= col.end;
+    });
+  }, [deadlines]);
 
   // Fetch activities on mount / project change
   useEffect(() => {
@@ -260,20 +308,84 @@ export function ActivityGanttSection({
             <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               {t("activities") || "Activities"}
             </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-5 text-[10px] px-1.5"
-              onClick={openCreatePopover}
-            >
-              <Plus className="h-3 w-3 mr-0.5" />
-              {t("addActivity") || "Add"}
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 text-[10px] px-1.5"
+                onClick={(e) => {
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  setDeadlinePopover({
+                    open: true,
+                    position: { top: rect.bottom + 4, left: rect.left - 100 },
+                    milestone: null,
+                    defaultDate: project.startDate
+                      ? format(new Date(project.startDate + "T00:00:00"), "yyyy-MM-dd")
+                      : undefined,
+                  });
+                }}
+              >
+                <Flag className="h-3 w-3 mr-0.5" />
+                {t("deadline") || "Deadline"}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 text-[10px] px-1.5"
+                onClick={openCreatePopover}
+              >
+                <Plus className="h-3 w-3 mr-0.5" />
+                {t("addActivity") || "Add"}
+              </Button>
+            </div>
           </div>
         </td>
         <td colSpan={columns.length} className="border-b border-border" />
         <td className="border-b border-l border-border" />
       </tr>
+
+      {/* Deadline markers row */}
+      {deadlines.length > 0 && (
+        <tr className="bg-muted/10">
+          <td className="sticky left-0 z-10 bg-muted/10 border-b border-r border-border p-1 min-w-[220px]">
+            <span className="text-[9px] font-medium text-muted-foreground pl-4">
+              {t("deadlines") || "Deadlines"}
+            </span>
+          </td>
+          {columns.map((col) => {
+            const colDeadlines = getDeadlinesForColumn(col);
+            return (
+              <td
+                key={col.key}
+                className="border-b border-r border-border p-0 h-[28px] relative"
+              >
+                {colDeadlines.map((dl) => (
+                  <DeadlineMarker
+                    key={dl.id}
+                    milestone={dl}
+                    projectColor={project.color}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                      setDeadlinePopover({
+                        open: true,
+                        position: { top: rect.bottom + 4, left: rect.left - 100 },
+                        milestone: dl,
+                      });
+                    }}
+                  />
+                ))}
+
+                {/* Today line */}
+                {col.containsToday && (
+                  <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-red-500 z-[5]" />
+                )}
+              </td>
+            );
+          })}
+          <td className="border-b border-l border-border" />
+        </tr>
+      )}
 
       {/* Category groups */}
       {grouped.categories.map((cat) => (
@@ -347,7 +459,7 @@ export function ActivityGanttSection({
         />
       )}
 
-      {/* Popover */}
+      {/* Activity Popover */}
       <ActivityPopover
         open={popover.open}
         position={popover.position}
@@ -362,6 +474,28 @@ export function ActivityGanttSection({
         onUpdate={handleUpdate}
         onDelete={handleDelete}
         onClose={() => setPopover((p) => ({ ...p, open: false }))}
+      />
+
+      {/* Deadline Popover */}
+      <DeadlinePopover
+        open={deadlinePopover.open}
+        position={deadlinePopover.position}
+        milestone={deadlinePopover.milestone}
+        projectId={project.id}
+        projectColor={project.color}
+        companyPhases={companyPhases}
+        existingPhaseDeadlines={existingPhaseDeadlines}
+        teamMembers={teamMembers}
+        defaultDate={deadlinePopover.defaultDate}
+        onSave={async (data) => {
+          await onSaveDeadline(data);
+          setDeadlinePopover((p) => ({ ...p, open: false }));
+        }}
+        onDelete={(milestoneId, projectId) => {
+          onDeleteDeadline(milestoneId, projectId);
+          setDeadlinePopover((p) => ({ ...p, open: false }));
+        }}
+        onClose={() => setDeadlinePopover((p) => ({ ...p, open: false }))}
       />
     </>
   );

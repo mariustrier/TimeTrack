@@ -68,6 +68,7 @@ export async function GET(req: Request) {
         include: {
           currentPhase: { select: { id: true, name: true, color: true } },
           milestones: {
+            include: { phase: { select: { id: true, name: true, color: true } } },
             orderBy: [{ sortOrder: "asc" }, { dueDate: "asc" }],
           },
           projectPhases: {
@@ -372,6 +373,13 @@ export async function GET(req: Request) {
         completed: m.completed,
         completedAt: m.completedAt ? m.completedAt.toISOString() : null,
         sortOrder: m.sortOrder,
+        type: m.type || "custom",
+        phaseId: m.phaseId || null,
+        phaseName: m.phase?.name || null,
+        phaseColor: m.phase?.color || null,
+        description: m.description || null,
+        icon: m.icon || null,
+        color: m.color || null,
       }))
     );
 

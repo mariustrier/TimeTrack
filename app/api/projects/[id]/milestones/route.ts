@@ -25,6 +25,7 @@ export async function GET(
 
     const milestones = await db.projectMilestone.findMany({
       where: { projectId: params.id },
+      include: { phase: { select: { id: true, name: true, color: true } } },
       orderBy: [{ sortOrder: "asc" }, { dueDate: "asc" }],
     });
 
@@ -62,7 +63,7 @@ export async function POST(
     const result = validate(createMilestoneSchema, body);
     if (!result.success) return result.response;
 
-    const { title, dueDate, sortOrder } = result.data;
+    const { title, dueDate, sortOrder, type, phaseId, description, icon, color } = result.data;
 
     // Get max sortOrder if not provided
     let order = sortOrder;
@@ -80,7 +81,13 @@ export async function POST(
         title,
         dueDate: new Date(dueDate),
         sortOrder: order,
+        type: type || "custom",
+        phaseId: phaseId || null,
+        description: description || null,
+        icon: icon || null,
+        color: color || null,
       },
+      include: { phase: { select: { id: true, name: true, color: true } } },
     });
 
     return NextResponse.json(milestone, { status: 201 });
@@ -124,7 +131,7 @@ export async function PUT(
     const result = validate(updateMilestoneSchema, updateData);
     if (!result.success) return result.response;
 
-    const { title, dueDate, completed, sortOrder } = result.data;
+    const { title, dueDate, completed, sortOrder, type, phaseId, description, icon, color } = result.data;
 
     const data: Record<string, unknown> = {};
     if (title !== undefined) data.title = title;
@@ -134,10 +141,16 @@ export async function PUT(
       data.completed = completed;
       data.completedAt = completed ? new Date() : null;
     }
+    if (type !== undefined) data.type = type;
+    if (phaseId !== undefined) data.phaseId = phaseId || null;
+    if (description !== undefined) data.description = description || null;
+    if (icon !== undefined) data.icon = icon || null;
+    if (color !== undefined) data.color = color || null;
 
     const updated = await db.projectMilestone.update({
       where: { id: milestoneId },
       data,
+      include: { phase: { select: { id: true, name: true, color: true } } },
     });
 
     return NextResponse.json(updated);

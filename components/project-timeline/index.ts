@@ -15,4 +15,6 @@ export { ActivityCategoryHeader } from "./ActivityCategoryHeader";
 export { ActivityGanttSection } from "./ActivityGanttSection";
 export { ActivityPopover } from "./ActivityPopover";
 export { ActivityProgressBar } from "./ActivityProgressBar";
+export { DeadlinePopover } from "./DeadlinePopover";
+export { DeadlineMarker } from "./DeadlineMarker";
 export type * from "./types";

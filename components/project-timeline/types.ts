@@ -40,6 +40,9 @@ export interface TimelineAllocation {
   status: string;
 }
 
+export type DeadlineIcon = "flag" | "handshake" | "rocket" | "eye" | "calendar";
+export const DEADLINE_ICONS: DeadlineIcon[] = ["flag", "handshake", "rocket", "eye", "calendar"];
+
 export interface TimelineMilestone {
   id: string;
   projectId: string;
@@ -48,6 +51,13 @@ export interface TimelineMilestone {
   completed: boolean;
   completedAt: string | null;
   sortOrder: number;
+  type: "phase" | "custom";
+  phaseId: string | null;
+  phaseName: string | null;
+  phaseColor: string | null;
+  description: string | null;
+  icon: DeadlineIcon | null;
+  color: string | null;
 }
 
 export interface TimelineColumn {

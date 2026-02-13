@@ -5,11 +5,12 @@ import { format, isSameMonth } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useDateLocale, useTranslations } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Plus, Diamond, CheckCircle, ChevronRight, ChevronDown } from "lucide-react";
+import { Plus, Diamond, CheckCircle, ChevronRight, ChevronDown, Flag, Handshake, Rocket, Eye, CalendarDays } from "lucide-react";
 import { ProjectBar } from "./ProjectBar";
 import { AllocationSubRow } from "./AllocationSubRow";
 import { BurndownSparkline } from "./BurndownSparkline";
 import { MilestonePopover } from "./MilestonePopover";
+import { DeadlinePopover } from "./DeadlinePopover";
 import { ActivityGanttSection } from "./ActivityGanttSection";
 import { useTimelineDrag } from "./useTimelineDrag";
 import type {
@@ -21,7 +22,17 @@ import type {
   VisibilityToggles,
   CompanyPhase,
   DragResult,
+  DeadlineIcon,
 } from "./types";
+import type { LucideIcon } from "lucide-react";
+
+const MILESTONE_ICON_MAP: Record<string, LucideIcon> = {
+  flag: Flag,
+  handshake: Handshake,
+  rocket: Rocket,
+  eye: Eye,
+  calendar: CalendarDays,
+};
 
 interface TimelineGridProps {
   projects: TimelineProject[];
@@ -33,7 +44,18 @@ interface TimelineGridProps {
   conflicts: TimelineConflict[];
   onUpdateProjectDates: (projectId: string, startDate: string | null, endDate: string | null) => void;
   onUpdateMilestoneDate: (milestoneId: string, projectId: string, dueDate: string) => void;
-  onSaveMilestone: (data: { projectId: string; milestoneId?: string; title: string; dueDate: string; completed?: boolean }) => void;
+  onSaveMilestone: (data: {
+    projectId: string;
+    milestoneId?: string;
+    title: string;
+    dueDate: string;
+    completed?: boolean;
+    type?: "phase" | "custom";
+    phaseId?: string | null;
+    description?: string | null;
+    icon?: DeadlineIcon | null;
+    color?: string | null;
+  }) => void;
   onDeleteMilestone: (milestoneId: string, projectId: string) => void;
   onAutoPopulatePhases: (projectId: string) => void;
   onUpdateActivityDates: (activityId: string, projectId: string, startDate: string, endDate: string) => void;
@@ -72,6 +94,27 @@ export function TimelineGrid({
     projectColor: string;
     defaultDate?: string;
   }>({ open: false, position: null, milestone: null, projectId: "", projectColor: "" });
+
+  const [deadlinePopover, setDeadlinePopover] = useState<{
+    open: boolean;
+    position: { top: number; left: number } | null;
+    milestone: TimelineMilestone | null;
+    projectId: string;
+    projectColor: string;
+    defaultDate?: string;
+  }>({ open: false, position: null, milestone: null, projectId: "", projectColor: "" });
+
+  // Existing phase deadlines per project (for filtering in popover)
+  const phaseDeadlinesByProject = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    milestones.forEach((m) => {
+      if (m.type === "phase" && m.phaseId) {
+        if (!map[m.projectId]) map[m.projectId] = [];
+        map[m.projectId].push(m.phaseId);
+      }
+    });
+    return map;
+  }, [milestones]);
 
   // Preview dates during drag
   const [previewDates, setPreviewDates] = useState<Record<string, { start: Date; end: Date }>>({});
@@ -236,13 +279,26 @@ export function TimelineGrid({
     // Skip if a drag just ended (prevents popover opening after drag)
     if (Date.now() - lastDragEndRef.current < 200) return;
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    setMilestonePopover({
-      open: true,
-      position: { top: rect.bottom + 4, left: rect.left - 100 },
-      milestone,
-      projectId: project.id,
-      projectColor: project.color,
-    });
+
+    // Route deadline milestones to DeadlinePopover
+    const isDeadline = milestone.type === "phase" || milestone.icon || milestone.description;
+    if (isDeadline) {
+      setDeadlinePopover({
+        open: true,
+        position: { top: rect.bottom + 4, left: rect.left - 100 },
+        milestone,
+        projectId: project.id,
+        projectColor: project.color,
+      });
+    } else {
+      setMilestonePopover({
+        open: true,
+        position: { top: rect.bottom + 4, left: rect.left - 100 },
+        milestone,
+        projectId: project.id,
+        projectColor: project.color,
+      });
+    }
   };
 
   const handleEmptyCellClick = (project: TimelineProject, col: TimelineColumn, e: React.MouseEvent) => {
@@ -449,25 +505,51 @@ export function TimelineGrid({
                           )}
 
                           {/* Milestone markers */}
-                          {colMilestones.length === 1 && (
-                            <button
-                              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20"
-                              onClick={(e) => handleMilestoneClick(colMilestones[0], project, e)}
-                              onMouseDown={(e) => {
-                                if (e.button !== 0) return;
-                                e.stopPropagation();
-                                const ms = colMilestones[0];
-                                startDrag("milestone", ms.id, project.id, e.clientX, new Date(ms.dueDate + "T00:00:00"), new Date(ms.dueDate + "T00:00:00"));
-                              }}
-                              title={colMilestones[0].title}
-                            >
-                              {colMilestones[0].completed ? (
-                                <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" fill="currentColor" />
-                              ) : (
-                                <Diamond className="h-4 w-4" style={{ color: project.color }} fill="currentColor" />
-                              )}
-                            </button>
-                          )}
+                          {colMilestones.length === 1 && (() => {
+                            const ms = colMilestones[0];
+                            const msColor = ms.completed
+                              ? undefined
+                              : ms.type === "phase"
+                                ? ms.phaseColor || project.color
+                                : ms.color || project.color;
+
+                            const renderMilestoneIcon = () => {
+                              if (ms.completed) {
+                                return <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" fill="currentColor" />;
+                              }
+                              if (ms.icon && MILESTONE_ICON_MAP[ms.icon]) {
+                                const Icon = MILESTONE_ICON_MAP[ms.icon];
+                                return <Icon className="h-4 w-4" style={{ color: msColor }} />;
+                              }
+                              if (ms.type === "phase") {
+                                return <Diamond className="h-4 w-4" style={{ color: msColor }} fill="currentColor" />;
+                              }
+                              return <Diamond className="h-4 w-4" style={{ color: msColor }} fill="currentColor" />;
+                            };
+
+                            const dueDate = new Date(ms.dueDate + "T00:00:00");
+                            const today = new Date(); today.setHours(0,0,0,0);
+                            const isOverdue = dueDate < today && !ms.completed;
+
+                            return (
+                              <button
+                                className={cn("absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20", isOverdue && "animate-pulse")}
+                                onClick={(e) => handleMilestoneClick(ms, project, e)}
+                                onMouseDown={(e) => {
+                                  if (e.button !== 0) return;
+                                  e.stopPropagation();
+                                  startDrag("milestone", ms.id, project.id, e.clientX, new Date(ms.dueDate + "T00:00:00"), new Date(ms.dueDate + "T00:00:00"));
+                                }}
+                                title={ms.title}
+                              >
+                                {isOverdue ? (
+                                  <Diamond className="h-4 w-4 text-red-500" fill="currentColor" />
+                                ) : (
+                                  renderMilestoneIcon()
+                                )}
+                              </button>
+                            );
+                          })()}
                           {colMilestones.length > 1 && (
                             <button
                               className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex items-center gap-0.5"
@@ -529,6 +611,11 @@ export function TimelineGrid({
                       dragState={dragState}
                       teamMembers={teamMembers}
                       companyPhases={companyPhases}
+                      milestones={milestonesByProject[project.id] || []}
+                      onSaveDeadline={async (data) => {
+                        await onSaveMilestone(data);
+                      }}
+                      onDeleteDeadline={onDeleteMilestone}
                     />
                   )}
 
@@ -594,6 +681,10 @@ export function TimelineGrid({
             <span className="text-muted-foreground">{t("completed") || "Completed"}</span>
           </div>
           <div className="flex items-center gap-2">
+            <Flag className="h-4 w-4 text-brand-500" />
+            <span className="text-muted-foreground">{t("deadline") || "Deadline"}</span>
+          </div>
+          <div className="flex items-center gap-2">
             <div className="w-4 h-0.5 bg-red-500" />
             <span className="text-muted-foreground">{t("today") || "Today"}</span>
           </div>
@@ -631,6 +722,27 @@ export function TimelineGrid({
           setMilestonePopover((p) => ({ ...p, open: false }));
         }}
         onClose={() => setMilestonePopover((p) => ({ ...p, open: false }))}
+      />
+
+      {/* Deadline popover (for deadline milestones) */}
+      <DeadlinePopover
+        open={deadlinePopover.open}
+        position={deadlinePopover.position}
+        milestone={deadlinePopover.milestone}
+        projectId={deadlinePopover.projectId}
+        projectColor={deadlinePopover.projectColor}
+        companyPhases={companyPhases}
+        existingPhaseDeadlines={phaseDeadlinesByProject[deadlinePopover.projectId] || []}
+        defaultDate={deadlinePopover.defaultDate}
+        onSave={async (data) => {
+          await onSaveMilestone(data);
+          setDeadlinePopover((p) => ({ ...p, open: false }));
+        }}
+        onDelete={(milestoneId, projectId) => {
+          onDeleteMilestone(milestoneId, projectId);
+          setDeadlinePopover((p) => ({ ...p, open: false }));
+        }}
+        onClose={() => setDeadlinePopover((p) => ({ ...p, open: false }))}
       />
     </>
   );
