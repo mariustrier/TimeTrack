@@ -73,6 +73,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `lib/expense-utils.ts` - Expense formatting helpers
 - `lib/analytics-utils.ts` - Analytics data processing
 - `lib/economic-import.ts` - e-conomic Projektkort XLSX parser
+- `lib/vacation-entries.ts` - createVacationEntries/deleteVacationEntries (shared by vacation routes)
 - `lib/invoice-pdf.ts` - Server-side A4 invoice PDF generation (pdf-lib), multi-page support, Danish formatting
 - `lib/accounting/` - Accounting system adapter pattern + AES-256-GCM credential encryption:
   - `lib/accounting/types.ts` - `AccountingCredentials` type (system, accessToken, refreshToken, tokenExpiresAt, etc.)
@@ -151,6 +152,7 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
 - Total allowance (days mode) = `2.08 × current month number + bonusDays`
 - Total allowance (hours mode) = `(vacationHoursPerYear / 12) × current month number + bonusHours`
 - Admin approval/rejection workflow
+- **Admin add on behalf**: Admins/managers can create vacation requests for any employee via an employee dropdown in the request modal. Requests created on behalf are auto-approved with absence time entries generated immediately. Shared logic in `lib/vacation-entries.ts`.
 - **Auto-fill on approval**: When admin approves a vacation, absence time entries are automatically created for each business day (skipping weekends/holidays), using the employee's daily target hours, under the Absence project with matching absence reason (vacation→VACATION, sick→SICK). Skipped for hourly employees (no daily target).
 - **Auto-cleanup on rejection/cancellation**: System-created entries are deleted when vacation is rejected or cancelled
 - **Employee can cancel approved vacations**: Status set to "cancelled" (soft delete), admin notified via sidebar badge, auto-created entries cleaned up, vacation days restored
@@ -188,6 +190,7 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
   - Client-side XLSX parsing via SheetJS (`xlsx` package)
   - Auto-match employees by name similarity, categories to phases
   - Creates project, allocations, and time entries (pre-approved, `externallyInvoiced: true`) in a single Prisma transaction
+  - **Re-import safe**: Deletes existing entries for mapped employees on the target project before inserting, preventing duplicates. Allocations use upsert to replace hours (not accumulate).
   - Audit log: IMPORT action with metadata
   - API: `POST /api/projects/import` (multipart/form-data, admin/manager only, rate-limited)
   - Parser: `lib/economic-import.ts` — extracts invoices, task categories, time entries from Projektkort format
