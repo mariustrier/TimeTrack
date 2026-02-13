@@ -39,6 +39,8 @@ import {
   Layers,
   ChevronUp,
   ChevronDown,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -157,6 +159,7 @@ export function AdminOverview() {
   const [displayCurrency, setDisplayCurrency] = useState("USD");
   const [showMasterCurrencyDialog, setShowMasterCurrencyDialog] = useState(false);
   const [newMasterCurrency, setNewMasterCurrency] = useState("USD");
+  const [showCostRates, setShowCostRates] = useState(false);
   const [useUniversalRate, setUseUniversalRate] = useState(false);
   const [universalRateInput, setUniversalRateInput] = useState("");
   const [universalRateSaving, setUniversalRateSaving] = useState(false);
@@ -1040,7 +1043,17 @@ export function AdminOverview() {
 
       {/* Employee Profitability */}
       <div>
-        <h2 className="mb-4 text-lg font-semibold text-foreground">{t("employeeProfitability")}</h2>
+        <div className="mb-4 flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-foreground">{t("employeeProfitability")}</h2>
+          <button
+            type="button"
+            onClick={() => setShowCostRates(!showCostRates)}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            title={showCostRates ? tt("hideCostRates") : tt("showCostRates")}
+          >
+            {showCostRates ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+          </button>
+        </div>
         {stats.employeeStats.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
@@ -1106,7 +1119,7 @@ export function AdminOverview() {
                     </div>
                     <div>
                       <p className="text-muted-foreground">{tt("costRate")}</p>
-                      <p className="font-medium">{convertAndFormat(emp.costRate, masterCurrency, displayCurrency)}{t("perHour")}</p>
+                      <p className="font-medium">{showCostRates ? `${convertAndFormat(emp.costRate, masterCurrency, displayCurrency)}${t("perHour")}` : `*** kr.${t("perHour")}`}</p>
                     </div>
                   </div>
 
@@ -1119,12 +1132,12 @@ export function AdminOverview() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">{t("cost")}</span>
-                        <span className="text-red-600">-{convertAndFormat(emp.cost, masterCurrency, displayCurrency)}</span>
+                        <span className="text-red-600">{showCostRates ? `-${convertAndFormat(emp.cost, masterCurrency, displayCurrency)}` : "***"}</span>
                       </div>
                       <div className="border-t pt-1 flex justify-between font-semibold">
                         <span>{t("profit")}</span>
                         <span className={emp.profit >= 0 ? "text-emerald-600" : "text-red-600"}>
-                          {convertAndFormat(emp.profit, masterCurrency, displayCurrency)}
+                          {showCostRates ? convertAndFormat(emp.profit, masterCurrency, displayCurrency) : "***"}
                         </span>
                       </div>
                     </div>
