@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   LayoutDashboard,
   Palmtree,
@@ -70,6 +70,8 @@ export function Sidebar({ userRole, isSuperAdmin: superAdmin, supportMode, suppo
     return item.roles ? item.roles.includes(userRole) : true;
   });
 
+  const rawBillingRef = useRef(0);
+
   useEffect(() => {
     if (userRole === "admin" || userRole === "manager") {
       const fetchCounts = () => {
@@ -77,8 +79,12 @@ export function Sidebar({ userRole, isSuperAdmin: superAdmin, supportMode, suppo
           .then((res) => (res.ok ? res.json() : { counts: {} }))
           .then((data) => {
             const counts = data.counts || {};
-            // Aggregate approvals + vacation counts into admin badge
             const adminCount = (counts.approvals || 0) + (counts.expenseApprovals || 0) + (counts.vacationManagement || 0);
+            // Billing: only show badge if count increased since last visit
+            const rawBilling = counts.billing || 0;
+            rawBillingRef.current = rawBilling;
+            const seenBilling = parseInt(localStorage.getItem("cloudtimer:seenBillingCount") || "0", 10);
+            counts.billing = rawBilling > seenBilling ? rawBilling - seenBilling : 0;
             setBadgeCounts({ ...counts, admin: adminCount });
           })
           .catch(() => {});
@@ -88,6 +94,14 @@ export function Sidebar({ userRole, isSuperAdmin: superAdmin, supportMode, suppo
       return () => clearInterval(interval);
     }
   }, [userRole]);
+
+  // Mark billing badge as seen when visiting the billing page
+  useEffect(() => {
+    if (pathname.startsWith("/billing") && rawBillingRef.current > 0) {
+      localStorage.setItem("cloudtimer:seenBillingCount", String(rawBillingRef.current));
+      setBadgeCounts((prev) => ({ ...prev, billing: 0 }));
+    }
+  }, [pathname]);
 
   const handleExitSupport = async () => {
     setExiting(true);
