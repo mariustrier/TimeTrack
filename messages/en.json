@@ -218,6 +218,8 @@
     "role": "Role",
     "billRate": "Bill Rate",
     "costRate": "Cost Rate",
+    "showCostRates": "Show cost rates",
+    "hideCostRates": "Hide cost rates",
     "weeklyTarget": "Weekly Target",
     "employee": "Employee",
     "adminRole": "Admin",

@@ -218,6 +218,8 @@
     "role": "Rolle",
     "billRate": "Fakturasats",
     "costRate": "Omkostningssats",
+    "showCostRates": "Vis omkostningssatser",
+    "hideCostRates": "Skjul omkostningssatser",
     "weeklyTarget": "Ugentligt mål",
     "employee": "Medarbejder",
     "adminRole": "Admin",

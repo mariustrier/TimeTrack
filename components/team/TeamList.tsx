@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, Plus, Pencil, Trash2, UserPlus } from "lucide-react";
+import { Users, Plus, Pencil, Trash2, UserPlus, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { convertAndFormat, SUPPORTED_CURRENCIES } from "@/lib/currency";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,6 +63,7 @@ export function TeamList() {
   const [saving, setSaving] = useState(false);
   const [masterCurrency, setMasterCurrency] = useState("USD");
   const [displayCurrency, setDisplayCurrency] = useState("USD");
+  const [showCostRates, setShowCostRates] = useState(false);
 
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -271,7 +272,19 @@ export function TeamList() {
                   <TableHead>{tc("email")}</TableHead>
                   <TableHead>{t("role")}</TableHead>
                   <TableHead><span className="flex items-center gap-1">{t("billRate")} <InfoTooltip textKey="billRate" size={13} /></span></TableHead>
-                  <TableHead><span className="flex items-center gap-1">{t("costRate")} <InfoTooltip textKey="costRate" size={13} /></span></TableHead>
+                  <TableHead>
+                    <span className="flex items-center gap-1">
+                      {t("costRate")}
+                      <InfoTooltip textKey="costRate" size={13} />
+                      <button
+                        onClick={() => setShowCostRates(!showCostRates)}
+                        className="ml-0.5 text-muted-foreground hover:text-foreground transition-colors"
+                        title={showCostRates ? t("hideCostRates") : t("showCostRates")}
+                      >
+                        {showCostRates ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                      </button>
+                    </span>
+                  </TableHead>
                   <TableHead>{t("weeklyTarget")}</TableHead>
                   <TableHead className="w-20">{tc("actions")}</TableHead>
                 </TableRow>
@@ -299,8 +312,12 @@ export function TeamList() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>{convertAndFormat(member.hourlyRate, masterCurrency, displayCurrency)}/h</TableCell>
-                    <TableCell>{convertAndFormat(member.costRate, masterCurrency, displayCurrency)}/h</TableCell>
+                    <TableCell>{convertAndFormat(member.hourlyRate, masterCurrency, displayCurrency)}/{tc("hourAbbrev")}</TableCell>
+                    <TableCell>
+                      {showCostRates
+                        ? `${convertAndFormat(member.costRate, masterCurrency, displayCurrency)}/${tc("hourAbbrev")}`
+                        : `*** kr./${tc("hourAbbrev")}`}
+                    </TableCell>
                     <TableCell>
                       {member.isHourly ? (
                         <Badge variant="outline" className="border-blue-500 text-blue-600">
