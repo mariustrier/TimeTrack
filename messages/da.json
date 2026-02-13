@@ -874,7 +874,7 @@
     "redistributeHours": "Fordel timer til resterende dage",
     "allocationMoved": "Allokering flyttet",
     "moveError": "Kunne ikke flytte allokering",
-    "select": "Vælg",
+    "select": "Multi-vælg",
     "selectedCount": "{count} valgt",
     "selectAll": "Vælg alle",
     "clearSelection": "Ryd",

@@ -874,7 +874,7 @@
     "redistributeHours": "Redistribute hours to remaining days",
     "allocationMoved": "Allocation moved",
     "moveError": "Failed to move allocation",
-    "select": "Select",
+    "select": "Multi-select",
     "selectedCount": "{count} selected",
     "selectAll": "Select all",
     "clearSelection": "Clear",

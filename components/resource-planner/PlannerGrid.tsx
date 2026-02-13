@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef, useCallback, useEffect } from "react";
 import { format, isWeekend, isToday, isSameMonth, startOfMonth, getISOWeek } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useDateLocale, useLocale, useTranslations } from "@/lib/i18n";
@@ -66,6 +66,7 @@ interface PlannerGridProps {
   selectionMode?: boolean;
   selectedIds?: Set<string>;
   onToggleSelection?: (allocationId: string) => void;
+  onAddToSelection?: (allocationIds: string[]) => void;
 }
 
 interface WeekColumn {
@@ -91,12 +92,42 @@ export function PlannerGrid({
   selectionMode,
   selectedIds,
   onToggleSelection,
+  onAddToSelection,
 }: PlannerGridProps) {
   const dateLocale = useDateLocale();
   const { locale } = useLocale();
   const t = useTranslations("resourcePlanner");
   const tc = useTranslations("common");
   const isMonthView = viewMode === "month";
+
+  // ── Drag-to-select state ──
+  const isDragSelecting = useRef(false);
+
+  const handleDragSelectStart = useCallback(
+    (allocationIds: string[]) => {
+      if (!selectionMode || !onAddToSelection) return;
+      isDragSelecting.current = true;
+      onAddToSelection(allocationIds);
+    },
+    [selectionMode, onAddToSelection]
+  );
+
+  const handleDragSelectEnter = useCallback(
+    (allocationIds: string[]) => {
+      if (!isDragSelecting.current || !onAddToSelection) return;
+      onAddToSelection(allocationIds);
+    },
+    [onAddToSelection]
+  );
+
+  useEffect(() => {
+    if (!selectionMode) return;
+    const handleMouseUp = () => {
+      isDragSelecting.current = false;
+    };
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => document.removeEventListener("mouseup", handleMouseUp);
+  }, [selectionMode]);
 
   // ── Month View: group days into week columns ──
   const weekColumns = useMemo((): WeekColumn[] => {
@@ -252,6 +283,8 @@ export function PlannerGrid({
                   selectionMode={selectionMode}
                   selectedIds={selectedIds}
                   onToggleSelection={onToggleSelection}
+                  onDragSelectStart={handleDragSelectStart}
+                  onDragSelectEnter={handleDragSelectEnter}
                 />
               );
             })}
@@ -351,6 +384,8 @@ export function PlannerGrid({
                 selectionMode={selectionMode}
                 selectedIds={selectedIds}
                 onToggleSelection={onToggleSelection}
+                onDragSelectStart={handleDragSelectStart}
+                onDragSelectEnter={handleDragSelectEnter}
               />
             );
           })}
@@ -387,6 +422,8 @@ function MonthRow({
   selectionMode,
   selectedIds,
   onToggleSelection,
+  onDragSelectStart,
+  onDragSelectEnter,
 }: {
   employee: Employee;
   weekColumns: WeekColumn[];
@@ -401,6 +438,8 @@ function MonthRow({
   selectionMode?: boolean;
   selectedIds?: Set<string>;
   onToggleSelection?: (allocationId: string) => void;
+  onDragSelectStart?: (allocationIds: string[]) => void;
+  onDragSelectEnter?: (allocationIds: string[]) => void;
 }) {
   const tc = useTranslations("common");
   const effectiveCap = getEffectiveWeeklyCapacity(employee);
@@ -502,6 +541,17 @@ function MonthRow({
                 onAllocationClick(weekAllocs[0], weekMonday, rect);
               } else {
                 onEmptyCellClick(employee.id, weekMonday, rect);
+              }
+            }}
+            onMouseDown={(e) => {
+              if (selectionMode && onDragSelectStart && weekAllocs.length > 0 && e.button === 0) {
+                e.preventDefault();
+                onDragSelectStart(weekAllocs.map((a) => a.id));
+              }
+            }}
+            onMouseEnter={() => {
+              if (selectionMode && onDragSelectEnter && weekAllocs.length > 0) {
+                onDragSelectEnter(weekAllocs.map((a) => a.id));
               }
             }}
           >

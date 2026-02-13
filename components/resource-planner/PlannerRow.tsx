@@ -54,6 +54,8 @@ interface PlannerRowProps {
   selectionMode?: boolean;
   selectedIds?: Set<string>;
   onToggleSelection?: (allocationId: string) => void;
+  onDragSelectStart?: (allocationIds: string[]) => void;
+  onDragSelectEnter?: (allocationIds: string[]) => void;
 }
 
 export function PlannerRow({
@@ -70,6 +72,8 @@ export function PlannerRow({
   selectionMode,
   selectedIds,
   onToggleSelection,
+  onDragSelectStart,
+  onDragSelectEnter,
 }: PlannerRowProps) {
   const t = useTranslations("resourcePlanner");
   const tc = useTranslations("common");
@@ -186,6 +190,8 @@ export function PlannerRow({
             selectionMode={selectionMode}
             selectedIds={selectedIds}
             onToggleSelection={onToggleSelection}
+            onDragSelectStart={onDragSelectStart}
+            onDragSelectEnter={onDragSelectEnter}
           />
         );
       })}

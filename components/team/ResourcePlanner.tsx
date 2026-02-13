@@ -492,6 +492,14 @@ export function ResourcePlanner() {
     setSelectedIds(new Set());
   }, []);
 
+  const addToSelection = useCallback((allocationIds: string[]) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      allocationIds.forEach((id) => next.add(id));
+      return next;
+    });
+  }, []);
+
   // Escape key to exit selection mode
   useEffect(() => {
     if (!selectionMode) return;
@@ -713,6 +721,7 @@ export function ResourcePlanner() {
             selectionMode={selectionMode}
             selectedIds={selectedIds}
             onToggleSelection={toggleSelection}
+            onAddToSelection={addToSelection}
           />
         </CardContent>
       </Card>

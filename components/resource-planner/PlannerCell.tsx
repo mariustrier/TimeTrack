@@ -38,6 +38,8 @@ interface PlannerCellProps {
   selectionMode?: boolean;
   selectedIds?: Set<string>;
   onToggleSelection?: (allocationId: string) => void;
+  onDragSelectStart?: (allocationIds: string[]) => void;
+  onDragSelectEnter?: (allocationIds: string[]) => void;
 }
 
 export function PlannerCell({
@@ -54,6 +56,8 @@ export function PlannerCell({
   selectionMode,
   selectedIds,
   onToggleSelection,
+  onDragSelectStart,
+  onDragSelectEnter,
 }: PlannerCellProps) {
   const { locale } = useLocale();
   const weekend = isWeekend(day);
@@ -112,6 +116,17 @@ export function PlannerCell({
       onClick={(e) => {
         if (isEmpty && !weekend && !holiday) {
           onEmptyClick(e);
+        }
+      }}
+      onMouseDown={(e) => {
+        if (selectionMode && onDragSelectStart && allocations.length > 0 && e.button === 0) {
+          e.preventDefault();
+          onDragSelectStart(allocations.map((a) => a.id));
+        }
+      }}
+      onMouseEnter={() => {
+        if (selectionMode && onDragSelectEnter && allocations.length > 0) {
+          onDragSelectEnter(allocations.map((a) => a.id));
         }
       }}
       onDragOver={handleDragOver}
