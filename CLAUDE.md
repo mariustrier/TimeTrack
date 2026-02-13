@@ -48,8 +48,8 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `components/analytics/` - EmployeeInsights, TeamInsights, ProjectInsights, CompanyInsights
 - `components/billing/` - UninvoicedTab, InvoicesTab, InvoiceCreateDialog, InvoiceDetailDialog, BillingSettings
 - `components/contracts/` - ContractSection (upload, AI extraction, manual entry)
-- `components/projects/` - ProjectsList, ProjectTimeline, PhaseProgress
-- `components/project-timeline/` - TimelineGrid, MilestoneDialog, MilestonePopover, DeadlinePopover, DeadlineMarker, ActivityGanttSection, ActivityRow, ActivityBlock, ActivityPopover, ActivityCategoryHeader, ActivityProgressBar, InlineEditCell
+- `components/projects/` - ProjectsList, ProjectTimeline (self-contained ~2900-line inline-styled Gantt), PhaseProgress
+- `components/project-timeline/` - DeadlinePopover, DeadlineMarker, TimelineGrid, MilestoneDialog, MilestonePopover, ActivityGanttSection, ActivityRow, ActivityBlock, ActivityPopover, ActivityCategoryHeader, ActivityProgressBar, InlineEditCell, TimelineContextMenu, TimelineEditFooter, useTimelineEditSession
 - `components/resource-planner/` - ResourceGrid, AllocationDialog, AllocationBlock, ViewControls, PlannerControls, PlannerGrid, PlannerRow, PlannerCell, BulkActionToolbar, CapacitySummary
 - `components/team/` - TeamList, ResourcePlanner
 - `components/vacations/` - VacationCalendar, VacationPlanner
@@ -194,30 +194,32 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
   - Audit log: IMPORT action with metadata
   - API: `POST /api/projects/import` (multipart/form-data, admin/manager only, rate-limited)
   - Parser: `lib/economic-import.ts` — extracts invoices, task categories, time entries from Projektkort format
-- **Timeline tab**: Two-level Gantt view with project bars, milestone diamonds, today line
-  - **Day/Week/Month view toggle** with **period span slider**: users drag to control visible range per view mode (Day: 1-6mo, Week: 2-12mo, Month: 6-24mo)
+- **Timeline tab**: Self-contained ~2900-line `ProjectTimeline.tsx` component with all inline styles (no Tailwind). Two-level Gantt view with project bars, milestone markers, today line.
+  - **Architecture**: Week-based internal positioning system with `ANCHOR` date, `dateToWeek()`/`weekToDate()` conversion. `useReducer` undo/redo for project/activity position edits. Window-level `mousemove`/`mouseup` listeners for drag-and-drop (always-on during edit mode). Refs (`dragRef`, `dragDeltaRef`, `justDraggedRef`) to avoid stale closures. Milestones in separate `useState` (not undo/redo) for immediate API calls.
+  - **Day/Week/Month view toggle**: Day view (36px columns, 35 visible, daily precision with weekend dimming), Week view (56px columns, 16 visible), Month view (96px columns, 10 visible). Navigation step: 7 days / 4 weeks / 4 months. Data refetches on view switch with activity cache cleared.
+  - **Date handling**: `dateToWeek` uses `differenceInCalendarDays` (day mode) or `differenceInCalendarWeeks` (week/month). Handles both `"yyyy-MM-dd"` and ISO `"yyyy-MM-ddTHH:mm:ss.000Z"` formats via `dateStr.slice(0, 10)`.
   - CRUD milestones (title, due date, completion tracking)
   - **Deadline system**: Extends milestones with `type` (phase/custom), `phaseId`, `description`, `icon`, `color`
-    - **Phase deadlines**: Linked to company phases, auto-titled "{Phase} Handover", dashed vertical line in phase color, diamond icon. Auto-completed when phase is advanced via PhaseProgress.
+    - **Phase deadlines**: Linked to company phases, dashed vertical line in phase color. Auto-completed when phase is advanced via PhaseProgress.
     - **Custom deadlines**: Freeform with icon picker (Flag, Handshake, Rocket, Eye, Calendar), description, color. Dotted vertical line.
-    - **DeadlinePopover**: Two-tab create/edit (Phase Deadline / Custom), excludes phases that already have deadlines
-    - **DeadlineMarker**: Vertical line + icon in Gantt grid cells, overdue (red + AlertTriangle), completed (green + CheckCircle)
-    - Level 1 milestone icons differentiate by type: custom icon → Lucide icon, phase → colored Diamond, overdue → red Diamond pulse
-    - Click on deadline milestone opens DeadlinePopover (not MilestonePopover)
+    - **DeadlinePopover**: Two-tab create/edit (Phase Deadline / Custom), excludes phases that already have deadlines. Rendered at component root level. State: `deadlinePopover` with `{ open, position, milestone, projectId, projectColor, defaultDate? }`.
+    - **DeadlineMarker**: Vertical line + Lucide icon in milestone row, color-coded by overdue/completed/type
+    - Collapsed key deadline diamond is clickable (opens DeadlinePopover via `milestoneId` lookup in `liveMilestones`)
+    - "**+ Add deadline**" button in expanded project left panel (below "+ Add activity"), opens DeadlinePopover
+    - Double-click empty milestone row area creates deadline at that week
+    - `phaseDeadlinesByProject` useMemo tracks existing phase deadlines per project to prevent duplicates
   - Budget health indicators (green/yellow/red)
-  - Multi-milestone support per column in week/month views (with +N badge)
   - **Per-project activity Gantt (Level 2)**: Expand any project to see a full activity Gantt chart
     - `ProjectActivity` model: name, dates, status, phase/category grouping, assignee, color, notes, sortOrder
     - Activities grouped by phase (when phases enabled) or free-text category
     - Status system: not_started (dashed), in_progress (solid), needs_review (orange stripe), complete (muted), overdue (computed: red ring)
-    - **Inline editing**: Click activity name, status, or dates to edit in-place via `InlineEditCell` component
-    - **Drag-to-move/resize**: Activity blocks use shared `useTimelineDrag` hook with `activity-*` prefixed drag types
-    - Activity progress badge on Level 1 project row (e.g., "4/12")
-    - Activity progress bar at bottom of expanded section
-    - Create/edit via `ActivityPopover` (name, phase/category, assignee, dates, status, note)
+    - **Drag-to-move/resize**: Window-level mouse listeners with `dragRef` for project bars and activity blocks. Commit on mouseup via `commitDrag()`. Delta calculated from `(e.clientX - startMouseX) / COL_WIDTH`.
+    - Activity list in left panel with "**+ Add activity**" button (edit mode)
     - Color fallback: `activity.color → phaseColor → projectColor`
-    - Lazy-loaded: activities fetched only when project expanded
+    - Lazy-loaded: activities fetched only when project expanded, cached in `activityCache`
     - API: `GET/POST/PUT/DELETE /api/projects/[id]/activities`, `PUT /api/projects/[id]/activities/reorder`
+  - **Edit mode**: Toggle via "Edit Timeline" button. Footer bar shows unsaved change count, undo/redo/discard/save buttons. Undo/redo via `useReducer` with `past`/`present`/`future` stacks. Save batches all project + activity date changes into parallel API calls.
+  - **Legend**: Phase deadline (dashed line), Custom deadline (dotted line), Project bar, Conflict badge
 
 ### Team
 - **Team tab**: Member list with roles, bill/cost rates, weekly targets, extra vacation days, employment type (employee/freelancer), hourly toggle
