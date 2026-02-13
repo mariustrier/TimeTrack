@@ -104,11 +104,14 @@ export function ActivityPopover({
     return () => document.removeEventListener("keydown", handleKey);
   }, [open, onClose]);
 
-  // Close on outside click
+  // Close on outside click (ignore Radix Select portals)
   useEffect(() => {
     if (!open) return;
     const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+      const target = e.target as HTMLElement;
+      if (ref.current && !ref.current.contains(target)) {
+        // Don't close if clicking inside a Radix Select/Popover portal
+        if (target.closest("[data-radix-popper-content-wrapper]")) return;
         onClose();
       }
     };
@@ -233,7 +236,7 @@ export function ActivityPopover({
 
           {/* Assigned */}
           <div className="space-y-1">
-            <Label className="text-xs">{t("assignedTo") || "Assigned To"}</Label>
+            <Label className="text-xs">{t("assigned") || "Assigned"}</Label>
             <Select value={assignedUserId} onValueChange={setAssignedUserId}>
               <SelectTrigger className="h-8 text-sm">
                 <SelectValue placeholder={t("unassigned") || "Unassigned"} />
@@ -276,7 +279,7 @@ export function ActivityPopover({
 
           {/* Status */}
           <div className="space-y-1">
-            <Label className="text-xs">{t("status") || "Status"}</Label>
+            <Label className="text-xs">{t("activityStatus") || "Status"}</Label>
             <Select value={status} onValueChange={(v) => setStatus(v as ActivityStatus)}>
               <SelectTrigger className="h-8 text-sm">
                 <SelectValue />
