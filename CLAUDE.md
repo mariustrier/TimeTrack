@@ -29,7 +29,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 1. `app/(dashboard)/dashboard/` - Employee timesheet + stat cards + flex balance
 2. `app/(dashboard)/admin/` - **Tabbed**: Overview | Approvals | Vacations | Backups | Audit Log *(admin only)*
 3. `app/(dashboard)/team/` - **Tabbed**: Team members | Resource Planner *(admin/manager)*
-4. `app/(dashboard)/projects/` - **Tabbed**: Projects list | Timeline with milestones *(admin/manager)*
+4. `app/(dashboard)/projects/` - **Tabbed**: Projects list | Timeline with milestones & activities Gantt *(admin/manager)*
 5. `app/(dashboard)/ai/` - AI-powered business insights *(admin/manager)*
 6. `app/(dashboard)/analytics/` - **Tabbed**: Employee | Team | Project | Company insights *(admin/manager)*
 7. `app/(dashboard)/expenses/` - Expense tracking with receipt uploads
@@ -38,9 +38,9 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 10. `app/(dashboard)/settings/` - Tour replay, data export, account deletion
 11. `app/(dashboard)/super-admin/` - Platform-level admin with support access requests *(superAdmin only)*
 
-### API Routes (106 route files across 28 domains)
+### API Routes (108 route files across 29 domains)
 - `app/api/` - All scoped by companyId (via `getAuthUser()` which auto-overrides for support mode)
-- Key domains: `time-entries`, `projects`, `team`, `admin`, `expenses`, `vacations`, `contracts`, `resource-allocations`, `analytics`, `ai`, `insights`, `mileage`, `auth`, `cron`, `super-admin`, `super-admin/access`, `admin/support-access`, `user`, `upload`, `absence-reasons`, `admin/phases`, `phases`, `admin/expense-categories`, `invoices`, `billing`, `accounting/test`, `accounting/customers`, `accounting/mappings`, `accounting/economic` (authorize + callback), `accounting/dinero` (authorize + callback)
+- Key domains: `time-entries`, `projects`, `projects/[id]/activities` (CRUD + reorder), `team`, `admin`, `expenses`, `vacations`, `contracts`, `resource-allocations`, `analytics`, `ai`, `insights`, `mileage`, `auth`, `cron`, `super-admin`, `super-admin/access`, `admin/support-access`, `user`, `upload`, `absence-reasons`, `admin/phases`, `phases`, `admin/expense-categories`, `invoices`, `billing`, `accounting/test`, `accounting/customers`, `accounting/mappings`, `accounting/economic` (authorize + callback), `accounting/dinero` (authorize + callback)
 
 ### Components
 - `components/admin/` - AdminOverview, AdminApprovals, AdminVacations, AdminBackups, AdminAuditLog, TeamUtilizationBars, PhaseMigrationDialog
@@ -49,7 +49,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `components/billing/` - UninvoicedTab, InvoicesTab, InvoiceCreateDialog, InvoiceDetailDialog, BillingSettings
 - `components/contracts/` - ContractSection (upload, AI extraction, manual entry)
 - `components/projects/` - ProjectsList, ProjectTimeline, PhaseProgress
-- `components/project-timeline/` - TimelineGrid, MilestoneDialog
+- `components/project-timeline/` - TimelineGrid, MilestoneDialog, MilestonePopover, DeadlinePopover, DeadlineMarker, ActivityGanttSection, ActivityRow, ActivityBlock, ActivityPopover, ActivityCategoryHeader, ActivityProgressBar, InlineEditCell
 - `components/resource-planner/` - ResourceGrid, AllocationDialog, ViewControls, CapacitySummary
 - `components/team/` - TeamList, ResourcePlanner
 - `components/vacations/` - VacationCalendar, VacationPlanner
@@ -81,8 +81,8 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
   - `lib/accounting/billy.ts` - Billy API adapter (X-Access-Token header)
   - `lib/accounting/dinero.ts` - Dinero API adapter via Visma Connect (OAuth2 + auto-refresh, also supports legacy client_credentials)
 
-### Database (23 models)
-Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPaymentDays`, `companyAddress`, `companyCvr`, `companyBankAccount`, `companyBankReg`, `invoiceFooterNote`, `accountingSystem`, `accountingCredentials`), User (`isHourly`, `weeklyTarget`, `vacationDays`, `vacationTrackingUnit`, `vacationHoursPerYear`, `deletedAt`, etc.), Project, TimeEntry (`invoiceId`, `invoicedAt`), VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense (`invoiceId`, `invoicedAt`), CompanyExpense, ExpenseCategory, AbsenceReason, ResourceAllocation, ProjectMilestone, Phase, SupportAccess, CompanyHoliday, Invoice, InvoiceLine, CustomerMapping, OAuthState
+### Database (24 models)
+Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPaymentDays`, `companyAddress`, `companyCvr`, `companyBankAccount`, `companyBankReg`, `invoiceFooterNote`, `accountingSystem`, `accountingCredentials`), User (`isHourly`, `weeklyTarget`, `vacationDays`, `vacationTrackingUnit`, `vacationHoursPerYear`, `deletedAt`, etc.), Project, TimeEntry (`invoiceId`, `invoicedAt`), VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense (`invoiceId`, `invoicedAt`), CompanyExpense, ExpenseCategory, AbsenceReason, ResourceAllocation, ProjectMilestone, ProjectActivity, Phase, SupportAccess, CompanyHoliday, Invoice, InvoiceLine, CustomerMapping, OAuthState
 
 ### Tests
 - `__tests__/lib/` - 199 unit tests across 10 suites (Vitest)
@@ -189,11 +189,30 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
   - Audit log: IMPORT action with metadata
   - API: `POST /api/projects/import` (multipart/form-data, admin/manager only, rate-limited)
   - Parser: `lib/economic-import.ts` — extracts invoices, task categories, time entries from Projektkort format
-- **Timeline tab**: Gantt view with project bars, milestone diamonds, today line
+- **Timeline tab**: Two-level Gantt view with project bars, milestone diamonds, today line
   - **Day/Week/Month view toggle** with **period span slider**: users drag to control visible range per view mode (Day: 1-6mo, Week: 2-12mo, Month: 6-24mo)
   - CRUD milestones (title, due date, completion tracking)
+  - **Deadline system**: Extends milestones with `type` (phase/custom), `phaseId`, `description`, `icon`, `color`
+    - **Phase deadlines**: Linked to company phases, auto-titled "{Phase} Handover", dashed vertical line in phase color, diamond icon. Auto-completed when phase is advanced via PhaseProgress.
+    - **Custom deadlines**: Freeform with icon picker (Flag, Handshake, Rocket, Eye, Calendar), description, color. Dotted vertical line.
+    - **DeadlinePopover**: Two-tab create/edit (Phase Deadline / Custom), excludes phases that already have deadlines
+    - **DeadlineMarker**: Vertical line + icon in Gantt grid cells, overdue (red + AlertTriangle), completed (green + CheckCircle)
+    - Level 1 milestone icons differentiate by type: custom icon → Lucide icon, phase → colored Diamond, overdue → red Diamond pulse
+    - Click on deadline milestone opens DeadlinePopover (not MilestonePopover)
   - Budget health indicators (green/yellow/red)
   - Multi-milestone support per column in week/month views (with +N badge)
+  - **Per-project activity Gantt (Level 2)**: Expand any project to see a full activity Gantt chart
+    - `ProjectActivity` model: name, dates, status, phase/category grouping, assignee, color, notes, sortOrder
+    - Activities grouped by phase (when phases enabled) or free-text category
+    - Status system: not_started (dashed), in_progress (solid), needs_review (orange stripe), complete (muted), overdue (computed: red ring)
+    - **Inline editing**: Click activity name, status, or dates to edit in-place via `InlineEditCell` component
+    - **Drag-to-move/resize**: Activity blocks use shared `useTimelineDrag` hook with `activity-*` prefixed drag types
+    - Activity progress badge on Level 1 project row (e.g., "4/12")
+    - Activity progress bar at bottom of expanded section
+    - Create/edit via `ActivityPopover` (name, phase/category, assignee, dates, status, note)
+    - Color fallback: `activity.color → phaseColor → projectColor`
+    - Lazy-loaded: activities fetched only when project expanded
+    - API: `GET/POST/PUT/DELETE /api/projects/[id]/activities`, `PUT /api/projects/[id]/activities/reorder`
 
 ### Team
 - **Team tab**: Member list with roles, bill/cost rates, weekly targets, extra vacation days, employment type (employee/freelancer), hourly toggle
@@ -307,6 +326,7 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
 - **Time entry templates** — No recurring/saved entry patterns
 
 ### Low Priority
+- **Activity Gantt enhancements** — Drag-to-create (draw blocks across empty cells), row reordering via drag grip, right-click context menu, per-activity color picker
 - Keyboard shortcuts (Cmd+S save, Cmd+Enter submit)
 - Offline support / service worker
 - Optimistic UI updates
