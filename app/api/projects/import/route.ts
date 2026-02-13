@@ -221,6 +221,7 @@ export async function POST(req: Request) {
               approvedAt: now,
               approvedBy: user.id,
               billingStatus: "billable",
+              externallyInvoiced: true,
               phaseId: phase?.id || null,
               phaseName: phase?.name || null,
             };

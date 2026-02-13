@@ -1610,6 +1610,11 @@
     "oauthSuccess": "Successfully connected to {system}!",
     "oauthError": "Failed to connect. Please try again.",
     "oauthDenied": "Authorization was denied. Please try again.",
-    "oauthOrgError": "Could not determine your organization. Please try again."
+    "oauthOrgError": "Could not determine your organization. Please try again.",
+    "externallyInvoiced": "Already invoiced externally",
+    "externallyInvoicedIn": "Already invoiced in {system}",
+    "externallyInvoicedDesc": "These hours were imported from your accounting system and have already been invoiced.",
+    "importedHours": "imported hours",
+    "importedEntries": "entries"
   }
 }

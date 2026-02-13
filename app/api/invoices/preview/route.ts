@@ -31,6 +31,7 @@ export async function POST(req: Request) {
       approvalStatus: "approved",
       billingStatus: "billable",
       invoiceId: null,
+      externallyInvoiced: { not: true },
       date: { gte: new Date(periodStart), lte: new Date(periodEnd) },
     };
     if (phaseId) timeWhere.phaseId = phaseId;

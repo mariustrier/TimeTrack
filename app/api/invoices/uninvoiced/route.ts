@@ -40,6 +40,7 @@ export async function GET() {
           approvalStatus: "approved",
           billingStatus: "billable",
           invoiceId: null,
+          externallyInvoiced: { not: true },
         },
         select: {
           id: true,

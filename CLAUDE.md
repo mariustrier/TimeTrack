@@ -20,7 +20,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 
 - `npm run dev` - Start development server
 - `npm run build` - Production build (also runs linting + type checking)
-- `npm run test` - Run all 199 unit tests (Vitest)
+- `npm run test` - Run all 200 unit tests (Vitest)
 - `npm run test:watch` - Run tests in watch mode
 
 ## Project Structure
@@ -50,7 +50,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `components/contracts/` - ContractSection (upload, AI extraction, manual entry)
 - `components/projects/` - ProjectsList, ProjectTimeline, PhaseProgress
 - `components/project-timeline/` - TimelineGrid, MilestoneDialog, MilestonePopover, DeadlinePopover, DeadlineMarker, ActivityGanttSection, ActivityRow, ActivityBlock, ActivityPopover, ActivityCategoryHeader, ActivityProgressBar, InlineEditCell
-- `components/resource-planner/` - ResourceGrid, AllocationDialog, ViewControls, CapacitySummary
+- `components/resource-planner/` - ResourceGrid, AllocationDialog, AllocationBlock, ViewControls, PlannerControls, PlannerGrid, PlannerRow, PlannerCell, BulkActionToolbar, CapacitySummary
 - `components/team/` - TeamList, ResourcePlanner
 - `components/vacations/` - VacationCalendar, VacationPlanner
 - `components/layout/` - Sidebar (role-based nav with badge counts, support mode banner)
@@ -82,10 +82,10 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
   - `lib/accounting/dinero.ts` - Dinero API adapter via Visma Connect (OAuth2 + auto-refresh, also supports legacy client_credentials)
 
 ### Database (24 models)
-Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPaymentDays`, `companyAddress`, `companyCvr`, `companyBankAccount`, `companyBankReg`, `invoiceFooterNote`, `accountingSystem`, `accountingCredentials`), User (`isHourly`, `weeklyTarget`, `vacationDays`, `vacationTrackingUnit`, `vacationHoursPerYear`, `deletedAt`, etc.), Project, TimeEntry (`invoiceId`, `invoicedAt`), VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense (`invoiceId`, `invoicedAt`), CompanyExpense, ExpenseCategory, AbsenceReason, ResourceAllocation, ProjectMilestone, ProjectActivity, Phase, SupportAccess, CompanyHoliday, Invoice, InvoiceLine, CustomerMapping, OAuthState
+Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPaymentDays`, `companyAddress`, `companyCvr`, `companyBankAccount`, `companyBankReg`, `invoiceFooterNote`, `accountingSystem`, `accountingCredentials`), User (`isHourly`, `weeklyTarget`, `vacationDays`, `vacationTrackingUnit`, `vacationHoursPerYear`, `deletedAt`, etc.), Project, TimeEntry (`invoiceId`, `invoicedAt`, `externallyInvoiced`), VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense (`invoiceId`, `invoicedAt`), CompanyExpense, ExpenseCategory, AbsenceReason, ResourceAllocation, ProjectMilestone (`type`, `phaseId`, `description`, `icon`, `color` — deadline fields + Phase relation), ProjectActivity, Phase, SupportAccess, CompanyHoliday, Invoice, InvoiceLine, CustomerMapping, OAuthState
 
 ### Tests
-- `__tests__/lib/` - 199 unit tests across 10 suites (Vitest)
+- `__tests__/lib/` - 200 unit tests across 11 suites (Vitest)
 
 ## Core Features
 
@@ -139,7 +139,8 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
   - **Accounting system card**: Shows green "Connected" badge with dark mode support when connected. "Test Connection" and "Disconnect" buttons for connected state. Three provider options (e-conomic, Dinero with OAuth; Billy with manual entry) for unconnected state.
   - **Customer mapping card**: Appears when connected. Table of existing mappings with delete, add new mapping via client name + external customer dropdown.
   - **OAuth callback handling**: Reads `?connected=` and `?error=` query params from URL on mount → shows success/error toast, cleans URL.
-- **Sidebar badge**: Shows count of projects with uninvoiced approved billable entries.
+- **Sidebar badge**: Shows count of projects with uninvoiced approved billable entries. Badge dismissed after visiting the billing tab; reappears only when new uninvoiced entries are added (localStorage-based seen count).
+- **Externally invoiced section**: Imported entries (from e-conomic import) are marked `externallyInvoiced: true` in TimeEntry. They keep `billingStatus: "billable"` for analytics but are excluded from uninvoiced/invoice creation queries. A green-tinted section on the Uninvoiced tab shows "Already invoiced in [e-conomic/Billy/Dinero]" with per-project hours, amounts, and entry counts. API: `GET /api/invoices/externally-invoiced`.
 
 ### Vacations
 - Request with start/end date, type (vacation/sick/personal), note
@@ -185,7 +186,7 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
   - 5-step wizard: Upload → Map Employees → Map Categories to Phases → Project Settings → Review & Confirm
   - Client-side XLSX parsing via SheetJS (`xlsx` package)
   - Auto-match employees by name similarity, categories to phases
-  - Creates project, allocations, and time entries (pre-approved) in a single Prisma transaction
+  - Creates project, allocations, and time entries (pre-approved, `externallyInvoiced: true`) in a single Prisma transaction
   - Audit log: IMPORT action with metadata
   - API: `POST /api/projects/import` (multipart/form-data, admin/manager only, rate-limited)
   - Parser: `lib/economic-import.ts` — extracts invoices, task categories, time entries from Projektkort format
@@ -227,6 +228,7 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
   - Capacity summary with utilization percentages
   - Tentative/confirmed/completed status
   - Allocations feed into employee dashboard "Planned" stat card and timesheet grid columns
+  - **Multi-select & bulk actions**: Toggle "Multi-select" mode via toolbar button. Click to select individual blocks, drag across cells to select multiple. Selected blocks show blue ring + checkmark. Floating BulkActionToolbar at bottom with: select all/clear, bulk status change (tentative/confirmed/completed), move by N days, delete with confirmation. Drag-and-drop selected blocks to move all at once. Escape exits selection mode. Bulk API: `POST /api/resource-allocations/bulk` (actions: delete, updateStatus, move).
 
 ### Admin
 - **Overview tab**: Financial stats (revenue, costs, margins), team utilization (1 decimal place), project budgets with allocations, absence reason management, e-conomic CSV export, company settings (currency, universal bill rate, expense threshold, AI anonymization, logo)

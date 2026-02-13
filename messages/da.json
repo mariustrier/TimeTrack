@@ -1610,6 +1610,11 @@
     "oauthSuccess": "Forbundet til {system}!",
     "oauthError": "Forbindelse mislykkedes. Prøv igen.",
     "oauthDenied": "Autorisation blev afvist. Prøv igen.",
-    "oauthOrgError": "Kunne ikke bestemme din organisation. Prøv igen."
+    "oauthOrgError": "Kunne ikke bestemme din organisation. Prøv igen.",
+    "externallyInvoiced": "Allerede faktureret eksternt",
+    "externallyInvoicedIn": "Allerede faktureret i {system}",
+    "externallyInvoicedDesc": "Disse timer er importeret fra dit regnskabssystem og er allerede faktureret.",
+    "importedHours": "importerede timer",
+    "importedEntries": "poster"
   }
 }

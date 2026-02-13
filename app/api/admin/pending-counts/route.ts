@@ -102,6 +102,7 @@ export async function GET() {
           approvalStatus: "approved",
           billingStatus: "billable",
           invoiceId: null,
+          externallyInvoiced: { not: true },
         },
       });
       if (uninvoicedProjects.length > 0) {
