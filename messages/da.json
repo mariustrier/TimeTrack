@@ -922,7 +922,8 @@
     "conflictsTitle": "Planlægningskonflikter",
     "day": "dag",
     "goToProject": "Gå til",
-    "phaseDateUpdated": "Fasedatoer oprettet"
+    "phaseDateUpdated": "Fasedatoer oprettet",
+    "capacity": "kapacitet"
   },
   "ai": {
     "title": "AI Assistent",

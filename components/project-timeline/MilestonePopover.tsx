@@ -52,7 +52,7 @@ export function MilestonePopover({
     if (open) {
       if (milestone) {
         setTitle(milestone.title);
-        setDueDate(format(new Date(milestone.dueDate), "yyyy-MM-dd"));
+        setDueDate(format(new Date(milestone.dueDate + "T00:00:00"), "yyyy-MM-dd"));
         setCompleted(milestone.completed);
       } else {
         setTitle("");
@@ -110,6 +110,7 @@ export function MilestonePopover({
 
   const handleDelete = () => {
     if (!milestone) return;
+    if (!window.confirm(t("confirmDelete") || "Are you sure you want to delete this milestone?")) return;
     onDelete(milestone.id, projectId);
   };
 

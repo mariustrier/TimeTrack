@@ -922,7 +922,8 @@
     "conflictsTitle": "Scheduling Conflicts",
     "day": "day",
     "goToProject": "Go to",
-    "phaseDateUpdated": "Phase dates created"
+    "phaseDateUpdated": "Phase dates created",
+    "capacity": "capacity"
   },
   "ai": {
     "title": "AI Assistant",

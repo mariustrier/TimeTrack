@@ -27,18 +27,18 @@ export function AllocationSubRow({
 
   // Check if allocation overlaps with a column
   const isInAllocation = (col: TimelineColumn) => {
-    const start = new Date(allocation.startDate);
-    const end = new Date(allocation.endDate);
+    const start = new Date(allocation.startDate + "T00:00:00");
+    const end = new Date(allocation.endDate + "T00:00:00");
     return col.start <= end && col.end >= start;
   };
 
   const isStartCol = (col: TimelineColumn) => {
-    const start = new Date(allocation.startDate);
+    const start = new Date(allocation.startDate + "T00:00:00");
     return start >= col.start && start <= col.end;
   };
 
   const isEndCol = (col: TimelineColumn) => {
-    const end = new Date(allocation.endDate);
+    const end = new Date(allocation.endDate + "T00:00:00");
     return end >= col.start && end <= col.end;
   };
 
@@ -56,7 +56,7 @@ export function AllocationSubRow({
   return (
     <tr className="bg-muted/10">
       {/* Employee name cell */}
-      <td className="sticky left-0 z-10 bg-card border-b border-r border-border p-2 min-w-[200px]">
+      <td className="sticky left-0 z-10 bg-card border-b border-r border-border p-2 min-w-[220px]">
         <div className="flex items-center gap-2 pl-6">
           <Avatar className="h-5 w-5">
             <AvatarImage src={allocation.userImageUrl || undefined} />

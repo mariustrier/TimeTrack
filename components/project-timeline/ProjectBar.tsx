@@ -33,8 +33,8 @@ export function ProjectBar({
   // Filter phase segments that overlap with this column
   const overlappingPhases = showPhases
     ? phaseSegments.filter((ps) => {
-        const psStart = new Date(ps.startDate);
-        const psEnd = new Date(ps.endDate);
+        const psStart = new Date(ps.startDate + "T00:00:00");
+        const psEnd = new Date(ps.endDate + "T00:00:00");
         return psStart <= columnEnd && psEnd >= columnStart;
       })
     : [];
@@ -52,8 +52,8 @@ export function ProjectBar({
       {/* Phase segments overlay */}
       {overlappingPhases.map((ps) => {
         // Calculate what percentage of this column the phase covers
-        const psStart = new Date(ps.startDate);
-        const psEnd = new Date(ps.endDate);
+        const psStart = new Date(ps.startDate + "T00:00:00");
+        const psEnd = new Date(ps.endDate + "T00:00:00");
         const colDuration = columnEnd.getTime() - columnStart.getTime() || 1;
         const segStart = Math.max(0, (psStart.getTime() - columnStart.getTime()) / colDuration);
         const segEnd = Math.min(1, (psEnd.getTime() - columnStart.getTime()) / colDuration);
@@ -89,7 +89,7 @@ export function ProjectBar({
       {/* Left resize handle */}
       {isStart && (
         <div
-          className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize z-20 hover:bg-white/30 rounded-l-md"
+          className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize z-20 hover:bg-foreground/20 rounded-l-md"
           onMouseDown={(e) => {
             e.stopPropagation();
             e.preventDefault();
@@ -110,7 +110,7 @@ export function ProjectBar({
       {/* Right resize handle */}
       {isEnd && (
         <div
-          className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize z-20 hover:bg-white/30 rounded-r-md"
+          className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize z-20 hover:bg-foreground/20 rounded-r-md"
           onMouseDown={(e) => {
             e.stopPropagation();
             e.preventDefault();

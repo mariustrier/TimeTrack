@@ -54,6 +54,8 @@ export function TimelineGrid({
   const t = useTranslations("timeline");
 
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  const lastDragEndRef = useRef(0);
+
   const [milestonePopover, setMilestonePopover] = useState<{
     open: boolean;
     position: { top: number; left: number } | null;
@@ -69,6 +71,7 @@ export function TimelineGrid({
   // Drag handler
   const handleDragEnd = useCallback((result: DragResult) => {
     setPreviewDates({});
+    lastDragEndRef.current = Date.now();
 
     if (result.type === "milestone" && result.newDate) {
       onUpdateMilestoneDate(result.entityId, result.projectId, format(result.newDate, "yyyy-MM-dd"));
@@ -116,8 +119,8 @@ export function TimelineGrid({
       return { start: dragPreview.start, end: dragPreview.end };
     }
     return {
-      start: project.startDate ? new Date(project.startDate) : null,
-      end: project.endDate ? new Date(project.endDate) : null,
+      start: project.startDate ? new Date(project.startDate + "T00:00:00") : null,
+      end: project.endDate ? new Date(project.endDate + "T00:00:00") : null,
     };
   };
 
@@ -150,7 +153,7 @@ export function TimelineGrid({
       if (dragState && dragPreview && dragState.type === "milestone" && dragState.entityId === m.id) {
         dueDate = dragPreview.start;
       } else {
-        dueDate = new Date(m.dueDate);
+        dueDate = new Date(m.dueDate + "T00:00:00");
       }
       return dueDate >= col.start && dueDate <= col.end;
     });
@@ -215,6 +218,8 @@ export function TimelineGrid({
 
   const handleMilestoneClick = (milestone: TimelineMilestone, project: TimelineProject, e: React.MouseEvent) => {
     e.stopPropagation();
+    // Skip if a drag just ended (prevents popover opening after drag)
+    if (Date.now() - lastDragEndRef.current < 200) return;
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     setMilestonePopover({
       open: true,
@@ -319,7 +324,7 @@ export function TimelineGrid({
                             )}
                           </button>
                         ) : (
-                          <div className="w-4.5" />
+                          <div className="w-[18px]" />
                         )}
 
                         <div
@@ -363,7 +368,8 @@ export function TimelineGrid({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                          className="h-5 w-5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity shrink-0"
+                          aria-label={t("addMilestone") || "Add Milestone"}
                           onClick={() => {
                             setMilestonePopover({
                               open: true,
@@ -392,7 +398,7 @@ export function TimelineGrid({
                           data-timeline-col
                           className={cn(
                             "border-b border-r border-border p-0 h-[44px] relative",
-                            col.containsToday && "bg-brand-50/30 dark:bg-brand-950/30"
+                            col.containsToday && "bg-brand-50/50 dark:bg-brand-950/50"
                           )}
                         >
                           {/* Project bar */}
@@ -408,15 +414,15 @@ export function TimelineGrid({
                               isDragging={isDraggingThis && dragState?.type !== "milestone"}
                               onResizeStartLeft={(e) => {
                                 if (!project.startDate || !project.endDate) return;
-                                startDrag("resize-start", project.id, project.id, e.clientX, new Date(project.startDate), new Date(project.endDate));
+                                startDrag("resize-start", project.id, project.id, e.clientX, new Date(project.startDate + "T00:00:00"), new Date(project.endDate + "T00:00:00"));
                               }}
                               onResizeStartRight={(e) => {
                                 if (!project.startDate || !project.endDate) return;
-                                startDrag("resize-end", project.id, project.id, e.clientX, new Date(project.startDate), new Date(project.endDate));
+                                startDrag("resize-end", project.id, project.id, e.clientX, new Date(project.startDate + "T00:00:00"), new Date(project.endDate + "T00:00:00"));
                               }}
                               onMoveStart={(e) => {
                                 if (!project.startDate || !project.endDate) return;
-                                startDrag("move", project.id, project.id, e.clientX, new Date(project.startDate), new Date(project.endDate));
+                                startDrag("move", project.id, project.id, e.clientX, new Date(project.startDate + "T00:00:00"), new Date(project.endDate + "T00:00:00"));
                               }}
                             />
                           )}
@@ -430,7 +436,7 @@ export function TimelineGrid({
                                 if (e.button !== 0) return;
                                 e.stopPropagation();
                                 const ms = colMilestones[0];
-                                startDrag("milestone", ms.id, project.id, e.clientX, new Date(ms.dueDate), new Date(ms.dueDate));
+                                startDrag("milestone", ms.id, project.id, e.clientX, new Date(ms.dueDate + "T00:00:00"), new Date(ms.dueDate + "T00:00:00"));
                               }}
                               title={colMilestones[0].title}
                             >
@@ -464,7 +470,7 @@ export function TimelineGrid({
 
                           {/* Today line */}
                           {col.containsToday && (
-                            <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-red-500 z-5" />
+                            <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-red-500 z-[5]" />
                           )}
                         </td>
                       );

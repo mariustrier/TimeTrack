@@ -78,7 +78,7 @@ export function BurndownSparkline({
   if (!budgetHours) {
     return (
       <tr className="bg-muted/5">
-        <td className="sticky left-0 z-10 bg-card border-b border-r border-border p-2 min-w-[200px]">
+        <td className="sticky left-0 z-10 bg-card border-b border-r border-border p-2 min-w-[220px]">
           <div className="flex items-center gap-2 pl-6">
             <span className="text-[10px] text-muted-foreground">
               {t("noBudget") || "No budget set"}
@@ -98,7 +98,7 @@ export function BurndownSparkline({
   if (!chartData) {
     return (
       <tr className="bg-muted/5">
-        <td className="sticky left-0 z-10 bg-card border-b border-r border-border p-2 min-w-[200px]">
+        <td className="sticky left-0 z-10 bg-card border-b border-r border-border p-2 min-w-[220px]">
           <div className="flex items-center gap-2 pl-6">
             <span className="text-[10px] text-muted-foreground">
               {t("burndown") || "Burndown"}
@@ -113,7 +113,7 @@ export function BurndownSparkline({
 
   return (
     <tr className="bg-muted/5">
-      <td className="sticky left-0 z-10 bg-card border-b border-r border-border p-2 min-w-[200px]">
+      <td className="sticky left-0 z-10 bg-card border-b border-r border-border p-2 min-w-[220px]">
         <div className="flex items-center gap-2 pl-6">
           <span className="text-[10px] text-muted-foreground">
             {t("burndown") || "Burndown"}

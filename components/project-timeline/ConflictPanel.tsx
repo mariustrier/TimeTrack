@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
+import { useDateLocale } from "@/lib/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronRight, TriangleAlert } from "lucide-react";
@@ -15,6 +16,7 @@ interface ConflictPanelProps {
 
 export function ConflictPanel({ conflicts, onConflictClick }: ConflictPanelProps) {
   const t = useTranslations("timeline");
+  const dateLocale = useDateLocale();
   const [expanded, setExpanded] = useState(true);
 
   // Group conflicts by userId and consecutive date ranges
@@ -84,8 +86,8 @@ export function ConflictPanel({ conflicts, onConflictClick }: ConflictPanelProps
         <CardContent className="p-3 pt-0 space-y-2">
           {groupedConflicts.map((group, i) => {
             const dateRange = group.startDate === group.endDate
-              ? format(new Date(group.startDate), "d. MMM")
-              : `${format(new Date(group.startDate), "d. MMM")} – ${format(new Date(group.endDate), "d. MMM")}`;
+              ? format(new Date(group.startDate + "T00:00:00"), "d. MMM", { locale: dateLocale })
+              : `${format(new Date(group.startDate + "T00:00:00"), "d. MMM", { locale: dateLocale })} – ${format(new Date(group.endDate + "T00:00:00"), "d. MMM", { locale: dateLocale })}`;
 
             const details = group.projects
               .map((p) => `${p.projectName} (${p.hours}t)`)
@@ -106,7 +108,7 @@ export function ConflictPanel({ conflicts, onConflictClick }: ConflictPanelProps
                     {group.userName} — {dateRange}
                   </p>
                   <p className="text-muted-foreground mt-0.5">
-                    {details} = {group.totalHours.toFixed(1)}t/{t("day") || "dag"} (kapacitet: {group.dailyCapacity.toFixed(1)}t)
+                    {details} = {group.totalHours.toFixed(1)}t/{t("day") || "day"} ({t("capacity") || "capacity"}: {group.dailyCapacity.toFixed(1)}t)
                   </p>
                 </div>
                 {onConflictClick && group.projects.length > 0 && (
