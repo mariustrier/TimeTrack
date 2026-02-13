@@ -86,8 +86,8 @@ export function formatCurrency(amount: number, currency = "USD"): string {
   }).format(amount);
 }
 
-export function formatHours(hours: number): string {
-  return `${hours.toFixed(1)}h`;
+export function formatHours(hours: number, suffix = "h"): string {
+  return `${hours.toFixed(1)}${suffix}`;
 }
 
 export function formatPercentage(value: number): string {

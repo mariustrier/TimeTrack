@@ -250,11 +250,11 @@ export function TeamInsights({
           />
           <YAxis
             tick={{ fill: theme.textMuted, fontSize: 12 }}
-            tickFormatter={(v: number) => `${v}h`}
+            tickFormatter={(v: number) => `${v}${tc("hourAbbrev")}`}
           />
           <Tooltip
             {...tooltipStyle}
-            formatter={(value: any, name: any) => [`${value}h`, name]}
+            formatter={(value: any, name: any) => [`${value}${tc("hourAbbrev")}`, name]}
           />
           <Legend />
           <Bar

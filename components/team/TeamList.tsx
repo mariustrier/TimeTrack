@@ -307,7 +307,7 @@ export function TeamList() {
                           {t("hourly")}
                         </Badge>
                       ) : (
-                        `${member.weeklyTarget}h`
+                        `${member.weeklyTarget}${tc("hourAbbrev")}`
                       )}
                     </TableCell>
                     <TableCell>

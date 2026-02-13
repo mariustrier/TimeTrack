@@ -87,6 +87,7 @@ export function AllocationDialog({
   onDelete,
 }: AllocationDialogProps) {
   const t = useTranslations("resourcePlanner");
+  const tc = useTranslations("common");
 
   const [userId, setUserId] = useState("");
   const [projectId, setProjectId] = useState("");
@@ -340,7 +341,7 @@ export function AllocationDialog({
                 />
                 {workingDays > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    = {calculatedTotalHours}h {t("totalOver") || "total over"} {workingDays} {t("workingDays") || "working days"}
+                    = {calculatedTotalHours}{tc("hourAbbrev")} {t("totalOver") || "total over"} {workingDays} {t("workingDays") || "working days"}
                   </p>
                 )}
               </div>
@@ -357,7 +358,7 @@ export function AllocationDialog({
                 />
                 {workingDays > 0 && totalHours && (
                   <p className="text-xs text-muted-foreground">
-                    = {calculatedHoursPerDay}h/{t("day") || "day"} ({workingDays} {t("workingDays") || "working days"})
+                    = {calculatedHoursPerDay}{tc("hourAbbrev")}/{t("day") || "day"} ({workingDays} {t("workingDays") || "working days"})
                   </p>
                 )}
                 <p className="text-xs text-amber-600 dark:text-amber-400">

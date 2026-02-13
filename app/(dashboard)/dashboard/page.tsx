@@ -941,19 +941,19 @@ export default function DashboardPage() {
         <div data-tour="stat-cards" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <StatCard
             title={t("totalHours")}
-            value={`${grandTotal.toFixed(1)}h`}
+            value={`${grandTotal.toFixed(1)}${tc("hourAbbrev")}`}
             icon={Clock}
             color="bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400"
           />
           <StatCard
             title={t("billableHours")}
-            value={`${billableTotal.toFixed(1)}h`}
+            value={`${billableTotal.toFixed(1)}${tc("hourAbbrev")}`}
             icon={DollarSign}
             color="bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
           />
           <StatCard
             title={t("planned")}
-            value={`${(plannedHours?.totalPlanned ?? 0).toFixed(1)}h`}
+            value={`${(plannedHours?.totalPlanned ?? 0).toFixed(1)}${tc("hourAbbrev")}`}
             icon={CalendarCheck}
             color="bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400"
             subtitle={plannedHours?.totalPlanned
@@ -971,13 +971,13 @@ export default function DashboardPage() {
         <div data-tour="stat-cards" className="grid grid-cols-2 gap-4 lg:grid-cols-4 xl:grid-cols-7">
           <StatCard
             title={t("target")}
-            value={`${weeklyTarget}h`}
+            value={`${weeklyTarget}${tc("hourAbbrev")}`}
             icon={Target}
             color="bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
           />
           <StatCard
             title={t("planned")}
-            value={`${(plannedHours?.totalPlanned ?? 0).toFixed(1)}h`}
+            value={`${(plannedHours?.totalPlanned ?? 0).toFixed(1)}${tc("hourAbbrev")}`}
             icon={CalendarCheck}
             color="bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400"
             subtitle={plannedHours?.totalPlanned
@@ -986,26 +986,26 @@ export default function DashboardPage() {
           />
           <StatCard
             title={t("billableHours")}
-            value={`${billableTotal.toFixed(1)}h`}
+            value={`${billableTotal.toFixed(1)}${tc("hourAbbrev")}`}
             icon={DollarSign}
             color="bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
           />
           <StatCard
             title={t("vacation")}
-            value={isVacationHours ? `${vacationHoursUsed.toFixed(1)}h` : `${vacationDaysUsed.toFixed(1)}d`}
+            value={isVacationHours ? `${vacationHoursUsed.toFixed(1)}${tc("hourAbbrev")}` : `${vacationDaysUsed.toFixed(1)}d`}
             icon={Palmtree}
             color="bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400"
             subtitle={isVacationHours ? t("hoursUsedStat") : t("daysUsed")}
           />
           <StatCard
             title={t("totalHours")}
-            value={`${grandTotal.toFixed(1)}h`}
+            value={`${grandTotal.toFixed(1)}${tc("hourAbbrev")}`}
             icon={Clock}
             color="bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400"
           />
           <StatCard
             title={t("timeBalance")}
-            value={`${timeBalance >= 0 ? "+" : ""}${timeBalance.toFixed(1)}h`}
+            value={`${timeBalance >= 0 ? "+" : ""}${timeBalance.toFixed(1)}${tc("hourAbbrev")}`}
             icon={TrendingUp}
             color={timeBalance >= 0
               ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
@@ -1015,7 +1015,7 @@ export default function DashboardPage() {
           <StatCard
             title={isVacationHours ? t("vacationHours") : t("vacationDays")}
             value={isVacationHours
-              ? `${(vacationHoursTotal - vacationHoursUsed).toFixed(1)}h`
+              ? `${(vacationHoursTotal - vacationHoursUsed).toFixed(1)}${tc("hourAbbrev")}`
               : `${(vacationDaysTotal - vacationDaysUsed).toFixed(1)}`}
             icon={CalendarDays}
             color="bg-sky-50 text-sky-600 dark:bg-sky-950 dark:text-sky-400"

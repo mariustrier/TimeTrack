@@ -78,6 +78,7 @@ const ALL_CATEGORIES: Category[] = [
 
 export default function AIAssistantPage() {
   const t = useTranslations("ai");
+  const tc = useTranslations("common");
 
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(true);
@@ -310,7 +311,7 @@ export default function AIAssistantPage() {
                         <div className="flex flex-wrap gap-3">
                           {insight.relatedHours != null && (
                             <span className="text-sm text-muted-foreground">
-                              {insight.relatedHours}h
+                              {insight.relatedHours}{tc("hourAbbrev")}
                             </span>
                           )}
                           {insight.relatedAmount != null && (

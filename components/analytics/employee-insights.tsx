@@ -275,7 +275,7 @@ export function EmployeeInsights({
                 itemStyle={tooltipStyle.itemStyle}
                 labelStyle={tooltipStyle.labelStyle}
                 formatter={(value: any, name: any) => [
-                  `${value.toFixed(1)}h`,
+                  `${value.toFixed(1)}${tc("hourAbbrev")}`,
                   name,
                 ]}
               />

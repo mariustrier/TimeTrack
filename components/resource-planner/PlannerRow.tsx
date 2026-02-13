@@ -66,6 +66,7 @@ export function PlannerRow({
   onAllocationDrop,
 }: PlannerRowProps) {
   const t = useTranslations("resourcePlanner");
+  const tc = useTranslations("common");
   const effectiveCap = getEffectiveWeeklyCapacity(employee);
 
   const getInitials = () => {
@@ -85,7 +86,7 @@ export function PlannerRow({
   const getSubtitle = () => {
     if (employee.employmentType === "freelancer") return "Freelancer";
     if (employee.isHourly) return t("hourly") || "Hourly";
-    return `${effectiveCap}h/${t("viewWeek") || "week"}`;
+    return `${effectiveCap}${tc("hourAbbrev")}/${t("viewWeek") || "week"}`;
   };
 
   // Get allocations for a specific day (skip weekends)

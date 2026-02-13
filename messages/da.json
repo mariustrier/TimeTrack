@@ -28,6 +28,7 @@
     "date": "Dato",
     "comment": "Kommentar",
     "billable": "Fakturerbar",
+    "hourAbbrev": "t",
     "nonBillable": "Ikke-fakturerbar",
     "included": "Inkluderet",
     "internal": "Intern",

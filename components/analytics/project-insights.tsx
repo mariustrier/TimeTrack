@@ -239,7 +239,7 @@ export function ProjectInsights({
           <Tooltip
             {...tooltipStyle}
             formatter={(value: any, name: any) => [
-              `${value.toFixed(1)}h`,
+              `${value.toFixed(1)}${tc("hourAbbrev")}`,
               tc(BILLING_LABELS[name] || name),
             ]}
           />
@@ -292,9 +292,9 @@ export function ProjectInsights({
               <Tooltip
                 {...tooltipStyle}
                 formatter={(value: any, name: any) => {
-                  if (name === "hoursRemaining") return [`${value.toFixed(1)}h`, t("hoursRemaining")];
-                  if (name === "idealBurn") return [`${value.toFixed(1)}h`, t("idealBurn")];
-                  return [`${value.toFixed(1)}h`, name];
+                  if (name === "hoursRemaining") return [`${value.toFixed(1)}${tc("hourAbbrev")}`, t("hoursRemaining")];
+                  if (name === "idealBurn") return [`${value.toFixed(1)}${tc("hourAbbrev")}`, t("idealBurn")];
+                  return [`${value.toFixed(1)}${tc("hourAbbrev")}`, name];
                 }}
               />
               <Legend
@@ -423,7 +423,7 @@ export function ProjectInsights({
                 <Tooltip
                   {...tooltipStyle}
                   formatter={(value: any, name: any) => {
-                    if (name === "hours") return [`${value.toFixed(1)}h`, tc("hours")];
+                    if (name === "hours") return [`${value.toFixed(1)}${tc("hourAbbrev")}`, tc("hours")];
                     if (name === "revenue") return [formatCurrency(value, currency), t("revenue")];
                     if (name === "cost") return [formatCurrency(value, currency), t("cost")];
                     return [value, name];

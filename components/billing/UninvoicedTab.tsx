@@ -24,6 +24,7 @@ interface UninvoicedProject {
 
 export function UninvoicedTab() {
   const t = useTranslations("billing");
+  const tc = useTranslations("common");
   const [projects, setProjects] = useState<UninvoicedProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [createProjectId, setCreateProjectId] = useState<string | null>(null);
@@ -87,7 +88,7 @@ export function UninvoicedTab() {
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <div>
-                    <p className="text-lg font-bold text-foreground">{p.uninvoicedHours}h</p>
+                    <p className="text-lg font-bold text-foreground">{p.uninvoicedHours}{tc("hourAbbrev")}</p>
                     <p className="text-[10px] text-muted-foreground">{t("hours")}</p>
                   </div>
                 </div>

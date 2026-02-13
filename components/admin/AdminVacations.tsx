@@ -193,7 +193,7 @@ export function AdminVacations() {
                       </td>
                       <td className="px-4 py-3 text-foreground">
                         {req.user.vacationTrackingUnit === "hours" && req.user.weeklyTarget
-                          ? `${(countBusinessDays(req.startDate, req.endDate) * (req.user.weeklyTarget / 5)).toFixed(1)}h`
+                          ? `${(countBusinessDays(req.startDate, req.endDate) * (req.user.weeklyTarget / 5)).toFixed(1)}${tc("hourAbbrev")}`
                           : countBusinessDays(req.startDate, req.endDate)}
                       </td>
                       <td className="px-4 py-3">{getStatusBadge(req.status)}</td>

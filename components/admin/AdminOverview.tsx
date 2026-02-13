@@ -860,7 +860,7 @@ export function AdminOverview() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs text-muted-foreground">{t("teamHours")}</p>
-                <p className="text-lg font-bold truncate">{formatHours(stats.totalHours)}</p>
+                <p className="text-lg font-bold truncate">{formatHours(stats.totalHours, tc("hourAbbrev"))}</p>
               </div>
             </div>
           </CardContent>
@@ -964,7 +964,7 @@ export function AdminOverview() {
                         <span className="text-sm text-amber-600">{t("noRateSet")}</span>
                       ) : (
                         <span className="text-sm text-muted-foreground">
-                          {project.hoursUsed} / {totalHours}h ({Math.round(percent)}%)
+                          {project.hoursUsed} / {totalHours}{tc("hourAbbrev")} ({Math.round(percent)}%)
                         </span>
                       )}
                       {!project.systemManaged && (
@@ -1073,8 +1073,8 @@ export function AdminOverview() {
                       <span className="text-muted-foreground">{tc("hours")}</span>
                       <span className="font-medium">
                         {emp.isHourly
-                          ? formatHours(emp.hours)
-                          : `${formatHours(emp.hours)} / ${formatHours(emp.weeklyTarget)}`}
+                          ? formatHours(emp.hours, tc("hourAbbrev"))
+                          : `${formatHours(emp.hours, tc("hourAbbrev"))} / ${formatHours(emp.weeklyTarget, tc("hourAbbrev"))}`}
                       </span>
                     </div>
                     {!emp.isHourly && (
@@ -2252,10 +2252,10 @@ export function AdminOverview() {
                 <span>{tc("project")}: {allocProject.name}</span>
                 <span>
                   {allocProject.budgetTotalHours
-                    ? `Budget: ${allocProject.budgetTotalHours}h`
+                    ? `Budget: ${allocProject.budgetTotalHours}${tc("hourAbbrev")}`
                     : allocProject?.pricingType === "fixed_price"
                       ? `${t("fixedPrice")}: ${convertAndFormat(allocProject?.fixedPrice || 0, masterCurrency, displayCurrency)}`
-                      : `Budget: ${allocProject?.budgetHours || 0}h`}
+                      : `Budget: ${allocProject?.budgetHours || 0}${tc("hourAbbrev")}`}
                 </span>
               </div>
               {/* Rate mode indicator for fixed-price projects */}
@@ -2270,7 +2270,7 @@ export function AdminOverview() {
                         {allocProject.effectiveRate} {masterCurrency}{t("perHour")}
                         {allocProject.budgetTotalHours && (
                           <span className="ml-2 text-foreground font-medium">
-                            ({allocProject.budgetTotalHours}h available)
+                            ({allocProject.budgetTotalHours}{tc("hourAbbrev")} available)
                           </span>
                         )}
                       </span>
@@ -2302,7 +2302,7 @@ export function AdminOverview() {
                         <div className="flex items-center gap-2">
                           {usedHours > 0 && (
                             <span className="text-xs text-muted-foreground">
-                              {t("usedHours")}: {usedHours}h
+                              {t("usedHours")}: {usedHours}{tc("hourAbbrev")}
                             </span>
                           )}
                           {isEmployeeRates && (
@@ -2323,12 +2323,12 @@ export function AdminOverview() {
                       />
                       <div className="text-xs text-muted-foreground w-16 text-right">
                         {empHours > 0 && unusedHours > 0 && (
-                          <span className="text-emerald-600">+{unusedHours}h</span>
+                          <span className="text-emerald-600">+{unusedHours}{tc("hourAbbrev")}</span>
                         )}
                         {belowUsed && (
-                          <span className="text-red-600">min {usedHours}h</span>
+                          <span className="text-red-600">min {usedHours}{tc("hourAbbrev")}</span>
                         )}
-                        {empHours === 0 && "h"}
+                        {empHours === 0 && tc("hourAbbrev")}
                       </div>
                     </div>
                   );
@@ -2347,12 +2347,12 @@ export function AdminOverview() {
                     <div className={cn("rounded-lg p-3 text-sm", remaining < 0 ? "bg-red-50 dark:bg-red-950" : "bg-muted/50")}>
                       <div className="flex justify-between">
                         <span>{t("allocated")}</span>
-                        <span className="font-medium">{totalAllocated}h</span>
+                        <span className="font-medium">{totalAllocated}{tc("hourAbbrev")}</span>
                       </div>
                       {remaining >= 0 ? (
                         <div className="flex justify-between text-muted-foreground">
                           <span>{t("unallocated")}</span>
-                          <span>{remaining}h</span>
+                          <span>{remaining}{tc("hourAbbrev")}</span>
                         </div>
                       ) : (
                         <div className="flex justify-between text-red-600">
@@ -2376,7 +2376,7 @@ export function AdminOverview() {
                     <div className={cn("rounded-lg p-3 text-sm", isOver ? "bg-red-50 dark:bg-red-950" : "bg-muted/50")}>
                       <div className="flex justify-between">
                         <span>{t("allocated")}</span>
-                        <span className="font-medium">{totalAllocated}h</span>
+                        <span className="font-medium">{totalAllocated}{tc("hourAbbrev")}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>{t("budgetUsedMoney")}</span>
@@ -2407,12 +2407,12 @@ export function AdminOverview() {
                   <div className={cn("rounded-lg p-3 text-sm", remaining < 0 ? "bg-red-50 dark:bg-red-950" : "bg-muted/50")}>
                     <div className="flex justify-between">
                       <span>{t("allocated")}</span>
-                      <span className="font-medium">{totalAllocated}h / {availableHours}h</span>
+                      <span className="font-medium">{totalAllocated}{tc("hourAbbrev")} / {availableHours}{tc("hourAbbrev")}</span>
                     </div>
                     {remaining >= 0 ? (
                       <div className="flex justify-between text-muted-foreground">
                         <span>{t("unallocated")}</span>
-                        <span>{remaining}h</span>
+                        <span>{remaining}{tc("hourAbbrev")}</span>
                       </div>
                     ) : (
                       <div className="flex justify-between text-red-600">

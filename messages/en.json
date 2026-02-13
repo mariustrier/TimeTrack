@@ -28,6 +28,7 @@
     "date": "Date",
     "comment": "Comment",
     "billable": "Billable",
+    "hourAbbrev": "h",
     "nonBillable": "Non-Billable",
     "included": "Included",
     "internal": "Internal",

@@ -26,6 +26,7 @@ interface AtRiskProjectsProps {
 
 export function AtRiskProjects({ projects }: AtRiskProjectsProps) {
   const t = useTranslations("admin");
+  const tc = useTranslations("common");
 
   // Filter to projects with budgets and calculate risk
   const projectsWithRisk = projects
@@ -95,8 +96,8 @@ export function AtRiskProjects({ projects }: AtRiskProjectsProps) {
                   )}
                 />
                 <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>{Math.round(project.hoursUsed)}h used</span>
-                  <span>{Math.round(project.budget)}h budget</span>
+                  <span>{Math.round(project.hoursUsed)}{tc("hourAbbrev")} used</span>
+                  <span>{Math.round(project.budget)}{tc("hourAbbrev")} budget</span>
                 </div>
               </div>
             ))}

@@ -512,7 +512,7 @@ export function ProjectsList() {
                       );
                       if (col === "budget") return (
                         <TableCell key={col}>
-                          {project.budgetTotalHours != null ? `${project.budgetTotalHours}h` : "-"}
+                          {project.budgetTotalHours != null ? `${project.budgetTotalHours}${tc("hourAbbrev")}` : "-"}
                         </TableCell>
                       );
                       if (col === "entries") return (

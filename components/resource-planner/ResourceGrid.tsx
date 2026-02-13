@@ -94,6 +94,7 @@ export function ResourceGrid({
   const dateLocale = useDateLocale();
   const { locale } = useLocale();
   const t = useTranslations("resourcePlanner");
+  const tc = useTranslations("common");
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -355,7 +356,7 @@ export function ResourceGrid({
                     </Avatar>
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{getDisplayName(employee)}</p>
-                      <p className="text-xs text-muted-foreground">{employee.isHourly ? t("hourly") : `${getEffectiveWeeklyCapacity(employee)}h/week`}</p>
+                      <p className="text-xs text-muted-foreground">{employee.isHourly ? t("hourly") : `${getEffectiveWeeklyCapacity(employee)}${tc("hourAbbrev")}/week`}</p>
                     </div>
                   </div>
                 </td>
@@ -414,7 +415,7 @@ export function ResourceGrid({
                       </div>
                       {totalHours > 0 && (
                         <div className="absolute bottom-0.5 right-1 text-[10px] text-muted-foreground">
-                          {totalHours.toFixed(0)}h
+                          {totalHours.toFixed(0)}{tc("hourAbbrev")}
                         </div>
                       )}
 
@@ -557,7 +558,7 @@ export function ResourceGrid({
                     </div>
                   ) : !isWeekend(day) ? (
                     <div className="text-[10px] text-muted-foreground">
-                      {dailyTarget}h
+                      {dailyTarget}{tc("hourAbbrev")}
                     </div>
                   ) : null}
                 </th>
@@ -581,7 +582,7 @@ export function ResourceGrid({
                   </Avatar>
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{getDisplayName(employee)}</p>
-                    <p className="text-xs text-muted-foreground">{getEffectiveWeeklyCapacity(employee)}h/week</p>
+                    <p className="text-xs text-muted-foreground">{getEffectiveWeeklyCapacity(employee)}{tc("hourAbbrev")}/week</p>
                   </div>
                 </div>
               </td>
@@ -660,12 +661,12 @@ export function ResourceGrid({
                           {allocation.project.name}
                         </span>
                         {allocation.totalHours ? (
-                          <span className="text-xs text-white/80 ml-1 shrink-0" title={`${allocationRollover[allocation.id]?.logged.toFixed(1) || 0}h logged, ${allocationRollover[allocation.id]?.remaining.toFixed(1) || 0}h remaining`}>
-                            {allocationRollover[allocation.id]?.adjustedPerDay.toFixed(1) || allocation.hoursPerDay}h/d
+                          <span className="text-xs text-white/80 ml-1 shrink-0" title={`${allocationRollover[allocation.id]?.logged.toFixed(1) || 0}${tc("hourAbbrev")} logged, ${allocationRollover[allocation.id]?.remaining.toFixed(1) || 0}${tc("hourAbbrev")} remaining`}>
+                            {allocationRollover[allocation.id]?.adjustedPerDay.toFixed(1) || allocation.hoursPerDay}{tc("hourAbbrev")}/d
                           </span>
                         ) : (
                           <span className="text-xs text-white/80 ml-1 shrink-0">
-                            {allocation.hoursPerDay}h
+                            {allocation.hoursPerDay}{tc("hourAbbrev")}
                           </span>
                         )}
                       </div>
@@ -674,7 +675,7 @@ export function ResourceGrid({
                     {/* Hours indicator for non-weekend non-allocation days */}
                     {!isWeekend(day) && !allocation && !vacation && hoursAllocated > 0 && (
                       <div className="absolute bottom-1 right-1 text-xs text-muted-foreground">
-                        {hoursAllocated}h
+                        {hoursAllocated}{tc("hourAbbrev")}
                       </div>
                     )}
                   </td>

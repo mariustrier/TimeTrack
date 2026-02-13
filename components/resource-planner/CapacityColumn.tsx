@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { useTranslations } from "@/lib/i18n";
 
 interface CapacityColumnProps {
   allocated: number;
@@ -8,6 +9,7 @@ interface CapacityColumnProps {
 }
 
 export function CapacityColumn({ allocated, capacity }: CapacityColumnProps) {
+  const tc = useTranslations("common");
   const utilization = capacity > 0 ? (allocated / capacity) * 100 : 0;
   const barColor =
     utilization > 100
@@ -19,7 +21,7 @@ export function CapacityColumn({ allocated, capacity }: CapacityColumnProps) {
   return (
     <div className="flex flex-col items-center gap-1 px-2 py-1 min-w-[80px]">
       <span className="text-[11px] font-medium text-foreground">
-        {allocated.toFixed(0)}/{capacity.toFixed(0)}h
+        {allocated.toFixed(0)}/{capacity.toFixed(0)}{tc("hourAbbrev")}
       </span>
       <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
         <div

@@ -75,6 +75,7 @@ function formatFileSize(bytes: number): string {
 
 export function ContractSection({ projectId, userRole }: ContractSectionProps) {
   const t = useTranslations("contracts");
+  const tc = useTranslations("common");
 
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
@@ -596,7 +597,7 @@ export function ContractSection({ projectId, userRole }: ContractSectionProps) {
                               {t("maxHours")}:
                             </span>
                             <span className="text-sm font-medium">
-                              {contract.maxHours}h
+                              {contract.maxHours}{tc("hourAbbrev")}
                             </span>
                           </div>
                         )}

@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslations } from "@/lib/i18n";
 
 interface AllocationBlockProps {
   id: string;
@@ -28,6 +29,7 @@ export function AllocationBlock({
   onClick,
   onDelete,
 }: AllocationBlockProps) {
+  const tc = useTranslations("common");
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData("application/json", JSON.stringify({
       allocationId: id,
@@ -67,7 +69,7 @@ export function AllocationBlock({
         {projectName}
       </span>
       <span className="text-[10px] text-white/80 shrink-0 ml-auto">
-        {hoursPerDay}h
+        {hoursPerDay}{tc("hourAbbrev")}
       </span>
       <button
         className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover/block:opacity-100 transition-opacity"

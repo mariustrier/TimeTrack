@@ -278,7 +278,7 @@ export default function VacationsPage() {
                       {getStatusBadge(req.status)}
                       <span className="text-sm text-muted-foreground">
                         {isVacationHours
-                          ? `${(countBusinessDays(req.startDate, req.endDate) * dailyTarget).toFixed(1)}h`
+                          ? `${(countBusinessDays(req.startDate, req.endDate) * dailyTarget).toFixed(1)}${tc("hourAbbrev")}`
                           : `${countBusinessDays(req.startDate, req.endDate)} ${t("dayCount")}`}
                       </span>
                     </div>

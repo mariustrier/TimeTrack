@@ -103,6 +103,10 @@ describe("formatHours", () => {
     expect(formatHours(7.55)).toBe("7.5h");
     expect(formatHours(7.56)).toBe("7.6h");
   });
+  it("accepts custom suffix", () => {
+    expect(formatHours(8, "t")).toBe("8.0t");
+    expect(formatHours(7.56, "t")).toBe("7.6t");
+  });
 });
 
 describe("formatPercentage", () => {

@@ -89,6 +89,7 @@ export function PlannerGrid({
   const dateLocale = useDateLocale();
   const { locale } = useLocale();
   const t = useTranslations("resourcePlanner");
+  const tc = useTranslations("common");
   const isMonthView = viewMode === "month";
 
   // ── Month View: group days into week columns ──
@@ -308,7 +309,7 @@ export function PlannerGrid({
                       {holidayName}
                     </div>
                   ) : !weekend ? (
-                    <div className="text-[9px] text-muted-foreground">{target}h</div>
+                    <div className="text-[9px] text-muted-foreground">{target}{tc("hourAbbrev")}</div>
                   ) : null}
                 </th>
               );
@@ -383,6 +384,7 @@ function MonthRow({
   onEmptyCellClick: (employeeId: string, date: Date, rect: DOMRect) => void;
   t: (key: string) => string;
 }) {
+  const tc = useTranslations("common");
   const effectiveCap = getEffectiveWeeklyCapacity(employee);
 
   const getInitials = () => {
@@ -402,7 +404,7 @@ function MonthRow({
   const getSubtitle = () => {
     if (employee.employmentType === "freelancer") return "Freelancer";
     if (employee.isHourly) return t("hourly") || "Hourly";
-    return `${effectiveCap}h/${t("viewWeek") || "week"}`;
+    return `${effectiveCap}${tc("hourAbbrev")}/${t("viewWeek") || "week"}`;
   };
 
   // Calculate capacity totals
@@ -527,7 +529,7 @@ function MonthRow({
             </div>
             {totalHours > 0 && (
               <div className="absolute bottom-0.5 right-1 text-[10px] text-muted-foreground">
-                {totalHours.toFixed(0)}h
+                {totalHours.toFixed(0)}{tc("hourAbbrev")}
               </div>
             )}
             {col.containsToday && (

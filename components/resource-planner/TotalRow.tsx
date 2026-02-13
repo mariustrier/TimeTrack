@@ -3,6 +3,7 @@
 import { format, isWeekend } from "date-fns";
 import { cn } from "@/lib/utils";
 import { isCompanyHoliday, type CustomHoliday } from "@/lib/holidays";
+import { useTranslations } from "@/lib/i18n";
 import { isToday } from "date-fns";
 
 interface Allocation {
@@ -29,6 +30,7 @@ export function TotalRow({
   disabledHolidayCodes,
   customHolidays,
 }: TotalRowProps) {
+  const tc = useTranslations("common");
   const totalUtil = totalCapacity > 0 ? (totalAllocated / totalCapacity) * 100 : 0;
 
   return (
@@ -67,7 +69,7 @@ export function TotalRow({
           >
             {!weekend && !holiday && dayTotal > 0 && (
               <span className="text-[11px] text-muted-foreground">
-                {dayTotal.toFixed(0)}h
+                {dayTotal.toFixed(0)}{tc("hourAbbrev")}
               </span>
             )}
           </td>
@@ -77,7 +79,7 @@ export function TotalRow({
       {/* Total capacity */}
       <td className="sticky right-0 z-10 bg-muted/40 border-t-2 border-l border-border p-2 text-center">
         <div className="text-[11px] text-muted-foreground">
-          {totalAllocated.toFixed(0)}/{totalCapacity.toFixed(0)}h
+          {totalAllocated.toFixed(0)}/{totalCapacity.toFixed(0)}{tc("hourAbbrev")}
         </div>
         <div className="text-[10px] text-muted-foreground">
           {totalUtil.toFixed(0)}%

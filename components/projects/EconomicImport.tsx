@@ -430,7 +430,7 @@ export function EconomicImport({ open, onOpenChange, onSuccess }: EconomicImport
                   </div>
                   <div>
                     <span className="text-muted-foreground">{t("totalHours")}: </span>
-                    <span className="font-medium">{importData.totalHours.toFixed(1)}h</span>
+                    <span className="font-medium">{importData.totalHours.toFixed(1)}{tc("hourAbbrev")}</span>
                   </div>
                   <div>
                     <span className="text-muted-foreground">{t("totalEntries")}: </span>
@@ -481,7 +481,7 @@ export function EconomicImport({ open, onOpenChange, onSuccess }: EconomicImport
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">{empName}</p>
                       <p className="text-xs text-muted-foreground">
-                        {stats.hours.toFixed(1)}h &middot; {stats.entries} {t("entriesLabel")}
+                        {stats.hours.toFixed(1)}{tc("hourAbbrev")} &middot; {stats.entries} {t("entriesLabel")}
                       </p>
                     </div>
                     <Select
@@ -529,7 +529,7 @@ export function EconomicImport({ open, onOpenChange, onSuccess }: EconomicImport
                       {cat.number} - {cat.name}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {cat.subtotalHours.toFixed(1)}h
+                      {cat.subtotalHours.toFixed(1)}{tc("hourAbbrev")}
                     </p>
                   </div>
                   <Select
@@ -664,7 +664,7 @@ export function EconomicImport({ open, onOpenChange, onSuccess }: EconomicImport
                 </div>
                 <div>
                   <span className="text-muted-foreground">{t("totalHours")}: </span>
-                  <span className="font-medium">{hoursToImport.toFixed(1)}h</span>
+                  <span className="font-medium">{hoursToImport.toFixed(1)}{tc("hourAbbrev")}</span>
                 </div>
               </div>
 

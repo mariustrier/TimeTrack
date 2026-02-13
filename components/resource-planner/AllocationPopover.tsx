@@ -66,6 +66,7 @@ export function AllocationPopover({
   onClose,
 }: AllocationPopoverProps) {
   const t = useTranslations("resourcePlanner");
+  const tc = useTranslations("common");
   const ref = useRef<HTMLDivElement>(null);
 
   const [projectId, setProjectId] = useState("");
@@ -254,7 +255,7 @@ export function AllocationPopover({
             />
             {mode === "create" && workingDays > 0 && hours && (
               <p className="text-[11px] text-muted-foreground">
-                = {(parseFloat(hours) * workingDays).toFixed(1)}h {t("totalOver") || "total over"}{" "}
+                = {(parseFloat(hours) * workingDays).toFixed(1)}{tc("hourAbbrev")} {t("totalOver") || "total over"}{" "}
                 {workingDays} {t("workingDays") || "working days"}
               </p>
             )}

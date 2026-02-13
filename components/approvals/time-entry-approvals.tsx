@@ -325,9 +325,9 @@ export function TimeEntryApprovals() {
                       <div className="text-sm text-muted-foreground">
                         {format(new Date(sub.weekStart), "MMM d", formatOpts)} - {format(weekEnd, "MMM d, yyyy", formatOpts)}
                       </div>
-                      <div className="text-sm font-medium w-16 text-right">{sub.totalHours.toFixed(1)}h</div>
+                      <div className="text-sm font-medium w-16 text-right">{sub.totalHours.toFixed(1)}{tc("hourAbbrev")}</div>
                       <div className="text-sm text-muted-foreground w-20 text-right">
-                        {sub.billableHours.toFixed(1)}h {t("bill")}
+                        {sub.billableHours.toFixed(1)}{tc("hourAbbrev")} {t("bill")}
                       </div>
                       <Badge variant={STATUS_BADGE[sub.approvalStatus]?.variant || "outline"}>
                         {STATUS_BADGE[sub.approvalStatus]?.label || sub.approvalStatus}
@@ -419,7 +419,7 @@ export function TimeEntryApprovals() {
                                       {format(new Date(dateKey), "EEE, MMM d", formatOpts)}
                                     </span>
                                     <Badge variant="outline" className="text-xs">
-                                      {dayHours.toFixed(1)}h
+                                      {dayHours.toFixed(1)}{tc("hourAbbrev")}
                                     </Badge>
                                   </div>
                                   {sub.approvalStatus === "submitted" && hasSubmittedEntries && (
@@ -463,7 +463,7 @@ export function TimeEntryApprovals() {
                                           </div>
                                         </td>
                                         <td className="py-1.5 w-16 text-right font-medium text-foreground">
-                                          {entry.hours}h
+                                          {entry.hours}{tc("hourAbbrev")}
                                         </td>
                                         <td className="py-1.5 pl-4 w-24">
                                           <Badge variant="outline" className="text-xs">
