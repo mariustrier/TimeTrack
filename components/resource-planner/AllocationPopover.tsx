@@ -133,7 +133,9 @@ export function AllocationPopover({
   useEffect(() => {
     if (!open) return;
     const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+      const target = e.target as HTMLElement;
+      if (ref.current && !ref.current.contains(target)) {
+        if (target.closest("[data-radix-popper-content-wrapper]")) return;
         onClose();
       }
     };
