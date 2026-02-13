@@ -126,9 +126,14 @@ export function PlannerCell({
         }
       }}
       onMouseDown={(e) => {
-        if (selectionMode && onDragSelectStart && allocations.length > 0 && e.button === 0) {
-          e.preventDefault();
-          onDragSelectStart(allocations.map((a) => a.id));
+        if (selectionMode && allocations.length > 0 && e.button === 0) {
+          // If any allocation in this cell is selected, let native drag handle it
+          const hasSelected = selectedIds && allocations.some((a) => selectedIds.has(a.id));
+          if (hasSelected) return;
+          if (onDragSelectStart) {
+            e.preventDefault();
+            onDragSelectStart(allocations.map((a) => a.id));
+          }
         }
       }}
       onMouseEnter={() => {

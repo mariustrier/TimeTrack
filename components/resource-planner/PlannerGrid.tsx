@@ -558,9 +558,13 @@ function MonthRow({
               }
             }}
             onMouseDown={(e) => {
-              if (selectionMode && onDragSelectStart && weekAllocs.length > 0 && e.button === 0) {
-                e.preventDefault();
-                onDragSelectStart(weekAllocs.map((a) => a.id));
+              if (selectionMode && weekAllocs.length > 0 && e.button === 0) {
+                const hasSelected = selectedIds && weekAllocs.some((a) => selectedIds.has(a.id));
+                if (hasSelected) return;
+                if (onDragSelectStart) {
+                  e.preventDefault();
+                  onDragSelectStart(weekAllocs.map((a) => a.id));
+                }
               }
             }}
             onMouseEnter={() => {
