@@ -40,6 +40,7 @@ interface PlannerCellProps {
   onToggleSelection?: (allocationId: string) => void;
   onDragSelectStart?: (allocationIds: string[]) => void;
   onDragSelectEnter?: (allocationIds: string[]) => void;
+  onBulkDrop?: (selectedIds: string[], sourceDate: string, targetDate: string) => void;
 }
 
 export function PlannerCell({
@@ -58,6 +59,7 @@ export function PlannerCell({
   onToggleSelection,
   onDragSelectStart,
   onDragSelectEnter,
+  onBulkDrop,
 }: PlannerCellProps) {
   const { locale } = useLocale();
   const weekend = isWeekend(day);
@@ -85,18 +87,23 @@ export function PlannerCell({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    if (weekend || holiday || !onAllocationDrop) return;
+    if (weekend || holiday) return;
     try {
       const raw = e.dataTransfer.getData("application/json");
       if (!raw) return;
       const data = JSON.parse(raw);
       if (data.sourceDate === dateStr) return; // Dropped on same day
-      onAllocationDrop({
-        allocationId: data.allocationId,
-        sourceDate: data.sourceDate,
-        isMultiDay: data.isMultiDay,
-        shiftKey: data.shiftKey || e.shiftKey,
-      }, dateStr);
+
+      if (data.bulkMove && onBulkDrop) {
+        onBulkDrop(data.selectedIds, data.sourceDate, dateStr);
+      } else if (onAllocationDrop) {
+        onAllocationDrop({
+          allocationId: data.allocationId,
+          sourceDate: data.sourceDate,
+          isMultiDay: data.isMultiDay,
+          shiftKey: data.shiftKey || e.shiftKey,
+        }, dateStr);
+      }
     } catch {
       // ignore bad data
     }
@@ -152,6 +159,7 @@ export function PlannerCell({
             date={dateStr}
             selectionMode={selectionMode}
             isSelected={selectionMode ? selectedIds?.has(alloc.id) ?? false : false}
+            selectedIds={selectedIds}
             onClick={(e) => {
               e.stopPropagation();
               if (selectionMode && onToggleSelection) {

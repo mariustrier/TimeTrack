@@ -17,6 +17,7 @@ interface AllocationBlockProps {
   onDelete: (e: React.MouseEvent) => void;
   isSelected?: boolean;
   selectionMode?: boolean;
+  selectedIds?: Set<string>;
 }
 
 export function AllocationBlock({
@@ -32,32 +33,45 @@ export function AllocationBlock({
   onDelete,
   isSelected,
   selectionMode,
+  selectedIds,
 }: AllocationBlockProps) {
   const tc = useTranslations("common");
+  const canDrag = !selectionMode || isSelected;
+
   const handleDragStart = (e: React.DragEvent) => {
-    e.dataTransfer.setData("application/json", JSON.stringify({
-      allocationId: id,
-      sourceDate: date,
-      isMultiDay,
-      hoursPerDay,
-      projectName,
-      projectColor,
-      status,
-      notes,
-      shiftKey: e.shiftKey,
-    }));
+    if (selectionMode && isSelected && selectedIds && selectedIds.size > 1) {
+      // Bulk drag: move all selected allocations
+      e.dataTransfer.setData("application/json", JSON.stringify({
+        bulkMove: true,
+        selectedIds: Array.from(selectedIds),
+        sourceDate: date,
+        shiftKey: e.shiftKey,
+      }));
+    } else {
+      e.dataTransfer.setData("application/json", JSON.stringify({
+        allocationId: id,
+        sourceDate: date,
+        isMultiDay,
+        hoursPerDay,
+        projectName,
+        projectColor,
+        status,
+        notes,
+        shiftKey: e.shiftKey,
+      }));
+    }
     e.dataTransfer.effectAllowed = "move";
   };
 
   return (
     <div
-      draggable={!selectionMode}
+      draggable={canDrag}
       onDragStart={handleDragStart}
       className={cn(
         "group/block relative flex items-center gap-1 rounded px-1.5 py-0.5 transition-all",
         selectionMode
           ? isSelected
-            ? "cursor-pointer ring-2 ring-blue-500 ring-offset-1 ring-offset-background"
+            ? "cursor-grab active:cursor-grabbing active:opacity-60 ring-2 ring-blue-500 ring-offset-1 ring-offset-background"
             : "cursor-pointer"
           : "cursor-grab active:cursor-grabbing active:opacity-60",
         "hover:ring-1 hover:ring-foreground/20",

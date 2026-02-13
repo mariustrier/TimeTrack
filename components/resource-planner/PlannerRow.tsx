@@ -56,6 +56,7 @@ interface PlannerRowProps {
   onToggleSelection?: (allocationId: string) => void;
   onDragSelectStart?: (allocationIds: string[]) => void;
   onDragSelectEnter?: (allocationIds: string[]) => void;
+  onBulkDrop?: (selectedIds: string[], sourceDate: string, targetDate: string) => void;
 }
 
 export function PlannerRow({
@@ -74,6 +75,7 @@ export function PlannerRow({
   onToggleSelection,
   onDragSelectStart,
   onDragSelectEnter,
+  onBulkDrop,
 }: PlannerRowProps) {
   const t = useTranslations("resourcePlanner");
   const tc = useTranslations("common");
@@ -192,6 +194,7 @@ export function PlannerRow({
             onToggleSelection={onToggleSelection}
             onDragSelectStart={onDragSelectStart}
             onDragSelectEnter={onDragSelectEnter}
+            onBulkDrop={onBulkDrop}
           />
         );
       })}

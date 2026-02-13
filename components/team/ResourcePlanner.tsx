@@ -594,6 +594,33 @@ export function ResourcePlanner() {
     [selectedIds, fetchData, t]
   );
 
+  const handleBulkDrop = useCallback(
+    async (ids: string[], sourceDate: string, targetDate: string) => {
+      const sourceMs = new Date(sourceDate).getTime();
+      const targetMs = new Date(targetDate).getTime();
+      const offsetDays = Math.round((targetMs - sourceMs) / (1000 * 60 * 60 * 24));
+      if (offsetDays === 0) return;
+
+      setSelectedIds(new Set());
+
+      try {
+        const res = await fetch("/api/resource-allocations/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "move", ids, offsetDays }),
+        });
+        if (!res.ok) throw new Error("Bulk move failed");
+        toast.success(t("bulkMoveSuccess") || "Allocations moved");
+        fetchData();
+      } catch (error) {
+        console.error("Bulk drop error:", error);
+        toast.error(t("bulkMoveError") || "Failed to move allocations");
+        fetchData();
+      }
+    },
+    [fetchData, t]
+  );
+
   // ── Filter employees ──
   const filteredEmployees = employees.filter((emp) => {
     // Name search
@@ -722,6 +749,7 @@ export function ResourcePlanner() {
             selectedIds={selectedIds}
             onToggleSelection={toggleSelection}
             onAddToSelection={addToSelection}
+            onBulkDrop={handleBulkDrop}
           />
         </CardContent>
       </Card>

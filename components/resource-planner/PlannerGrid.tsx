@@ -67,6 +67,7 @@ interface PlannerGridProps {
   selectedIds?: Set<string>;
   onToggleSelection?: (allocationId: string) => void;
   onAddToSelection?: (allocationIds: string[]) => void;
+  onBulkDrop?: (selectedIds: string[], sourceDate: string, targetDate: string) => void;
 }
 
 interface WeekColumn {
@@ -93,6 +94,7 @@ export function PlannerGrid({
   selectedIds,
   onToggleSelection,
   onAddToSelection,
+  onBulkDrop,
 }: PlannerGridProps) {
   const dateLocale = useDateLocale();
   const { locale } = useLocale();
@@ -293,6 +295,7 @@ export function PlannerGrid({
                   onToggleSelection={onToggleSelection}
                   onDragSelectStart={handleDragSelectStart}
                   onDragSelectEnter={handleDragSelectEnter}
+                  onBulkDrop={onBulkDrop}
                 />
               );
             })}
@@ -394,6 +397,7 @@ export function PlannerGrid({
                 onToggleSelection={onToggleSelection}
                 onDragSelectStart={handleDragSelectStart}
                 onDragSelectEnter={handleDragSelectEnter}
+                onBulkDrop={onBulkDrop}
               />
             );
           })}
@@ -432,6 +436,7 @@ function MonthRow({
   onToggleSelection,
   onDragSelectStart,
   onDragSelectEnter,
+  onBulkDrop,
 }: {
   employee: Employee;
   weekColumns: WeekColumn[];
@@ -448,6 +453,7 @@ function MonthRow({
   onToggleSelection?: (allocationId: string) => void;
   onDragSelectStart?: (allocationIds: string[]) => void;
   onDragSelectEnter?: (allocationIds: string[]) => void;
+  onBulkDrop?: (selectedIds: string[], sourceDate: string, targetDate: string) => void;
 }) {
   const tc = useTranslations("common");
   const effectiveCap = getEffectiveWeeklyCapacity(employee);
@@ -561,6 +567,27 @@ function MonthRow({
               if (selectionMode && onDragSelectEnter && weekAllocs.length > 0) {
                 onDragSelectEnter(weekAllocs.map((a) => a.id));
               }
+            }}
+            onDragOver={(e) => {
+              if (selectionMode) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+              }
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (!onBulkDrop) return;
+              try {
+                const raw = e.dataTransfer.getData("application/json");
+                if (!raw) return;
+                const data = JSON.parse(raw);
+                if (data.bulkMove) {
+                  const targetDate = format(weekMonday, "yyyy-MM-dd");
+                  if (data.sourceDate !== targetDate) {
+                    onBulkDrop(data.selectedIds, data.sourceDate, targetDate);
+                  }
+                }
+              } catch { /* ignore */ }
             }}
           >
             <div className="flex flex-col gap-0.5 h-full justify-center">
