@@ -183,8 +183,8 @@ export function DeadlinePopover({
       <div className="fixed inset-0 z-40" />
       <div
         ref={ref}
-        className="fixed z-50 w-[300px] max-h-[calc(100vh-32px)] bg-card border rounded-lg shadow-xl p-4 overflow-y-auto"
-        style={{ top, left }}
+        className="fixed z-50 w-[300px] bg-card border rounded-lg shadow-xl p-4 overflow-y-auto"
+        style={{ top, left, maxHeight: `calc(100vh - ${top}px - 16px)` }}
       >
         {/* Header */}
         <div className="flex items-center gap-2 mb-3">

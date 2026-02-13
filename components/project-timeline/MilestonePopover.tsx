@@ -114,16 +114,16 @@ export function MilestonePopover({
     onDelete(milestone.id, projectId);
   };
 
-  const top = Math.min(position.top, window.innerHeight - 340);
-  const left = Math.min(position.left, window.innerWidth - 300);
+  const top = Math.max(16, Math.min(position.top, window.innerHeight - 340));
+  const left = Math.max(16, Math.min(position.left, window.innerWidth - 300));
 
   return (
     <>
       <div className="fixed inset-0 z-40" />
       <div
         ref={ref}
-        className="fixed z-50 w-[280px] bg-card border rounded-lg shadow-xl p-4 space-y-3"
-        style={{ top, left }}
+        className="fixed z-50 w-[280px] bg-card border rounded-lg shadow-xl p-4 space-y-3 overflow-y-auto"
+        style={{ top, left, maxHeight: `calc(100vh - ${top}px - 16px)` }}
       >
         {/* Color indicator */}
         <div className="flex items-center gap-2 mb-1">
