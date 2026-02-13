@@ -395,7 +395,7 @@ export function TeamList() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>{t("role")}</Label>
+                <Label className="flex items-center gap-1">{t("role")}</Label>
                 <Select value={role} onValueChange={setRole}>
                   <SelectTrigger>
                     <SelectValue />
