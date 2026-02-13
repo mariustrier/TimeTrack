@@ -63,6 +63,9 @@ interface PlannerGridProps {
   onAllocationClick: (allocation: Allocation, date: Date, rect: DOMRect) => void;
   onAllocationDelete: (allocationId: string, date?: string) => void;
   onAllocationDrop?: (employeeId: string, data: { allocationId: string; sourceDate: string; isMultiDay: boolean; shiftKey: boolean }, targetDate: string) => void;
+  selectionMode?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelection?: (allocationId: string) => void;
 }
 
 interface WeekColumn {
@@ -85,6 +88,9 @@ export function PlannerGrid({
   onAllocationClick,
   onAllocationDelete,
   onAllocationDrop,
+  selectionMode,
+  selectedIds,
+  onToggleSelection,
 }: PlannerGridProps) {
   const dateLocale = useDateLocale();
   const { locale } = useLocale();
@@ -243,6 +249,9 @@ export function PlannerGrid({
                   onAllocationClick={onAllocationClick}
                   onEmptyCellClick={onEmptyCellClick}
                   t={t}
+                  selectionMode={selectionMode}
+                  selectedIds={selectedIds}
+                  onToggleSelection={onToggleSelection}
                 />
               );
             })}
@@ -339,6 +348,9 @@ export function PlannerGrid({
                 onAllocationClick={onAllocationClick}
                 onAllocationDelete={onAllocationDelete}
                 onAllocationDrop={onAllocationDrop}
+                selectionMode={selectionMode}
+                selectedIds={selectedIds}
+                onToggleSelection={onToggleSelection}
               />
             );
           })}
@@ -372,6 +384,9 @@ function MonthRow({
   onAllocationClick,
   onEmptyCellClick,
   t,
+  selectionMode,
+  selectedIds,
+  onToggleSelection,
 }: {
   employee: Employee;
   weekColumns: WeekColumn[];
@@ -383,6 +398,9 @@ function MonthRow({
   onAllocationClick: (allocation: Allocation, date: Date, rect: DOMRect) => void;
   onEmptyCellClick: (employeeId: string, date: Date, rect: DOMRect) => void;
   t: (key: string) => string;
+  selectionMode?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelection?: (allocationId: string) => void;
 }) {
   const tc = useTranslations("common");
   const effectiveCap = getEffectiveWeeklyCapacity(employee);
@@ -504,7 +522,8 @@ function MonthRow({
                   key={alloc.id}
                   className={cn(
                     "h-3 rounded-sm px-1 flex items-center",
-                    alloc.status === "tentative" && "opacity-70"
+                    alloc.status === "tentative" && "opacity-70",
+                    selectionMode && selectedIds?.has(alloc.id) && "ring-2 ring-blue-500 ring-offset-1"
                   )}
                   style={{
                     backgroundColor:
@@ -512,8 +531,12 @@ function MonthRow({
                   }}
                   onClick={(e) => {
                     e.stopPropagation();
-                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                    onAllocationClick(alloc, weekMonday, rect);
+                    if (selectionMode && onToggleSelection) {
+                      onToggleSelection(alloc.id);
+                    } else {
+                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                      onAllocationClick(alloc, weekMonday, rect);
+                    }
                   }}
                 >
                   <span className="text-[9px] text-white truncate drop-shadow-sm">

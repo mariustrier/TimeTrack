@@ -222,6 +222,14 @@ export const updateResourceAllocationSchema = z.object({
   editDate: z.string().optional(), // ISO date — if set, only edit this day within the span (splits the allocation)
 });
 
+// --- Bulk Resource Allocation Actions ---
+export const bulkResourceAllocationSchema = z.object({
+  action: z.enum(["delete", "updateStatus", "move"]),
+  ids: z.array(z.string().min(1)).min(1).max(200),
+  status: z.enum(["tentative", "confirmed", "completed"]).optional(),
+  offsetDays: z.coerce.number().int().min(-365).max(365).optional(),
+});
+
 // --- Project Milestones ---
 
 export const createMilestoneSchema = z.object({

@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, MousePointerClick } from "lucide-react";
 import { useTranslations, useDateLocale } from "@/lib/i18n";
 import { format } from "date-fns";
 
@@ -37,6 +37,8 @@ interface PlannerControlsProps {
   onProjectFilterChange: (projectId: string | null) => void;
   employeeSearch: string;
   onEmployeeSearchChange: (search: string) => void;
+  selectionMode?: boolean;
+  onSelectionModeToggle?: () => void;
 }
 
 export function PlannerControls({
@@ -54,6 +56,8 @@ export function PlannerControls({
   onProjectFilterChange,
   employeeSearch,
   onEmployeeSearchChange,
+  selectionMode,
+  onSelectionModeToggle,
 }: PlannerControlsProps) {
   const t = useTranslations("resourcePlanner");
   const dateLocale = useDateLocale();
@@ -79,6 +83,19 @@ export function PlannerControls({
 
       {/* Right: View mode, span, filters */}
       <div className="flex items-center gap-3 flex-wrap">
+        {/* Selection mode toggle */}
+        {onSelectionModeToggle && (
+          <Button
+            variant={selectionMode ? "default" : "outline"}
+            size="sm"
+            className="h-8 text-sm gap-1.5"
+            onClick={onSelectionModeToggle}
+          >
+            <MousePointerClick className="h-3.5 w-3.5" />
+            {t("select") || "Select"}
+          </Button>
+        )}
+
         {/* Employee search */}
         <div className="relative">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />

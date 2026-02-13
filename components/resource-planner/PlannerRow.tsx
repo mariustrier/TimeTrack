@@ -51,6 +51,9 @@ interface PlannerRowProps {
   onAllocationClick: (allocation: Allocation, date: Date, rect: DOMRect) => void;
   onAllocationDelete: (allocationId: string, date?: string) => void;
   onAllocationDrop?: (employeeId: string, data: { allocationId: string; sourceDate: string; isMultiDay: boolean; shiftKey: boolean }, targetDate: string) => void;
+  selectionMode?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelection?: (allocationId: string) => void;
 }
 
 export function PlannerRow({
@@ -64,6 +67,9 @@ export function PlannerRow({
   onAllocationClick,
   onAllocationDelete,
   onAllocationDrop,
+  selectionMode,
+  selectedIds,
+  onToggleSelection,
 }: PlannerRowProps) {
   const t = useTranslations("resourcePlanner");
   const tc = useTranslations("common");
@@ -177,6 +183,9 @@ export function PlannerRow({
               onAllocationDelete(allocId, isMultiDay ? format(day, "yyyy-MM-dd") : undefined);
             }}
             onAllocationDrop={onAllocationDrop ? (data, targetDate) => onAllocationDrop(employee.id, data, targetDate) : undefined}
+            selectionMode={selectionMode}
+            selectedIds={selectedIds}
+            onToggleSelection={onToggleSelection}
           />
         );
       })}

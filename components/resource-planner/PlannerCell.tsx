@@ -35,6 +35,9 @@ interface PlannerCellProps {
   onAllocationClick: (allocation: CellAllocation, e: React.MouseEvent) => void;
   onAllocationDelete: (allocationId: string, isMultiDay: boolean, e: React.MouseEvent) => void;
   onAllocationDrop?: (data: { allocationId: string; sourceDate: string; isMultiDay: boolean; shiftKey: boolean }, targetDate: string) => void;
+  selectionMode?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelection?: (allocationId: string) => void;
 }
 
 export function PlannerCell({
@@ -48,6 +51,9 @@ export function PlannerCell({
   onAllocationClick,
   onAllocationDelete,
   onAllocationDrop,
+  selectionMode,
+  selectedIds,
+  onToggleSelection,
 }: PlannerCellProps) {
   const { locale } = useLocale();
   const weekend = isWeekend(day);
@@ -129,9 +135,15 @@ export function PlannerCell({
             notes={alloc.notes}
             isMultiDay={alloc.isMultiDay}
             date={dateStr}
+            selectionMode={selectionMode}
+            isSelected={selectionMode ? selectedIds?.has(alloc.id) ?? false : false}
             onClick={(e) => {
               e.stopPropagation();
-              onAllocationClick(alloc, e);
+              if (selectionMode && onToggleSelection) {
+                onToggleSelection(alloc.id);
+              } else {
+                onAllocationClick(alloc, e);
+              }
             }}
             onDelete={(e) => onAllocationDelete(alloc.id, alloc.isMultiDay, e)}
           />

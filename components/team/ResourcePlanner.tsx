@@ -19,6 +19,7 @@ import { PlannerGrid } from "@/components/resource-planner/PlannerGrid";
 import { PlannerControls } from "@/components/resource-planner/PlannerControls";
 import { PlannerSummary } from "@/components/resource-planner/PlannerSummary";
 import { AllocationPopover } from "@/components/resource-planner/AllocationPopover";
+import { BulkActionToolbar } from "@/components/resource-planner/BulkActionToolbar";
 import { getDailyTarget, getEffectiveWeeklyCapacity } from "@/lib/calculations";
 import { isCompanyHoliday, type CustomHoliday } from "@/lib/holidays";
 import { isWeekend } from "date-fns";
@@ -127,6 +128,10 @@ export function ResourcePlanner() {
 
   // Popover state
   const [popover, setPopover] = useState<PopoverState>(INITIAL_POPOVER);
+
+  // Selection mode state
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Undo delete state
   const undoRef = useRef<{ timeout: ReturnType<typeof setTimeout>; allocationId: string } | null>(
@@ -453,6 +458,134 @@ export function ResourcePlanner() {
     }
   };
 
+  // Filter allocations by project (moved up for selection handlers)
+  const filteredAllocations = projectFilter
+    ? allocations.filter((a) => a.projectId === projectFilter)
+    : allocations;
+
+  // ── Selection mode handlers ──
+
+  const toggleSelectionMode = useCallback(() => {
+    setSelectionMode((prev) => {
+      if (prev) setSelectedIds(new Set());
+      return !prev;
+    });
+  }, []);
+
+  const toggleSelection = useCallback((allocationId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(allocationId)) {
+        next.delete(allocationId);
+      } else {
+        next.add(allocationId);
+      }
+      return next;
+    });
+  }, []);
+
+  const selectAll = useCallback(() => {
+    setSelectedIds(new Set(filteredAllocations.map((a) => a.id)));
+  }, [filteredAllocations]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  // Escape key to exit selection mode
+  useEffect(() => {
+    if (!selectionMode) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSelectionMode(false);
+        setSelectedIds(new Set());
+      }
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [selectionMode]);
+
+  // ── Bulk action handlers ──
+
+  const handleBulkDelete = useCallback(async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+
+    // Optimistic: remove from local state
+    const removed = allocations.filter((a) => selectedIds.has(a.id));
+    setAllocations((prev) => prev.filter((a) => !selectedIds.has(a.id)));
+    setSelectedIds(new Set());
+
+    try {
+      const res = await fetch("/api/resource-allocations/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete", ids }),
+      });
+      if (!res.ok) throw new Error("Bulk delete failed");
+      toast.success(t("bulkDeleteSuccess") || "Allocations deleted");
+      fetchData();
+    } catch (error) {
+      console.error("Bulk delete error:", error);
+      toast.error(t("bulkDeleteError") || "Failed to delete allocations");
+      setAllocations((prev) => [...prev, ...removed]);
+    }
+  }, [selectedIds, allocations, fetchData, t]);
+
+  const handleBulkStatusChange = useCallback(
+    async (status: "tentative" | "confirmed" | "completed") => {
+      const ids = Array.from(selectedIds);
+      if (ids.length === 0) return;
+
+      // Optimistic update
+      setAllocations((prev) =>
+        prev.map((a) => (selectedIds.has(a.id) ? { ...a, status } : a))
+      );
+      setSelectedIds(new Set());
+
+      try {
+        const res = await fetch("/api/resource-allocations/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "updateStatus", ids, status }),
+        });
+        if (!res.ok) throw new Error("Bulk status change failed");
+        toast.success(t("bulkStatusSuccess") || "Status updated");
+        fetchData();
+      } catch (error) {
+        console.error("Bulk status error:", error);
+        toast.error(t("bulkStatusError") || "Failed to update status");
+        fetchData();
+      }
+    },
+    [selectedIds, fetchData, t]
+  );
+
+  const handleBulkMove = useCallback(
+    async (offsetDays: number) => {
+      const ids = Array.from(selectedIds);
+      if (ids.length === 0 || offsetDays === 0) return;
+
+      setSelectedIds(new Set());
+
+      try {
+        const res = await fetch("/api/resource-allocations/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "move", ids, offsetDays }),
+        });
+        if (!res.ok) throw new Error("Bulk move failed");
+        toast.success(t("bulkMoveSuccess") || "Allocations moved");
+        fetchData();
+      } catch (error) {
+        console.error("Bulk move error:", error);
+        toast.error(t("bulkMoveError") || "Failed to move allocations");
+        fetchData();
+      }
+    },
+    [selectedIds, fetchData, t]
+  );
+
   // ── Filter employees ──
   const filteredEmployees = employees.filter((emp) => {
     // Name search
@@ -469,11 +602,6 @@ export function ResourcePlanner() {
     }
     return true;
   });
-
-  // Filter allocations by project
-  const filteredAllocations = projectFilter
-    ? allocations.filter((a) => a.projectId === projectFilter)
-    : allocations;
 
   // ── Calculate summary stats ──
   let summaryAllocated = 0;
@@ -556,6 +684,8 @@ export function ResourcePlanner() {
         onProjectFilterChange={setProjectFilter}
         employeeSearch={employeeSearch}
         onEmployeeSearchChange={setEmployeeSearch}
+        selectionMode={selectionMode}
+        onSelectionModeToggle={toggleSelectionMode}
       />
 
       {/* Summary */}
@@ -580,6 +710,9 @@ export function ResourcePlanner() {
             onAllocationClick={handleAllocationClick}
             onAllocationDelete={handleAllocationDelete}
             onAllocationDrop={handleAllocationDrop}
+            selectionMode={selectionMode}
+            selectedIds={selectedIds}
+            onToggleSelection={toggleSelection}
           />
         </CardContent>
       </Card>
@@ -598,6 +731,19 @@ export function ResourcePlanner() {
         onDelete={handleAllocationDelete}
         onClose={() => setPopover(INITIAL_POPOVER)}
       />
+
+      {/* Bulk Action Toolbar */}
+      {selectionMode && selectedIds.size > 0 && (
+        <BulkActionToolbar
+          selectedCount={selectedIds.size}
+          totalCount={filteredAllocations.length}
+          onDelete={handleBulkDelete}
+          onStatusChange={handleBulkStatusChange}
+          onMove={handleBulkMove}
+          onSelectAll={selectAll}
+          onClearSelection={clearSelection}
+        />
+      )}
 
       {/* Mobile notice */}
       <p className="text-xs text-muted-foreground text-center md:hidden">
