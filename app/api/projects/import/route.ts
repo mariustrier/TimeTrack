@@ -178,29 +178,30 @@ export async function POST(req: Request) {
         }
       }
 
-      // Create or update allocations for mapped employees
+      // Upsert allocations for mapped employees (replace hours, not add)
       const uniqueMappedUserIds = Array.from(new Set(mappedUserIds));
       for (const userId of uniqueMappedUserIds) {
         const employeeHours = userHoursMap.get(userId) || 0;
-        const existingAlloc = await tx.projectAllocation.findUnique({
+        await tx.projectAllocation.upsert({
           where: { projectId_userId: { projectId, userId } },
+          update: { hours: employeeHours },
+          create: {
+            projectId,
+            userId,
+            hours: employeeHours,
+            companyId: user.companyId,
+          },
         });
-        if (existingAlloc) {
-          await tx.projectAllocation.update({
-            where: { projectId_userId: { projectId, userId } },
-            data: { hours: (existingAlloc.hours || 0) + employeeHours },
-          });
-        } else {
-          await tx.projectAllocation.create({
-            data: {
-              projectId,
-              userId,
-              hours: employeeHours,
-              companyId: user.companyId,
-            },
-          });
-        }
       }
+
+      // Delete existing entries for mapped employees on this project
+      await tx.timeEntry.deleteMany({
+        where: {
+          projectId,
+          companyId: user.companyId,
+          userId: { in: uniqueMappedUserIds },
+        },
+      });
 
       // Create time entries in bulk
       if (entriesToImport.length > 0) {
