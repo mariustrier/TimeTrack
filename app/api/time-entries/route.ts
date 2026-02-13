@@ -70,11 +70,31 @@ export async function GET(req: Request) {
       });
     }
 
+    // Fetch company config (holidays + flex start date)
+    const company = await db.company.findUnique({
+      where: { id: user.companyId },
+      select: { disabledHolidays: true, flexStartDate: true },
+    });
+    const companyCustomHolidays = await db.companyHoliday.findMany({
+      where: { companyId: user.companyId },
+    });
+    const disabledCodes = company?.disabledHolidays ?? [];
+    const customHols: CustomHoliday[] = companyCustomHolidays.map((ch: { name: string; month: number; day: number; year: number | null }) => ({
+      name: ch.name,
+      month: ch.month,
+      day: ch.day,
+      year: ch.year,
+    }));
+
+    const flexAnchor = company?.flexStartDate && new Date(company.flexStartDate) > new Date(targetUser.createdAt)
+      ? new Date(company.flexStartDate)
+      : targetUser.createdAt;
+    const userStart = flexAnchor;
+
     // Calculate cumulative flex balance prior to the requested week
     let priorFlexBalance: number | null = null;
     if (startDate) {
       const weekStartDate = new Date(startDate);
-      const userStart = targetUser.createdAt;
 
       // Only calculate if the user existed before this week
       if (userStart < weekStartDate) {
@@ -88,22 +108,6 @@ export async function GET(req: Request) {
           _sum: { hours: true },
         });
         const totalWorked = priorHoursAgg._sum.hours || 0;
-
-        // Fetch company holiday config for holiday-aware flex calculation
-        const company = await db.company.findUnique({
-          where: { id: user.companyId },
-          select: { disabledHolidays: true },
-        });
-        const companyCustomHolidays = await db.companyHoliday.findMany({
-          where: { companyId: user.companyId },
-        });
-        const disabledCodes = company?.disabledHolidays ?? [];
-        const customHols: CustomHoliday[] = companyCustomHolidays.map((ch) => ({
-          name: ch.name,
-          month: ch.month,
-          day: ch.day,
-          year: ch.year,
-        }));
 
         // Count expected hours (Mon-Fri minus holidays)
         const wt = targetUser.weeklyTarget;

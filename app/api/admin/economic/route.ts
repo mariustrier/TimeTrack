@@ -26,6 +26,7 @@ export async function GET() {
         aiAnonymization: true,
         logoUrl: true,
         phasesEnabled: true,
+        flexStartDate: true,
       },
     });
 
@@ -89,6 +90,9 @@ export async function PUT(req: Request) {
         }
       }
     }
+    if (body.flexStartDate !== undefined) {
+      data.flexStartDate = body.flexStartDate ? new Date(body.flexStartDate) : null;
+    }
 
     const company = await db.company.update({
       where: { id: user.companyId },
@@ -104,6 +108,7 @@ export async function PUT(req: Request) {
         expenseAutoApproveThreshold: true,
         aiAnonymization: true,
         phasesEnabled: true,
+        flexStartDate: true,
       },
     });
 

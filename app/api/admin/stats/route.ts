@@ -174,6 +174,11 @@ export async function GET(req: Request) {
         budgetTotalHours = p.budgetHours;
       }
 
+      // Calculate estimated non-billable hours from budget
+      const estimatedNonBillableHours = (p.estimatedNonBillablePercent && budgetTotalHours)
+        ? Math.round(budgetTotalHours * p.estimatedNonBillablePercent / 100 * 10) / 10
+        : null;
+
       return {
         id: p.id,
         name: p.name,
@@ -187,6 +192,8 @@ export async function GET(req: Request) {
         effectiveRate,
         budgetTotalHours,
         hoursUsed,
+        estimatedNonBillablePercent: p.estimatedNonBillablePercent,
+        estimatedNonBillableHours,
         locked: p.locked,
         archived: p.archived,
         systemManaged: p.systemManaged,

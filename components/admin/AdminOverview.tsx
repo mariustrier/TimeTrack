@@ -162,6 +162,8 @@ export function AdminOverview() {
   const [universalRateSaving, setUniversalRateSaving] = useState(false);
   const [aiAnonymization, setAiAnonymization] = useState(true);
   const [aiAnonymizationSaving, setAiAnonymizationSaving] = useState(false);
+  const [flexStartDate, setFlexStartDate] = useState("");
+  const [flexSaving, setFlexSaving] = useState(false);
   const [expenseThresholdInput, setExpenseThresholdInput] = useState("");
   const [expenseThresholdSaving, setExpenseThresholdSaving] = useState(false);
   const [receiptExportStart, setReceiptExportStart] = useState("");
@@ -349,6 +351,7 @@ export function AdminOverview() {
           setExpenseThresholdInput(data.expenseAutoApproveThreshold?.toString() || "");
           setCompanyLogoUrl(data.logoUrl || null);
           setPhasesEnabled(data.phasesEnabled || false);
+          setFlexStartDate(data.flexStartDate ? data.flexStartDate.split("T")[0] : "");
         }
       })
       .catch(() => {});
@@ -1025,7 +1028,7 @@ export function AdminOverview() {
                   </div>
                   {isFixed && project.effectiveRate > 0 && (
                     <div className="text-xs text-muted-foreground">
-                      {convertAndFormat(project.fixedPrice!, masterCurrency, displayCurrency)} @ {convertAndFormat(project.effectiveRate, masterCurrency, displayCurrency)}/h
+                      {convertAndFormat(project.fixedPrice!, masterCurrency, displayCurrency)} @ {convertAndFormat(project.effectiveRate, masterCurrency, displayCurrency)}{t("perHour")}
                     </div>
                   )}
                 </div>
@@ -1095,7 +1098,7 @@ export function AdminOverview() {
                     <div>
                       <p className="text-muted-foreground">{tt("billRate")}</p>
                       <p className="font-medium">
-                        {convertAndFormat(emp.hourlyRate, masterCurrency, displayCurrency)}/h
+                        {convertAndFormat(emp.hourlyRate, masterCurrency, displayCurrency)}{t("perHour")}
                         {stats.useUniversalRate && emp.employmentType !== "freelancer" && (
                           <span className="ml-1 text-xs text-muted-foreground">(universal)</span>
                         )}
@@ -1103,7 +1106,7 @@ export function AdminOverview() {
                     </div>
                     <div>
                       <p className="text-muted-foreground">{tt("costRate")}</p>
-                      <p className="font-medium">{convertAndFormat(emp.costRate, masterCurrency, displayCurrency)}/h</p>
+                      <p className="font-medium">{convertAndFormat(emp.costRate, masterCurrency, displayCurrency)}{t("perHour")}</p>
                     </div>
                   </div>
 
@@ -1506,6 +1509,70 @@ export function AdminOverview() {
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Flex Balance Start Date */}
+      <Card>
+        <CardContent className="p-6">
+          <h3 className="text-sm font-semibold text-foreground">{t("flexStartDate")}</h3>
+          <p className="mt-1 text-sm text-muted-foreground">{t("flexStartDateDesc")}</p>
+          <div className="mt-3 flex items-center gap-2">
+            <Input
+              type="date"
+              value={flexStartDate}
+              onChange={(e) => setFlexStartDate(e.target.value)}
+              className="w-48"
+            />
+            <Button
+              size="sm"
+              onClick={async () => {
+                setFlexSaving(true);
+                try {
+                  const res = await fetch("/api/admin/economic", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ flexStartDate: flexStartDate || null }),
+                  });
+                  if (res.ok) toast.success(t("flexStartDateSaved"));
+                } catch {
+                  toast.error(t("saveFailed"));
+                } finally {
+                  setFlexSaving(false);
+                }
+              }}
+              disabled={flexSaving}
+            >
+              {flexSaving ? tc("saving") : tc("save")}
+            </Button>
+            {flexStartDate && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  setFlexSaving(true);
+                  try {
+                    const res = await fetch("/api/admin/economic", {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ flexStartDate: null }),
+                    });
+                    if (res.ok) {
+                      setFlexStartDate("");
+                      toast.success(t("flexStartDateCleared"));
+                    }
+                  } catch {
+                    toast.error(t("saveFailed"));
+                  } finally {
+                    setFlexSaving(false);
+                  }
+                }}
+                disabled={flexSaving}
+              >
+                {tc("clear")}
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 

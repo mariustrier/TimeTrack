@@ -181,6 +181,7 @@ export async function POST(req: Request) {
         companyId: user.companyId,
         phasesEnabled: usePhasesForProject,
         currentPhaseId,
+        estimatedNonBillablePercent: body.estimatedNonBillablePercent != null ? parseFloat(body.estimatedNonBillablePercent) : null,
       },
     });
 

@@ -45,6 +45,9 @@ model Company {
   accountingSystem        String?     // "e-conomic" | "billy" | "dinero" | null
   accountingCredentials   String?     // Encrypted JSON with system-specific credentials
 
+  // Flex balance
+  flexStartDate  DateTime?  // Flex balance calculated from this date (null = use user.createdAt)
+
   users               User[]
   projects            Project[]
   timeEntries         TimeEntry[]
@@ -145,6 +148,9 @@ model Project {
   // Project timeline dates
   startDate   DateTime?
   endDate     DateTime?
+
+  // Analytics estimates
+  estimatedNonBillablePercent  Float?  // 0-100, estimated non-billable overhead percentage
 
   // Phase tracking
   phasesEnabled    Boolean   @default(true)   // per-project opt-out when company phases enabled

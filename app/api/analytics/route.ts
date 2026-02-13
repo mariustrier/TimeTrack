@@ -82,8 +82,17 @@ export async function GET(req: Request) {
         billable: true,
         budgetHours: true,
         active: true,
+        estimatedNonBillablePercent: true,
       },
     });
+
+    // Build map of projectId → estimatedNonBillablePercent for analytics utils
+    const estimatedNonBillableMap: Record<string, number> = {};
+    for (const p of projects) {
+      if (p.estimatedNonBillablePercent && p.estimatedNonBillablePercent > 0) {
+        estimatedNonBillableMap[p.id] = p.estimatedNonBillablePercent;
+      }
+    }
 
     const entries = await db.timeEntry.findMany({
       where: {
@@ -175,7 +184,7 @@ export async function GET(req: Request) {
               budgetHours: p.budgetHours,
               active: p.active,
             })),
-            billableMix: aggregateProjectBillableMix(castEntries, projects),
+            billableMix: aggregateProjectBillableMix(castEntries, projects, estimatedNonBillableMap),
             currency,
           });
         }
@@ -187,8 +196,8 @@ export async function GET(req: Request) {
         const projectEntries = castEntries.filter((e) => e.projectId === projectId);
         return NextResponse.json({
           burndown: aggregateProjectBurndown(castEntries, project, from, to, granularity),
-          profitability: aggregateProjectProfitability(castEntries, projectId, from, to, granularity),
-          billableMix: aggregateProjectBillableMix(castEntries, projects),
+          profitability: aggregateProjectProfitability(castEntries, projectId, from, to, granularity, estimatedNonBillableMap),
+          billableMix: aggregateProjectBillableMix(castEntries, projects, estimatedNonBillableMap),
           phaseDistribution: aggregatePhaseDistribution(projectEntries),
           phaseVelocity: aggregatePhaseVelocity(projectEntries, from, to, granularity),
           currency,
@@ -220,7 +229,7 @@ export async function GET(req: Request) {
         }));
 
         return NextResponse.json({
-          revenueOverhead: aggregateCompanyRevenueOverhead(castEntries, from, to, granularity, castProjExpenses, expandedCompExpenses),
+          revenueOverhead: aggregateCompanyRevenueOverhead(castEntries, from, to, granularity, castProjExpenses, expandedCompExpenses, estimatedNonBillableMap),
           nonBillableTrend: aggregateNonBillableTrend(castEntries, from, to, granularity),
           unbilledWork: aggregateUnbilledWork(castEntries),
           expenseBreakdown: aggregateExpenseBreakdown(castProjExpenses, expandedCompExpenses, from, to, granularity),

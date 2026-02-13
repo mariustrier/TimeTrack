@@ -70,6 +70,7 @@ interface Project {
   phasesEnabled: boolean;
   currentPhase: Phase | null;
   phaseCompleted: boolean;
+  estimatedNonBillablePercent: number | null;
   systemManaged?: boolean;
   _count: { timeEntries: number };
 }
@@ -139,6 +140,7 @@ export function ProjectsList() {
   const [defaultHourlyRate, setDefaultHourlyRate] = useState<number | null>(null);
   const [rateMode, setRateMode] = useState("COMPANY_RATE");
   const [projectRate, setProjectRate] = useState("");
+  const [estimatedNonBillable, setEstimatedNonBillable] = useState("");
   const [userRole, setUserRole] = useState("employee");
   const [contractProjectId, setContractProjectId] = useState<string | null>(null);
   const [companyPhasesEnabled, setCompanyPhasesEnabled] = useState(false);
@@ -259,6 +261,7 @@ export function ProjectsList() {
     setFixedPrice("");
     setRateMode("COMPANY_RATE");
     setProjectRate("");
+    setEstimatedNonBillable("");
     setProjectPhasesEnabled(true);
     setModalOpen(true);
   }
@@ -275,6 +278,7 @@ export function ProjectsList() {
     setFixedPrice(project.fixedPrice?.toString() || "");
     setRateMode(project.rateMode || "COMPANY_RATE");
     setProjectRate(project.projectRate?.toString() || "");
+    setEstimatedNonBillable(project.estimatedNonBillablePercent?.toString() || "");
     setProjectPhasesEnabled(project.phasesEnabled);
     setModalOpen(true);
   }
@@ -294,6 +298,7 @@ export function ProjectsList() {
         projectRate: pricingType === "fixed_price" && rateMode === "PROJECT_RATE" ? projectRate : null,
         billable,
         currency: (currency && currency !== "default") ? currency : null,
+        estimatedNonBillablePercent: estimatedNonBillable ? parseFloat(estimatedNonBillable) : null,
       };
       if (companyPhasesEnabled) {
         body.phasesEnabled = projectPhasesEnabled;
@@ -766,6 +771,33 @@ export function ProjectsList() {
               />
               <Label htmlFor="billable">{t("billableProject")}</Label>
             </div>
+            {billable && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1">
+                  {t("estimatedNonBillable")}
+                  <InfoTooltip textKey="estimatedNonBillable" size={13} />
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={estimatedNonBillable}
+                    onChange={(e) => setEstimatedNonBillable(e.target.value)}
+                    placeholder="0"
+                    className="w-24"
+                  />
+                  <span className="text-sm text-muted-foreground">%</span>
+                </div>
+                {estimatedNonBillable && parseFloat(estimatedNonBillable) > 0 && editingProject?.budgetTotalHours && (
+                  <p className="text-xs text-muted-foreground">
+                    {t("estimatedNonBillableHelper", {
+                      hours: (editingProject.budgetTotalHours * parseFloat(estimatedNonBillable) / 100).toFixed(1)
+                    })}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setModalOpen(false)}>

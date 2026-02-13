@@ -61,6 +61,9 @@ export async function PUT(
         ...(fixedPrice !== undefined && { fixedPrice: fixedPrice ?? null }),
         ...(rateMode !== undefined && { rateMode }),
         ...(projectRate !== undefined && { projectRate: projectRate ?? null }),
+        ...(body.estimatedNonBillablePercent !== undefined && {
+          estimatedNonBillablePercent: body.estimatedNonBillablePercent != null ? parseFloat(body.estimatedNonBillablePercent) : null
+        }),
         ...(phasesEnabled !== undefined && { phasesEnabled }),
         // Timeline dates
         ...(startDate !== undefined && { startDate: startDate ? new Date(startDate) : null }),

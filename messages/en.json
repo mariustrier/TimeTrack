@@ -8,6 +8,7 @@
     "update": "Update",
     "create": "Create",
     "saving": "Saving...",
+    "clear": "Clear",
     "deleting": "Deleting...",
     "removing": "Removing...",
     "actions": "Actions",
@@ -205,7 +206,9 @@
     "noCompanyRate": "Set a default hourly rate in Admin to use company rate mode.",
     "importEconomic": "Import from e-conomic",
     "columnSettings": "Column Settings",
-    "resetColumns": "Reset to Default"
+    "resetColumns": "Reset to Default",
+    "estimatedNonBillable": "Est. Non-Billable %",
+    "estimatedNonBillableHelper": "Approx. {hours}h of budget estimated as non-billable"
   },
   "team": {
     "title": "Team",
@@ -395,7 +398,12 @@
     "fillHolidayEntries": "Fill Holiday Entries",
     "holidayAdded": "Custom holiday added",
     "holidayDeleted": "Custom holiday deleted",
-    "holidayEntriesFilled": "{count} holiday entries created"
+    "holidayEntriesFilled": "{count} holiday entries created",
+    "flexStartDate": "Flex Balance Start Date",
+    "flexStartDateDesc": "Set a company-wide start date for flex balance calculations. If set, flex is only tracked from this date (or the employee's start date, whichever is later). Useful when transitioning to Cloud Timer mid-year.",
+    "flexStartDateSaved": "Flex start date saved",
+    "flexStartDateCleared": "Flex start date cleared",
+    "saveFailed": "Failed to save"
   },
   "approvals": {
     "title": "Approvals",
@@ -1353,7 +1361,11 @@
     "approvedOnlyFilter": "Show only approved and locked time entries. Excludes drafts and pending submissions.",
     "timeEntriesTab": "Review and approve weekly timesheet submissions from team members.",
     "expensesTab": "Review and approve expense reports submitted by team members.",
-    "isHourly": "Hourly employees are paid per hour worked. Flex balance and vacation accrual (2.08 days/month) are disabled."
+    "isHourly": "Hourly employees are paid per hour worked. Flex balance and vacation accrual (2.08 days/month) are disabled.",
+    "estimatedNonBillable": "Percentage of project hours expected to be non-billable (e.g. meetings, planning, admin). Used in analytics to estimate true project cost."
+  },
+  "tooltips": {
+    "estimatedNonBillable": "Set an estimated percentage of non-billable hours for this project. Used in analytics to show more accurate utilization and profitability."
   },
   "support": {
     "access": "Access",

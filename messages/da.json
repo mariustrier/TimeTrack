@@ -8,6 +8,7 @@
     "update": "Opdater",
     "create": "Opret",
     "saving": "Gemmer...",
+    "clear": "Ryd",
     "deleting": "Sletter...",
     "removing": "Fjerner...",
     "actions": "Handlinger",
@@ -205,7 +206,9 @@
     "noCompanyRate": "Sæt en standard timesats under Admin for at bruge firmasats.",
     "importEconomic": "Importer fra e-conomic",
     "columnSettings": "Kolonneindstillinger",
-    "resetColumns": "Nulstil til standard"
+    "resetColumns": "Nulstil til standard",
+    "estimatedNonBillable": "Anslået ikke-fakturerbar %",
+    "estimatedNonBillableHelper": "Ca. {hours}t af budget anslået som ikke-fakturerbar"
   },
   "team": {
     "title": "Hold",
@@ -395,7 +398,12 @@
     "fillHolidayEntries": "Udfyld helligdagsregistreringer",
     "holidayAdded": "Helligdag tilføjet",
     "holidayDeleted": "Helligdag slettet",
-    "holidayEntriesFilled": "{count} helligdagsregistreringer oprettet"
+    "holidayEntriesFilled": "{count} helligdagsregistreringer oprettet",
+    "flexStartDate": "Fleksaldo startdato",
+    "flexStartDateDesc": "Angiv en virksomhedsdækkende startdato for fleksaldoberegninger. Hvis angivet, beregnes flex kun fra denne dato (eller medarbejderens startdato, hvis den er senere). Nyttigt ved overgang til Cloud Timer midt i året.",
+    "flexStartDateSaved": "Fleksaldo startdato gemt",
+    "flexStartDateCleared": "Fleksaldo startdato ryddet",
+    "saveFailed": "Kunne ikke gemme"
   },
   "approvals": {
     "title": "Godkendelser",
@@ -1353,7 +1361,8 @@
     "approvedOnlyFilter": "Vis kun godkendte og låste tidsregistreringer. Ekskluderer kladder og afventende indsendelser.",
     "timeEntriesTab": "Gennemgå og godkend ugentlige timeseddelindsendelser fra holdmedlemmer.",
     "expensesTab": "Gennemgå og godkend udgiftsrapporter indsendt af holdmedlemmer.",
-    "isHourly": "Timelønnede medarbejdere betales per arbejdstime. Flexsaldo og ferieoptjening (2,08 dage/md) er deaktiveret."
+    "isHourly": "Timelønnede medarbejdere betales per arbejdstime. Flexsaldo og ferieoptjening (2,08 dage/md) er deaktiveret.",
+    "estimatedNonBillable": "Procentdel af projekttimer forventet som ikke-fakturerbare (f.eks. møder, planlægning, admin). Bruges i analyser til at estimere reelle projektomkostninger."
   },
   "support": {
     "access": "Adgang",

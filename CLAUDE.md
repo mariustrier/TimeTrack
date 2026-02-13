@@ -82,7 +82,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
   - `lib/accounting/dinero.ts` - Dinero API adapter via Visma Connect (OAuth2 + auto-refresh, also supports legacy client_credentials)
 
 ### Database (24 models)
-Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPaymentDays`, `companyAddress`, `companyCvr`, `companyBankAccount`, `companyBankReg`, `invoiceFooterNote`, `accountingSystem`, `accountingCredentials`), User (`isHourly`, `weeklyTarget`, `vacationDays`, `vacationTrackingUnit`, `vacationHoursPerYear`, `deletedAt`, etc.), Project, TimeEntry (`invoiceId`, `invoicedAt`, `externallyInvoiced`), VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense (`invoiceId`, `invoicedAt`), CompanyExpense, ExpenseCategory, AbsenceReason, ResourceAllocation, ProjectMilestone (`type`, `phaseId`, `description`, `icon`, `color` — deadline fields + Phase relation), ProjectActivity, Phase, SupportAccess, CompanyHoliday, Invoice, InvoiceLine, CustomerMapping, OAuthState
+Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPaymentDays`, `companyAddress`, `companyCvr`, `companyBankAccount`, `companyBankReg`, `invoiceFooterNote`, `accountingSystem`, `accountingCredentials`, `flexStartDate`), User (`isHourly`, `weeklyTarget`, `vacationDays`, `vacationTrackingUnit`, `vacationHoursPerYear`, `deletedAt`, etc.), Project (`estimatedNonBillablePercent`), TimeEntry (`invoiceId`, `invoicedAt`, `externallyInvoiced`), VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense (`invoiceId`, `invoicedAt`), CompanyExpense, ExpenseCategory, AbsenceReason, ResourceAllocation, ProjectMilestone (`type`, `phaseId`, `description`, `icon`, `color` — deadline fields + Phase relation), ProjectActivity, Phase, SupportAccess, CompanyHoliday, Invoice, InvoiceLine, CustomerMapping, OAuthState
 
 ### Tests
 - `__tests__/lib/` - 200 unit tests across 11 suites (Vitest)
@@ -159,7 +159,8 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
 - **Team Calendar tab**: Month view of all approved vacations across the company
 
 ### Projects
-- **Projects tab**: CRUD, client assignment, color coding, budget hours, employee allocations
+- **Projects tab**: CRUD, client assignment, color coding, budget hours, employee allocations, estimated non-billable percentage
+- **Estimated non-billable percentage** (`Project.estimatedNonBillablePercent`): Optional 0-100% input on billable projects. For imported projects with only billable hours, this estimates the non-billable portion. Formula: `estimatedNonBillableHours = actualBillableHours × (percent / 100)`. Affects analytics calculations (profitability, utilization, billable mix, overhead) but not flex or billing. Helper text shows estimated hours in the edit modal.
 - **Customizable table columns**: Gear icon in card header opens popover to toggle visibility and reorder columns (Client, Budget, Entries, Phase, Status). Project and Actions columns are pinned. Settings persist in `localStorage` (`cloudtimer:projectsTableColumns`).
 - Contract management dialog per project (FileText icon in actions):
   - Upload PDF/DOCX contracts (max 10MB, Vercel Blob)
@@ -217,6 +218,7 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
 
 ### Team
 - **Team tab**: Member list with roles, bill/cost rates, weekly targets, extra vacation days, employment type (employee/freelancer), hourly toggle
+- **Cost rate visibility toggle**: Cost rates hidden by default (shows "*** kr./h" or "*** kr./t"). Eye icon toggle in column header to reveal actual values. Always defaults to hidden on page load for screen privacy.
 - **Hourly employees** (`User.isHourly`): Toggle in team edit modal disables weekly target field. Table shows blue "Timelønnet"/"Hourly" badge instead of hours. Flex balance, vacation accrual, "Full Day" button, holiday entry creation, and admin utilization tracking are all disabled. Hourly employees can still submit vacation requests but accrual is not tracked.
 - **Employee removal (soft-delete)**: Admin "Remove" sets `deletedAt` on the user, invalidates their `clerkId` to `"deleted_{id}"`, deletes their Clerk account, and creates a `MEMBER_REMOVED` audit log. All time entries, expenses, project allocations, and resource allocations are preserved for accurate company statistics. Removed employees are filtered from team lists, dropdowns, stats, and resource planner but their historical data remains in analytics, project budgets, and exports. The data export CSV marks removed employees with "Removed" status. If the same person later joins a different company on Cloud Timer, a new user record is created with no conflicts (email is not unique, companyId scoping isolates data).
 - **Email invitations**: Admin invites create a pending user (`clerkId: "pending_*"`) and send a Resend email with sign-up link. When invited user signs up via Clerk, `/api/auth/sync` matches by email and links them to the existing company (bypasses onboarding form).
@@ -231,7 +233,8 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
   - **Multi-select & bulk actions**: Toggle "Multi-select" mode via toolbar button. Click to select individual blocks, drag across cells to select multiple. Selected blocks show blue ring + checkmark. Floating BulkActionToolbar at bottom with: select all/clear, bulk status change (tentative/confirmed/completed), move by N days, delete with confirmation. Drag-and-drop selected blocks to move all at once. Escape exits selection mode. Bulk API: `POST /api/resource-allocations/bulk` (actions: delete, updateStatus, move).
 
 ### Admin
-- **Overview tab**: Financial stats (revenue, costs, margins), team utilization (1 decimal place), project budgets with allocations, absence reason management, e-conomic CSV export, company settings (currency, universal bill rate, expense threshold, AI anonymization, logo)
+- **Overview tab**: Financial stats (revenue, costs, margins), team utilization (1 decimal place), project budgets with allocations, absence reason management, e-conomic CSV export, company settings (currency, universal bill rate, expense threshold, AI anonymization, logo, flex start date)
+- **Flex balance start date** (`Company.flexStartDate`): Admin sets a company-wide go-live date. Flex calculations use `max(user.createdAt, flexStartDate)` as the anchor, avoiding massive negative flex balances when starting to use Cloud Timer. Configurable via settings card in Admin Overview with save/clear buttons.
 - **Approvals tab**: Nested Time Entry + Expense sub-tabs with per-day approve/reject, bulk actions
 - **Vacations tab**: Approve/reject vacation requests with status filtering (pending/approved/rejected/cancelled)
 - **Backups tab**: Full data export as ZIP (users.csv with Status/Removed At columns, projects.csv, time-entries.csv, metadata.json)
@@ -242,6 +245,7 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
 - Date range picker, granularity toggle (weekly/monthly), approval filter
 - Contract burn-down charts (actual vs ideal)
 - Revenue/cost trends, utilization rates, billable breakdowns
+- Estimated non-billable hours from project percentages factored into profitability, billable mix, and overhead calculations
 
 ### AI Assistant
 - AI-powered business insights generated via Claude Sonnet

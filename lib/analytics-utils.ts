@@ -286,10 +286,12 @@ export function aggregateProjectProfitability(
   projectId: string,
   from: Date,
   to: Date,
-  granularity: "monthly" | "weekly"
+  granularity: "monthly" | "weekly",
+  estimatedNonBillableMap?: Record<string, number>
 ) {
   const periods = getPeriodKeys(from, to, granularity);
   const projectEntries = entries.filter((e) => e.projectId === projectId);
+  const nbPercent = estimatedNonBillableMap?.[projectId] || 0;
 
   const grouped: Record<string, Entry[]> = {};
   for (const e of projectEntries) {
@@ -303,10 +305,24 @@ export function aggregateProjectProfitability(
     const revenue = periodEntries
       .filter((e) => e.billingStatus === "billable")
       .reduce((s, e) => s + Math.round(e.hours * e.user.hourlyRate), 0);
-    const cost = periodEntries.reduce(
+    const baseCost = periodEntries.reduce(
       (s, e) => s + Math.round(e.hours * e.user.costRate),
       0
     );
+
+    // Add estimated non-billable cost: nbPercent% of billable hours at cost rate
+    let estimatedNbCost = 0;
+    if (nbPercent > 0) {
+      const billableHours = periodEntries
+        .filter((e) => e.billingStatus === "billable")
+        .reduce((s, e) => s + e.hours, 0);
+      const avgCostRate = periodEntries.length > 0
+        ? periodEntries.reduce((s, e) => s + e.user.costRate, 0) / periodEntries.length
+        : 0;
+      estimatedNbCost = Math.round(billableHours * (nbPercent / 100) * avgCostRate);
+    }
+
+    const cost = baseCost + estimatedNbCost;
 
     return {
       period: periodLabel(key, granularity),
@@ -317,7 +333,11 @@ export function aggregateProjectProfitability(
   });
 }
 
-export function aggregateProjectBillableMix(entries: Entry[], projects: Project[]) {
+export function aggregateProjectBillableMix(
+  entries: Entry[],
+  projects: Project[],
+  estimatedNonBillableMap?: Record<string, number>
+) {
   return projects.map((project) => {
     const projectEntries = entries.filter((e) => e.projectId === project.id);
     const mix: Record<string, number> = {
@@ -329,6 +349,14 @@ export function aggregateProjectBillableMix(entries: Entry[], projects: Project[
     };
     for (const e of projectEntries) {
       mix[e.billingStatus] = (mix[e.billingStatus] || 0) + e.hours;
+    }
+
+    // Add estimated non-billable hours from billable hours
+    const nbPercent = estimatedNonBillableMap?.[project.id] || 0;
+    let estimatedNbHours = 0;
+    if (nbPercent > 0) {
+      estimatedNbHours = mix.billable * (nbPercent / 100);
+      mix.non_billable += estimatedNbHours;
     }
 
     return {
@@ -413,7 +441,8 @@ export function aggregateCompanyRevenueOverhead(
   to: Date,
   granularity: "monthly" | "weekly",
   projectExpenses: ExpenseEntry[] = [],
-  companyExpenses: ExpenseEntry[] = []
+  companyExpenses: ExpenseEntry[] = [],
+  estimatedNonBillableMap?: Record<string, number>
 ) {
   const periods = getPeriodKeys(from, to, granularity);
   const grouped: Record<string, Entry[]> = {};
@@ -448,11 +477,30 @@ export function aggregateCompanyRevenueOverhead(
       .filter((e) => e.billingStatus !== "billable")
       .reduce((s, e) => s + Math.round(e.hours * e.user.costRate), 0);
 
+    // Add estimated non-billable overhead from project estimates
+    let estimatedNbOverhead = 0;
+    if (estimatedNonBillableMap) {
+      const byProject: Record<string, { billableHours: number; avgCostRate: number; count: number }> = {};
+      for (const e of periodEntries) {
+        if (e.billingStatus === "billable" && estimatedNonBillableMap[e.projectId]) {
+          if (!byProject[e.projectId]) byProject[e.projectId] = { billableHours: 0, avgCostRate: 0, count: 0 };
+          byProject[e.projectId].billableHours += e.hours;
+          byProject[e.projectId].avgCostRate += e.user.costRate;
+          byProject[e.projectId].count += 1;
+        }
+      }
+      Object.entries(byProject).forEach(([pid, data]) => {
+        const pct = estimatedNonBillableMap[pid] || 0;
+        const avgRate = data.count > 0 ? data.avgCostRate / data.count : 0;
+        estimatedNbOverhead += Math.round(data.billableHours * (pct / 100) * avgRate);
+      });
+    }
+
     const periodProjExp = Math.round((projExpByPeriod[key] || 0) * 100) / 100;
     const periodCompExp = Math.round((compExpByPeriod[key] || 0) * 100) / 100;
     const totalExpenses = periodProjExp + periodCompExp;
-    const totalCost = laborCost + totalExpenses;
-    const overhead = laborOverhead + totalExpenses;
+    const totalCost = laborCost + estimatedNbOverhead + totalExpenses;
+    const overhead = laborOverhead + estimatedNbOverhead + totalExpenses;
 
     return {
       period: periodLabel(key, granularity),
