@@ -102,20 +102,27 @@ export function PlannerGrid({
 
   // ── Drag-to-select state ──
   const isDragSelecting = useRef(false);
+  const dragStartIds = useRef<string[]>([]);
 
   const handleDragSelectStart = useCallback(
     (allocationIds: string[]) => {
-      if (!selectionMode || !onAddToSelection) return;
+      if (!selectionMode) return;
       isDragSelecting.current = true;
-      onAddToSelection(allocationIds);
+      dragStartIds.current = allocationIds;
     },
-    [selectionMode, onAddToSelection]
+    [selectionMode]
   );
 
   const handleDragSelectEnter = useCallback(
     (allocationIds: string[]) => {
       if (!isDragSelecting.current || !onAddToSelection) return;
-      onAddToSelection(allocationIds);
+      // First enter: also add the starting cell's allocations
+      if (dragStartIds.current.length > 0) {
+        onAddToSelection([...dragStartIds.current, ...allocationIds]);
+        dragStartIds.current = [];
+      } else {
+        onAddToSelection(allocationIds);
+      }
     },
     [onAddToSelection]
   );
@@ -124,6 +131,7 @@ export function PlannerGrid({
     if (!selectionMode) return;
     const handleMouseUp = () => {
       isDragSelecting.current = false;
+      dragStartIds.current = [];
     };
     document.addEventListener("mouseup", handleMouseUp);
     return () => document.removeEventListener("mouseup", handleMouseUp);
