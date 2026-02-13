@@ -10,24 +10,47 @@ interface AllocationBlockProps {
   hoursPerDay: number;
   status: "tentative" | "confirmed" | "completed";
   notes: string | null;
+  isMultiDay: boolean;
+  date: string;
   onClick: (e: React.MouseEvent) => void;
   onDelete: (e: React.MouseEvent) => void;
 }
 
 export function AllocationBlock({
+  id,
   projectName,
   projectColor,
   hoursPerDay,
   status,
   notes,
+  isMultiDay,
+  date,
   onClick,
   onDelete,
 }: AllocationBlockProps) {
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData("application/json", JSON.stringify({
+      allocationId: id,
+      sourceDate: date,
+      isMultiDay,
+      hoursPerDay,
+      projectName,
+      projectColor,
+      status,
+      notes,
+      shiftKey: e.shiftKey,
+    }));
+    e.dataTransfer.effectAllowed = "move";
+  };
+
   return (
     <div
+      draggable
+      onDragStart={handleDragStart}
       className={cn(
-        "group/block relative flex items-center gap-1 rounded px-1.5 py-0.5 cursor-pointer transition-all",
+        "group/block relative flex items-center gap-1 rounded px-1.5 py-0.5 cursor-grab transition-all",
         "hover:ring-1 hover:ring-foreground/20",
+        "active:cursor-grabbing active:opacity-60",
         status === "tentative" && "opacity-75 border border-dashed border-white/40"
       )}
       style={{

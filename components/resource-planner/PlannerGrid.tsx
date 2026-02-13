@@ -62,6 +62,7 @@ interface PlannerGridProps {
   onEmptyCellClick: (employeeId: string, date: Date, rect: DOMRect) => void;
   onAllocationClick: (allocation: Allocation, date: Date, rect: DOMRect) => void;
   onAllocationDelete: (allocationId: string, date?: string) => void;
+  onAllocationDrop?: (employeeId: string, data: { allocationId: string; sourceDate: string; isMultiDay: boolean; shiftKey: boolean }, targetDate: string) => void;
 }
 
 interface WeekColumn {
@@ -83,6 +84,7 @@ export function PlannerGrid({
   onEmptyCellClick,
   onAllocationClick,
   onAllocationDelete,
+  onAllocationDrop,
 }: PlannerGridProps) {
   const dateLocale = useDateLocale();
   const { locale } = useLocale();
@@ -335,6 +337,7 @@ export function PlannerGrid({
                 onEmptyCellClick={onEmptyCellClick}
                 onAllocationClick={onAllocationClick}
                 onAllocationDelete={onAllocationDelete}
+                onAllocationDrop={onAllocationDrop}
               />
             );
           })}

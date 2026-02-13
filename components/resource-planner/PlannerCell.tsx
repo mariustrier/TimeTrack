@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { format, isWeekend, isToday } from "date-fns";
 import { cn } from "@/lib/utils";
 import { isCompanyHoliday, getCompanyHolidayName, type CustomHoliday } from "@/lib/holidays";
@@ -33,6 +34,7 @@ interface PlannerCellProps {
   onEmptyClick: (e: React.MouseEvent) => void;
   onAllocationClick: (allocation: CellAllocation, e: React.MouseEvent) => void;
   onAllocationDelete: (allocationId: string, isMultiDay: boolean, e: React.MouseEvent) => void;
+  onAllocationDrop?: (data: { allocationId: string; sourceDate: string; isMultiDay: boolean; shiftKey: boolean }, targetDate: string) => void;
 }
 
 export function PlannerCell({
@@ -45,6 +47,7 @@ export function PlannerCell({
   onEmptyClick,
   onAllocationClick,
   onAllocationDelete,
+  onAllocationDrop,
 }: PlannerCellProps) {
   const { locale } = useLocale();
   const weekend = isWeekend(day);
@@ -54,6 +57,40 @@ export function PlannerCell({
   const totalAllocated = allocations.reduce((s, a) => s + a.hoursPerDay, 0);
   const isOverbooked = !weekend && !holiday && dailyTarget > 0 && totalAllocated > dailyTarget;
   const isEmpty = allocations.length === 0 && !vacation;
+  const dateStr = format(day, "yyyy-MM-dd");
+
+  const [dragOver, setDragOver] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (weekend || holiday) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    if (weekend || holiday || !onAllocationDrop) return;
+    try {
+      const raw = e.dataTransfer.getData("application/json");
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (data.sourceDate === dateStr) return; // Dropped on same day
+      onAllocationDrop({
+        allocationId: data.allocationId,
+        sourceDate: data.sourceDate,
+        isMultiDay: data.isMultiDay,
+        shiftKey: data.shiftKey || e.shiftKey,
+      }, dateStr);
+    } catch {
+      // ignore bad data
+    }
+  };
 
   return (
     <td
@@ -63,13 +100,17 @@ export function PlannerCell({
         holiday && "bg-amber-50/50 dark:bg-amber-950/20",
         today && "bg-brand-50/40 dark:bg-brand-950/40",
         isOverbooked && "border-b-2 border-b-red-400 dark:border-b-red-500",
-        isEmpty && !weekend && !holiday && "group/cell hover:bg-accent/50 cursor-pointer"
+        isEmpty && !weekend && !holiday && "group/cell hover:bg-accent/50 cursor-pointer",
+        dragOver && "ring-2 ring-inset ring-brand-500 bg-brand-50/30 dark:bg-brand-950/30"
       )}
       onClick={(e) => {
         if (isEmpty && !weekend && !holiday) {
           onEmptyClick(e);
         }
       }}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
       title={holidayName || undefined}
     >
       <div className="flex flex-col gap-0.5 p-0.5 min-h-[48px]">
@@ -79,13 +120,15 @@ export function PlannerCell({
         {/* Allocations */}
         {allocations.map((alloc) => (
           <AllocationBlock
-            key={alloc.id + "-" + format(day, "yyyy-MM-dd")}
+            key={alloc.id + "-" + dateStr}
             id={alloc.id}
             projectName={alloc.projectName}
             projectColor={alloc.projectColor}
             hoursPerDay={alloc.hoursPerDay}
             status={alloc.status}
             notes={alloc.notes}
+            isMultiDay={alloc.isMultiDay}
+            date={dateStr}
             onClick={(e) => {
               e.stopPropagation();
               onAllocationClick(alloc, e);

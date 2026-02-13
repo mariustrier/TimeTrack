@@ -867,7 +867,12 @@
     "hourly": "Timelønnet",
     "searchEmployee": "Søg...",
     "allProjects": "Alle projekter",
-    "desktopRecommended": "Desktop anbefales for den bedste oplevelse"
+    "desktopRecommended": "Desktop anbefales for den bedste oplevelse",
+    "deleteThisDay": "Slet denne dag",
+    "deleteAllDays": "Slet alle dage",
+    "redistributeHours": "Fordel timer til resterende dage",
+    "allocationMoved": "Allokering flyttet",
+    "moveError": "Kunne ikke flytte allokering"
   },
   "timeline": {
     "title": "Projekt Tidslinje",

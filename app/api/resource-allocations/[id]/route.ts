@@ -270,6 +270,7 @@ export async function DELETE(
     // Check for ?date= query param — single-day removal from a span
     const { searchParams } = new URL(req.url);
     const dateParam = searchParams.get("date");
+    const redistribute = searchParams.get("redistribute") === "true";
 
     if (dateParam) {
       const removeDay = new Date(dateParam);
@@ -290,6 +291,24 @@ export async function DELETE(
         return NextResponse.json({ success: true });
       }
 
+      // Calculate redistributed hoursPerDay if requested
+      let newHoursPerDay = existing.hoursPerDay;
+      if (redistribute) {
+        // Count original working days (skip weekends)
+        let originalWorkingDays = 0;
+        const cursor = new Date(existingStart);
+        while (cursor <= existingEnd) {
+          const dow = cursor.getDay();
+          if (dow !== 0 && dow !== 6) originalWorkingDays++;
+          cursor.setDate(cursor.getDate() + 1);
+        }
+        const newWorkingDays = originalWorkingDays - 1;
+        if (newWorkingDays > 0) {
+          const totalHours = existing.hoursPerDay * originalWorkingDays;
+          newHoursPerDay = Math.round((totalHours / newWorkingDays) * 100) / 100;
+        }
+      }
+
       // Split: remove the day, keep before and/or after segments
       const hasBefore = removeDay > existingStart;
       const hasAfter = removeDay < existingEnd;
@@ -305,7 +324,7 @@ export async function DELETE(
               projectId: existing.projectId,
               startDate: existingStart,
               endDate: addDays(removeDay, -1),
-              hoursPerDay: existing.hoursPerDay,
+              hoursPerDay: newHoursPerDay,
               totalHours: null,
               status: existing.status,
               notes: existing.notes,
@@ -321,7 +340,7 @@ export async function DELETE(
               projectId: existing.projectId,
               startDate: addDays(removeDay, 1),
               endDate: existingEnd,
-              hoursPerDay: existing.hoursPerDay,
+              hoursPerDay: newHoursPerDay,
               totalHours: null,
               status: existing.status,
               notes: existing.notes,

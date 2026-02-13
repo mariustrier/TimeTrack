@@ -50,6 +50,7 @@ interface PlannerRowProps {
   onEmptyCellClick: (employeeId: string, date: Date, rect: DOMRect) => void;
   onAllocationClick: (allocation: Allocation, date: Date, rect: DOMRect) => void;
   onAllocationDelete: (allocationId: string, date?: string) => void;
+  onAllocationDrop?: (employeeId: string, data: { allocationId: string; sourceDate: string; isMultiDay: boolean; shiftKey: boolean }, targetDate: string) => void;
 }
 
 export function PlannerRow({
@@ -62,6 +63,7 @@ export function PlannerRow({
   onEmptyCellClick,
   onAllocationClick,
   onAllocationDelete,
+  onAllocationDrop,
 }: PlannerRowProps) {
   const t = useTranslations("resourcePlanner");
   const effectiveCap = getEffectiveWeeklyCapacity(employee);
@@ -86,8 +88,9 @@ export function PlannerRow({
     return `${effectiveCap}h/${t("viewWeek") || "week"}`;
   };
 
-  // Get allocations for a specific day
+  // Get allocations for a specific day (skip weekends)
   const getAllocationsForDay = (day: Date) => {
+    if (isWeekend(day)) return [];
     const dateStr = format(day, "yyyy-MM-dd");
     return allocations.filter((a) => {
       const start = a.startDate.split("T")[0];
@@ -172,6 +175,7 @@ export function PlannerRow({
             onAllocationDelete={(allocId, isMultiDay) => {
               onAllocationDelete(allocId, isMultiDay ? format(day, "yyyy-MM-dd") : undefined);
             }}
+            onAllocationDrop={onAllocationDrop ? (data, targetDate) => onAllocationDrop(employee.id, data, targetDate) : undefined}
           />
         );
       })}

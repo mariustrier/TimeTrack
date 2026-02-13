@@ -867,7 +867,12 @@
     "hourly": "Hourly",
     "searchEmployee": "Search...",
     "allProjects": "All projects",
-    "desktopRecommended": "Desktop recommended for the best experience"
+    "desktopRecommended": "Desktop recommended for the best experience",
+    "deleteThisDay": "Delete this day",
+    "deleteAllDays": "Delete all days",
+    "redistributeHours": "Redistribute hours to remaining days",
+    "allocationMoved": "Allocation moved",
+    "moveError": "Failed to move allocation"
   },
   "timeline": {
     "title": "Project Timeline",

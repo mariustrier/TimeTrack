@@ -49,7 +49,7 @@ interface AllocationPopoverProps {
     endDate?: string;
     editDate?: string;
   }) => void;
-  onDelete: (allocationId: string, date?: string) => void;
+  onDelete: (allocationId: string, date?: string, redistribute?: boolean) => void;
   onClose: () => void;
 }
 
@@ -75,6 +75,7 @@ export function AllocationPopover({
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [saving, setSaving] = useState(false);
+  const [redistribute, setRedistribute] = useState(false);
 
   // Calculate working days in the date range
   const workingDays = useMemo(() => {
@@ -100,6 +101,7 @@ export function AllocationPopover({
         setNotes(allocation.notes || "");
         setStartDate("");
         setEndDate("");
+        setRedistribute(false);
       } else {
         setProjectId("");
         setHours(defaultHoursPerDay.toString());
@@ -164,9 +166,14 @@ export function AllocationPopover({
     }
   };
 
-  const handleDelete = () => {
+  const handleDeleteDay = () => {
     if (!allocation) return;
-    onDelete(allocation.id, allocation.isMultiDay ? date : undefined);
+    onDelete(allocation.id, allocation.isMultiDay ? date : undefined, redistribute);
+  };
+
+  const handleDeleteAll = () => {
+    if (!allocation) return;
+    onDelete(allocation.id);
   };
 
   // Position: clamp to viewport
@@ -290,15 +297,56 @@ export function AllocationPopover({
             />
           </div>
 
+          {/* Delete options for multi-day allocations */}
+          {mode === "edit" && allocation?.isMultiDay && (
+            <div className="border-t border-border pt-2 space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-[11px] text-destructive hover:text-destructive px-2"
+                  onClick={handleDeleteDay}
+                  disabled={saving}
+                >
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  {t("deleteThisDay") || "Delete this day"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-[11px] text-destructive hover:text-destructive px-2"
+                  onClick={handleDeleteAll}
+                  disabled={saving}
+                >
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  {t("deleteAllDays") || "Delete all days"}
+                </Button>
+              </div>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={redistribute}
+                  onChange={(e) => setRedistribute(e.target.checked)}
+                  className="h-3.5 w-3.5 rounded border-border accent-primary"
+                />
+                <span className="text-[11px] text-muted-foreground">
+                  {t("redistributeHours") || "Redistribute hours to remaining days"}
+                </span>
+              </label>
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex items-center gap-2 pt-1">
-            {mode === "edit" && (
+            {mode === "edit" && !allocation?.isMultiDay && (
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 className="h-7 text-xs text-destructive hover:text-destructive"
-                onClick={handleDelete}
+                onClick={handleDeleteDay}
                 disabled={saving}
               >
                 <Trash2 className="h-3 w-3 mr-1" />

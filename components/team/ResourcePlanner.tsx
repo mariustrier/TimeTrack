@@ -338,7 +338,7 @@ export function ResourcePlanner() {
     }
   };
 
-  const handleAllocationDelete = async (allocationId: string, date?: string) => {
+  const handleAllocationDelete = async (allocationId: string, date?: string, redistribute?: boolean) => {
     // Optimistic: remove from state
     const deletedAlloc = allocations.find((a) => a.id === allocationId);
     setAllocations((prev) => prev.filter((a) => a.id !== allocationId));
@@ -365,9 +365,11 @@ export function ResourcePlanner() {
     // Schedule actual delete after 3s
     const timeout = setTimeout(async () => {
       try {
-        const url = date
-          ? `/api/resource-allocations/${allocationId}?date=${date}`
-          : `/api/resource-allocations/${allocationId}`;
+        const params = new URLSearchParams();
+        if (date) params.set("date", date);
+        if (redistribute) params.set("redistribute", "true");
+        const qs = params.toString();
+        const url = `/api/resource-allocations/${allocationId}${qs ? `?${qs}` : ""}`;
         const res = await fetch(url, { method: "DELETE" });
         if (!res.ok) throw new Error("Failed to delete");
         fetchData(); // Refresh to get accurate state
@@ -383,6 +385,72 @@ export function ResourcePlanner() {
     }, 3200);
 
     undoRef.current = { timeout, allocationId };
+  };
+
+  // ── Drag-and-drop: move allocation to a different day ──
+  const handleAllocationDrop = async (
+    employeeId: string,
+    data: { allocationId: string; sourceDate: string; isMultiDay: boolean; shiftKey: boolean },
+    targetDate: string
+  ) => {
+    const alloc = allocations.find((a) => a.id === data.allocationId);
+    if (!alloc) return;
+
+    try {
+      if (data.shiftKey && data.isMultiDay) {
+        // Shift+drag: move entire allocation by offset
+        const sourceMs = new Date(data.sourceDate).getTime();
+        const targetMs = new Date(targetDate).getTime();
+        const offsetDays = Math.round((targetMs - sourceMs) / (1000 * 60 * 60 * 24));
+        if (offsetDays === 0) return;
+
+        const newStart = new Date(alloc.startDate);
+        newStart.setDate(newStart.getDate() + offsetDays);
+        const newEnd = new Date(alloc.endDate);
+        newEnd.setDate(newEnd.getDate() + offsetDays);
+
+        const res = await fetch(`/api/resource-allocations/${alloc.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            startDate: format(newStart, "yyyy-MM-dd"),
+            endDate: format(newEnd, "yyyy-MM-dd"),
+          }),
+        });
+        if (!res.ok) throw new Error("Failed to move allocation");
+        toast.success(t("allocationMoved") || "Allocation moved");
+      } else {
+        // Normal drag: move single day to target
+        // 1. Delete the source day from original allocation
+        const deleteParams = new URLSearchParams({ date: data.sourceDate });
+        const delRes = await fetch(`/api/resource-allocations/${alloc.id}?${deleteParams}`, {
+          method: "DELETE",
+        });
+        if (!delRes.ok) throw new Error("Failed to remove source day");
+
+        // 2. Create new single-day allocation on target date
+        const createRes = await fetch("/api/resource-allocations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: alloc.userId,
+            projectId: alloc.projectId,
+            startDate: targetDate,
+            endDate: targetDate,
+            hoursPerDay: alloc.hoursPerDay,
+            status: alloc.status,
+            notes: alloc.notes,
+          }),
+        });
+        if (!createRes.ok) throw new Error("Failed to create allocation");
+        toast.success(t("allocationMoved") || "Allocation moved");
+      }
+      fetchData();
+    } catch (error) {
+      console.error("Error moving allocation:", error);
+      toast.error(t("moveError") || "Failed to move allocation");
+      fetchData();
+    }
   };
 
   // ── Filter employees ──
@@ -511,6 +579,7 @@ export function ResourcePlanner() {
             onEmptyCellClick={handleEmptyCellClick}
             onAllocationClick={handleAllocationClick}
             onAllocationDelete={handleAllocationDelete}
+            onAllocationDrop={handleAllocationDrop}
           />
         </CardContent>
       </Card>
