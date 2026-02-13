@@ -42,6 +42,7 @@ export function ProjectTimeline() {
   const [milestones, setMilestones] = useState<TimelineMilestone[]>([]);
   const [phases, setPhases] = useState<CompanyPhase[]>([]);
   const [conflicts, setConflicts] = useState<TimelineConflict[]>([]);
+  const [teamMembers, setTeamMembers] = useState<Array<{ id: string; name: string; imageUrl: string | null }>>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<TimelineViewMode>("day");
   const [spans, setSpans] = useState<Record<TimelineViewMode, number>>({ day: 3, week: 6, month: 12 });
@@ -184,6 +185,27 @@ export function ProjectTimeline() {
     fetchData();
   }, [fetchData]);
 
+  // Fetch team members (for activity assignee dropdown)
+  useEffect(() => {
+    const fetchTeam = async () => {
+      try {
+        const res = await fetch("/api/team");
+        if (!res.ok) return;
+        const data = await res.json();
+        setTeamMembers(
+          (data.members || []).map((m: { id: string; firstName: string | null; lastName: string | null; imageUrl: string | null }) => ({
+            id: m.id,
+            name: [m.firstName, m.lastName].filter(Boolean).join(" ") || "Unknown",
+            imageUrl: m.imageUrl,
+          }))
+        );
+      } catch {
+        // silently fail — assignee dropdown will just be empty
+      }
+    };
+    fetchTeam();
+  }, []);
+
   // Navigation
   const goToPrevious = () => setCurrentDate((d) => subMonths(d, 1));
   const goToNext = () => setCurrentDate((d) => addMonths(d, 1));
@@ -311,6 +333,28 @@ export function ProjectTimeline() {
     }
   };
 
+  // Update activity dates (from drag)
+  const handleUpdateActivityDates = async (
+    activityId: string,
+    projectId: string,
+    startDate: string,
+    endDate: string
+  ) => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/activities`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ activityId, startDate, endDate }),
+      });
+      if (!res.ok) throw new Error("Failed to update activity");
+      toast.success(t("activityUpdated") || "Activity updated");
+      fetchData();
+    } catch (error) {
+      console.error("Error updating activity:", error);
+      toast.error(t("updateError") || "Failed to update activity");
+    }
+  };
+
   // Scroll to a project row
   const handleConflictClick = (projectId: string) => {
     const row = document.getElementById(`project-row-${projectId}`);
@@ -374,6 +418,9 @@ export function ProjectTimeline() {
             onSaveMilestone={handleSaveMilestone}
             onDeleteMilestone={handleDeleteMilestone}
             onAutoPopulatePhases={handleAutoPopulatePhases}
+            onUpdateActivityDates={handleUpdateActivityDates}
+            teamMembers={teamMembers}
+            companyPhases={phases}
           />
         </CardContent>
       </Card>

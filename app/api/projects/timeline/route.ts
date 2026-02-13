@@ -62,7 +62,7 @@ export async function GET(req: Request) {
     }
 
     // Fetch projects with related data
-    const [projects, hoursUsedAgg, companyPhases] = await Promise.all([
+    const [projects, hoursUsedAgg, companyPhases, activityCounts, activityCompletedCounts] = await Promise.all([
       db.project.findMany({
         where: projectWhere,
         include: {
@@ -93,11 +93,34 @@ export async function GET(req: Request) {
         orderBy: { sortOrder: "asc" },
         select: { id: true, name: true, color: true, sortOrder: true },
       }),
+
+      // Activity counts per project
+      db.projectActivity.groupBy({
+        by: ["projectId"],
+        where: { companyId: user.companyId },
+        _count: { id: true },
+      }),
+
+      // Completed activity counts per project
+      db.projectActivity.groupBy({
+        by: ["projectId"],
+        where: { companyId: user.companyId, status: "complete" },
+        _count: { id: true },
+      }),
     ]);
 
     const hoursMap: Record<string, number> = {};
     for (const entry of hoursUsedAgg) {
       hoursMap[entry.projectId] = entry._sum.hours || 0;
+    }
+
+    const activityCountMap: Record<string, number> = {};
+    for (const entry of activityCounts) {
+      activityCountMap[entry.projectId] = entry._count.id;
+    }
+    const activityCompletedMap: Record<string, number> = {};
+    for (const entry of activityCompletedCounts) {
+      activityCompletedMap[entry.projectId] = entry._count.id;
     }
 
     // Fetch allocations if needed
@@ -318,6 +341,8 @@ export async function GET(req: Request) {
       archived: p.archived,
       locked: p.locked,
       currentPhase: p.currentPhase,
+      activityCount: activityCountMap[p.id] || 0,
+      activityCompletedCount: activityCompletedMap[p.id] || 0,
       ...(includePhases && p.projectPhases && {
         projectPhases: p.projectPhases.map((pp) => ({
           id: pp.id,

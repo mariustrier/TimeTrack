@@ -10,6 +10,7 @@ import { ProjectBar } from "./ProjectBar";
 import { AllocationSubRow } from "./AllocationSubRow";
 import { BurndownSparkline } from "./BurndownSparkline";
 import { MilestonePopover } from "./MilestonePopover";
+import { ActivityGanttSection } from "./ActivityGanttSection";
 import { useTimelineDrag } from "./useTimelineDrag";
 import type {
   TimelineProject,
@@ -18,6 +19,7 @@ import type {
   TimelineConflict,
   TimelineViewMode,
   VisibilityToggles,
+  CompanyPhase,
   DragResult,
 } from "./types";
 
@@ -34,6 +36,9 @@ interface TimelineGridProps {
   onSaveMilestone: (data: { projectId: string; milestoneId?: string; title: string; dueDate: string; completed?: boolean }) => void;
   onDeleteMilestone: (milestoneId: string, projectId: string) => void;
   onAutoPopulatePhases: (projectId: string) => void;
+  onUpdateActivityDates: (activityId: string, projectId: string, startDate: string, endDate: string) => void;
+  teamMembers: Array<{ id: string; name: string; imageUrl: string | null }>;
+  companyPhases: CompanyPhase[];
 }
 
 export function TimelineGrid({
@@ -49,6 +54,9 @@ export function TimelineGrid({
   onSaveMilestone,
   onDeleteMilestone,
   onAutoPopulatePhases,
+  onUpdateActivityDates,
+  teamMembers,
+  companyPhases,
 }: TimelineGridProps) {
   const dateLocale = useDateLocale();
   const t = useTranslations("timeline");
@@ -75,6 +83,13 @@ export function TimelineGrid({
 
     if (result.type === "milestone" && result.newDate) {
       onUpdateMilestoneDate(result.entityId, result.projectId, format(result.newDate, "yyyy-MM-dd"));
+    } else if (result.type.startsWith("activity-") && result.newStart && result.newEnd) {
+      onUpdateActivityDates(
+        result.entityId,
+        result.projectId,
+        format(result.newStart, "yyyy-MM-dd"),
+        format(result.newEnd, "yyyy-MM-dd")
+      );
     } else if (result.newStart && result.newEnd) {
       onUpdateProjectDates(
         result.projectId,
@@ -82,7 +97,7 @@ export function TimelineGrid({
         format(result.newEnd, "yyyy-MM-dd")
       );
     }
-  }, [onUpdateProjectDates, onUpdateMilestoneDate]);
+  }, [onUpdateProjectDates, onUpdateMilestoneDate, onUpdateActivityDates]);
 
   const { dragState, startDrag, isDragging, previewDates: dragPreview } = useTimelineDrag({
     columns,
@@ -242,9 +257,8 @@ export function TimelineGrid({
     });
   };
 
-  const hasExpandableContent = (project: TimelineProject) => {
-    return (visibility.team && project.allocations && project.allocations.length > 0) ||
-           (visibility.burndown && project.budgetHours);
+  const hasExpandableContent = (_project: TimelineProject) => {
+    return true; // All projects can have activities
   };
 
   return (
@@ -361,6 +375,13 @@ export function TimelineGrid({
                             title={project.currentPhase.name}
                           >
                             {project.currentPhase.name}
+                          </span>
+                        )}
+
+                        {/* Activity progress badge */}
+                        {(project.activityCount ?? 0) > 0 && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground shrink-0" title={t("activityProgress") || "Activity progress"}>
+                            {project.activityCompletedCount ?? 0}/{project.activityCount}
                           </span>
                         )}
 
@@ -498,6 +519,18 @@ export function TimelineGrid({
                       ) : null}
                     </td>
                   </tr>
+
+                  {/* Expanded sub-rows: activities (Gantt Level 2) */}
+                  {isExpanded && (
+                    <ActivityGanttSection
+                      project={project}
+                      columns={columns}
+                      startDrag={startDrag}
+                      dragState={dragState}
+                      teamMembers={teamMembers}
+                      companyPhases={companyPhases}
+                    />
+                  )}
 
                   {/* Expanded sub-rows: allocations */}
                   {isExpanded && visibility.team && project.allocations?.map((alloc) => (

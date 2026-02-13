@@ -15,6 +15,8 @@ export interface TimelineProject {
   projectPhases?: TimelineProjectPhase[];
   allocations?: TimelineAllocation[];
   burndown?: BurndownPoint[];
+  activityCount?: number;
+  activityCompletedCount?: number;
 }
 
 export interface TimelineProjectPhase {
@@ -84,8 +86,29 @@ export interface VisibilityToggles {
   conflicts: boolean;
 }
 
+export type ActivityStatus = "not_started" | "in_progress" | "needs_review" | "complete";
+
+export interface TimelineActivity {
+  id: string;
+  projectId: string;
+  name: string;
+  sortOrder: number;
+  phaseId: string | null;
+  phaseName: string | null;
+  phaseColor: string | null;
+  categoryName: string | null;
+  assignedUserId: string | null;
+  assignedUserName: string | null;
+  assignedUserImageUrl: string | null;
+  startDate: string;
+  endDate: string;
+  status: ActivityStatus;
+  color: string | null;
+  note: string | null;
+}
+
 export interface DragState {
-  type: "move" | "resize-start" | "resize-end" | "milestone";
+  type: "move" | "resize-start" | "resize-end" | "milestone" | "activity-move" | "activity-resize-start" | "activity-resize-end";
   entityId: string;
   projectId: string;
   startX: number;

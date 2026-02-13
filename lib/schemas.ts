@@ -237,6 +237,38 @@ export const updateMilestoneSchema = z.object({
   sortOrder: z.coerce.number().int().nonnegative().optional(),
 });
 
+// --- Project Activities (Gantt) ---
+
+export const createActivitySchema = z.object({
+  name: z.string().min(1).max(200),
+  phaseId: z.string().optional().nullable(),
+  categoryName: z.string().max(100).optional().nullable(),
+  assignedUserId: z.string().optional().nullable(),
+  startDate: z.string().min(1),
+  endDate: z.string().min(1),
+  status: z.enum(["not_started", "in_progress", "needs_review", "complete"]).optional(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().nullable(),
+  note: z.string().max(2000).optional().nullable(),
+  sortOrder: z.coerce.number().int().nonnegative().optional(),
+});
+
+export const updateActivitySchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  phaseId: z.string().optional().nullable(),
+  categoryName: z.string().max(100).optional().nullable(),
+  assignedUserId: z.string().optional().nullable(),
+  startDate: z.string().min(1).optional(),
+  endDate: z.string().min(1).optional(),
+  status: z.enum(["not_started", "in_progress", "needs_review", "complete"]).optional(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().nullable(),
+  note: z.string().max(2000).optional().nullable(),
+  sortOrder: z.coerce.number().int().nonnegative().optional(),
+});
+
+export const reorderActivitiesSchema = z.object({
+  orderedIds: z.array(z.string().min(1)).min(1),
+});
+
 // --- Project Phases ---
 
 export const createPhaseSchema = z.object({

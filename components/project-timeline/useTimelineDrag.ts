@@ -67,22 +67,25 @@ export function useTimelineDrag({
         }
       };
 
-      if (dragState.type === "move") {
+      // Normalize activity-* types to base types for shared math
+      const normalizedType = dragState.type.replace("activity-", "") as string;
+
+      if (normalizedType === "move") {
         const newStart = snapDate(addUnit(dragState.originalStart, unitOffset));
         const duration = differenceInDays(dragState.originalEnd, dragState.originalStart);
         const newEnd = addDays(newStart, duration);
         return { start: newStart, end: newEnd };
-      } else if (dragState.type === "resize-start") {
+      } else if (normalizedType === "resize-start") {
         const newStart = snapDate(addUnit(dragState.originalStart, unitOffset));
         // Don't allow start to go past end
         if (newStart >= dragState.originalEnd) return null;
         return { start: newStart, end: dragState.originalEnd };
-      } else if (dragState.type === "resize-end") {
+      } else if (normalizedType === "resize-end") {
         const newEnd = snapDate(addUnit(dragState.originalEnd, unitOffset));
         // Don't allow end to go before start
         if (newEnd <= dragState.originalStart) return null;
         return { start: dragState.originalStart, end: newEnd };
-      } else if (dragState.type === "milestone") {
+      } else if (normalizedType === "milestone") {
         const newDate = snapDate(addUnit(dragState.originalStart, unitOffset));
         return { start: newDate, end: newDate };
       }
@@ -110,8 +113,8 @@ export function useTimelineDrag({
         originalStart,
         originalEnd,
       });
-      document.body.style.cursor =
-        type === "move" ? "grabbing" : type === "milestone" ? "grabbing" : "col-resize";
+      const isMove = type === "move" || type === "activity-move" || type === "milestone";
+      document.body.style.cursor = isMove ? "grabbing" : "col-resize";
       document.body.style.userSelect = "none";
     },
     [updateColumnWidth]
