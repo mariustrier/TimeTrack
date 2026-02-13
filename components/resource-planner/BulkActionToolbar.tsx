@@ -37,29 +37,36 @@ export function BulkActionToolbar({
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-card border shadow-2xl rounded-xl px-4 py-3 flex items-center gap-3 flex-wrap max-w-[90vw]">
+    <div
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 rounded-2xl px-5 py-3.5 flex items-center gap-3 flex-wrap max-w-[90vw]"
+      style={{
+        background: "#1E3A5F",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.08) inset",
+        backdropFilter: "blur(12px)",
+      }}
+    >
       {/* Selected count */}
-      <span className="text-sm font-medium whitespace-nowrap">
+      <span className="text-sm font-semibold text-white whitespace-nowrap">
         {(t("selectedCount") || "{count} selected").replace("{count}", String(selectedCount))}
       </span>
 
-      <div className="h-6 w-px bg-border" />
+      <div className="h-6 w-px bg-white/20" />
 
       {/* Select All / Clear */}
-      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={onSelectAll}>
+      <Button variant="ghost" size="sm" className="h-7 text-xs text-white/80 hover:text-white hover:bg-white/10" onClick={onSelectAll}>
         <CheckSquare className="h-3.5 w-3.5 mr-1" />
         {t("selectAll") || "Select all"} ({totalCount})
       </Button>
-      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={onClearSelection}>
+      <Button variant="ghost" size="sm" className="h-7 text-xs text-white/80 hover:text-white hover:bg-white/10" onClick={onClearSelection}>
         <X className="h-3.5 w-3.5 mr-1" />
         {t("clearSelection") || "Clear"}
       </Button>
 
-      <div className="h-6 w-px bg-border" />
+      <div className="h-6 w-px bg-white/20" />
 
       {/* Status change */}
       <Select onValueChange={(v) => onStatusChange(v as "tentative" | "confirmed" | "completed")}>
-        <SelectTrigger className="h-7 w-[140px] text-xs">
+        <SelectTrigger className="h-7 w-[140px] text-xs bg-white/10 border-white/20 text-white hover:bg-white/15">
           <SelectValue placeholder={t("changeStatus") || "Change status"} />
         </SelectTrigger>
         <SelectContent>
@@ -75,13 +82,13 @@ export function BulkActionToolbar({
           type="number"
           value={moveOffset}
           onChange={(e) => setMoveOffset(e.target.value)}
-          className="h-7 w-16 text-xs text-center"
+          className="h-7 w-16 text-xs text-center bg-white/10 border-white/20 text-white placeholder:text-white/40"
           placeholder="0"
         />
         <Button
           variant="outline"
           size="sm"
-          className="h-7 text-xs"
+          className="h-7 text-xs border-white/20 text-white hover:bg-white/10 hover:text-white"
           onClick={() => {
             const days = parseInt(moveOffset, 10);
             if (days !== 0 && !isNaN(days)) onMove(days);
@@ -93,14 +100,13 @@ export function BulkActionToolbar({
         </Button>
       </div>
 
-      <div className="h-6 w-px bg-border" />
+      <div className="h-6 w-px bg-white/20" />
 
       {/* Delete */}
       {!confirmDelete ? (
         <Button
-          variant="destructive"
           size="sm"
-          className="h-7 text-xs"
+          className="h-7 text-xs bg-red-500/80 hover:bg-red-500 text-white border-0"
           onClick={() => setConfirmDelete(true)}
         >
           <Trash2 className="h-3 w-3 mr-1" />
@@ -108,16 +114,16 @@ export function BulkActionToolbar({
         </Button>
       ) : (
         <div className="flex items-center gap-1">
-          <span className="text-xs text-destructive font-medium">
+          <span className="text-xs text-red-300 font-medium">
             {t("confirmBulkDelete") || "Delete all selected?"}
           </span>
-          <Button variant="destructive" size="sm" className="h-7 text-xs" onClick={() => { onDelete(); setConfirmDelete(false); }}>
+          <Button size="sm" className="h-7 text-xs bg-red-500 hover:bg-red-600 text-white border-0" onClick={() => { onDelete(); setConfirmDelete(false); }}>
             {t("yes") || "Yes"}
           </Button>
           <Button
             variant="outline"
             size="sm"
-            className="h-7 text-xs"
+            className="h-7 text-xs border-white/20 text-white hover:bg-white/10"
             onClick={() => setConfirmDelete(false)}
           >
             {t("no") || "No"}

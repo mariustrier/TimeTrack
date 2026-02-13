@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import defaultTheme from "tailwindcss/defaultTheme";
 
 const config: Config = {
   darkMode: ["class"],
@@ -9,6 +10,10 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["var(--font-sans)", ...defaultTheme.fontFamily.sans],
+        mono: ["var(--font-mono)", ...defaultTheme.fontFamily.mono],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -56,6 +61,29 @@ const config: Config = {
           900: "#312E81",
           950: "#1E1B4B",
         },
+        studio: {
+          bg: "#FAFAF9",
+          surface: "#FFFFFF",
+          border: "#E5E7EB",
+          "border-light": "#F3F4F6",
+          text: "#1F2937",
+          "text-secondary": "#6B7280",
+          "text-muted": "#9CA3AF",
+          amber: "#F59E0B",
+          "amber-light": "#FEF3C7",
+        },
+        heatmap: {
+          empty: "#F9FAFB",
+          low: "#D1FAE5",
+          medium: "#FEF3C7",
+          high: "#FEE2E2",
+          over: "#FECACA",
+          "empty-dark": "rgba(255, 255, 255, 0.04)",
+          "low-dark": "rgba(16, 185, 129, 0.12)",
+          "medium-dark": "rgba(245, 158, 11, 0.12)",
+          "high-dark": "rgba(239, 68, 68, 0.10)",
+          "over-dark": "rgba(239, 68, 68, 0.18)",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -75,11 +103,28 @@ const config: Config = {
           "0%": { opacity: "0", transform: "translateY(10px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        "slide-up": {
+          from: { transform: "translateY(8px)", opacity: "0" },
+          to: { transform: "translateY(0)", opacity: "1" },
+        },
+        "ghost-pulse": {
+          "0%, 100%": { opacity: "0.2" },
+          "50%": { opacity: "0.35" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fade-in 0.5s ease-out forwards",
+        "slide-up": "slide-up 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        "ghost-pulse": "ghost-pulse 1.5s ease-in-out infinite",
+      },
+      transitionTimingFunction: {
+        studio: "cubic-bezier(0.4, 0, 0.2, 1)",
+      },
+      transitionDuration: {
+        studio: "300ms",
+        "studio-fast": "150ms",
       },
     },
   },

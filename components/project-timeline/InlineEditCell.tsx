@@ -26,6 +26,7 @@ interface InlineEditCellProps {
   className?: string;
   displayClassName?: string;
   renderDisplay?: (value: string) => React.ReactNode;
+  readOnly?: boolean;
 }
 
 export function InlineEditCell({
@@ -37,6 +38,7 @@ export function InlineEditCell({
   className,
   displayClassName,
   renderDisplay,
+  readOnly = false,
 }: InlineEditCellProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -68,11 +70,12 @@ export function InlineEditCell({
     return (
       <span
         className={cn(
-          "cursor-pointer hover:bg-muted/50 rounded px-1 inline-block",
+          "rounded px-1 inline-block",
+          !readOnly && "cursor-pointer hover:bg-muted/50",
           displayClassName,
           className
         )}
-        onClick={() => setEditing(true)}
+        onClick={() => { if (!readOnly) setEditing(true); }}
       >
         {renderDisplay ? (
           renderDisplay(value)

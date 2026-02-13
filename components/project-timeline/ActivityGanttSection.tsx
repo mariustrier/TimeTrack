@@ -28,6 +28,7 @@ interface ActivityGanttSectionProps {
   companyPhases: CompanyPhase[];
   teamMembers: { id: string; name: string; imageUrl: string | null }[];
   milestones: TimelineMilestone[];
+  editMode: boolean;
   onSaveDeadline: (data: {
     projectId: string;
     milestoneId?: string;
@@ -50,6 +51,8 @@ interface ActivityGanttSectionProps {
     originalEnd: Date
   ) => void;
   dragState: DragState | null;
+  dragPreview?: { start: Date; end: Date } | null;
+  activityDateOverrides?: Record<string, { startDate: string; endDate: string }>;
 }
 
 export function ActivityGanttSection({
@@ -58,10 +61,13 @@ export function ActivityGanttSection({
   companyPhases,
   teamMembers,
   milestones,
+  editMode,
   onSaveDeadline,
   onDeleteDeadline,
   startDrag,
   dragState,
+  dragPreview,
+  activityDateOverrides,
 }: ActivityGanttSectionProps) {
   const t = useTranslations("timeline");
 
@@ -153,6 +159,23 @@ export function ActivityGanttSection({
 
     fetchActivities();
   }, [project.id]);
+
+  // Apply date overrides from drag operations (keeps local state in sync)
+  useEffect(() => {
+    if (!activityDateOverrides || Object.keys(activityDateOverrides).length === 0) return;
+    setActivities((prev) => {
+      let changed = false;
+      const next = prev.map((a) => {
+        const override = activityDateOverrides[a.id];
+        if (override && (a.startDate !== override.startDate || a.endDate !== override.endDate)) {
+          changed = true;
+          return { ...a, startDate: override.startDate, endDate: override.endDate };
+        }
+        return a;
+      });
+      return changed ? next : prev;
+    });
+  }, [activityDateOverrides]);
 
   // Group activities by category / phase
   const grouped = useMemo(() => {
@@ -308,36 +331,38 @@ export function ActivityGanttSection({
             <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               {t("activities") || "Activities"}
             </span>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-5 text-[10px] px-1.5"
-                onClick={(e) => {
-                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                  setDeadlinePopover({
-                    open: true,
-                    position: { top: rect.bottom + 4, left: rect.left - 100 },
-                    milestone: null,
-                    defaultDate: project.startDate
-                      ? format(new Date(project.startDate + "T00:00:00"), "yyyy-MM-dd")
-                      : undefined,
-                  });
-                }}
-              >
-                <Flag className="h-3 w-3 mr-0.5" />
-                {t("deadline") || "Deadline"}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-5 text-[10px] px-1.5"
-                onClick={openCreatePopover}
-              >
-                <Plus className="h-3 w-3 mr-0.5" />
-                {t("addActivity") || "Add"}
-              </Button>
-            </div>
+            {editMode && (
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 text-[10px] px-1.5"
+                  onClick={(e) => {
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                    setDeadlinePopover({
+                      open: true,
+                      position: { top: rect.bottom + 4, left: rect.left - 100 },
+                      milestone: null,
+                      defaultDate: project.startDate
+                        ? format(new Date(project.startDate + "T00:00:00"), "yyyy-MM-dd")
+                        : undefined,
+                    });
+                  }}
+                >
+                  <Flag className="h-3 w-3 mr-0.5" />
+                  {t("deadline") || "Deadline"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 text-[10px] px-1.5"
+                  onClick={openCreatePopover}
+                >
+                  <Plus className="h-3 w-3 mr-0.5" />
+                  {t("addActivity") || "Add"}
+                </Button>
+              </div>
+            )}
           </div>
         </td>
         <td colSpan={columns.length} className="border-b border-border" />
@@ -378,7 +403,7 @@ export function ActivityGanttSection({
 
                 {/* Today line */}
                 {col.containsToday && (
-                  <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-red-500 z-[5]" />
+                  <div className="absolute top-0 bottom-0 left-1/2 w-[2px] bg-studio-amber z-[5]" />
                 )}
               </td>
             );
@@ -402,11 +427,13 @@ export function ActivityGanttSection({
               projectColor={project.color}
               columns={columns}
               teamMembers={teamMembers}
+              editMode={editMode}
               onUpdate={handleUpdate}
               onDelete={handleDelete}
               onClick={handleActivityClick}
               startDrag={startDrag}
               dragState={dragState}
+              dragPreview={dragState?.entityId === activity.id ? dragPreview : null}
             />
           ))}
         </Fragment>
@@ -427,11 +454,13 @@ export function ActivityGanttSection({
               projectColor={project.color}
               columns={columns}
               teamMembers={teamMembers}
+              editMode={editMode}
               onUpdate={handleUpdate}
               onDelete={handleDelete}
               onClick={handleActivityClick}
               startDrag={startDrag}
               dragState={dragState}
+              dragPreview={dragState?.entityId === activity.id ? dragPreview : null}
             />
           ))}
         </>

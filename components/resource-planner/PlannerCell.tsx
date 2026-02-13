@@ -5,7 +5,6 @@ import { format, isWeekend, isToday } from "date-fns";
 import { cn } from "@/lib/utils";
 import { isCompanyHoliday, getCompanyHolidayName, type CustomHoliday } from "@/lib/holidays";
 import { Plus } from "lucide-react";
-import { AllocationBlock } from "./AllocationBlock";
 import { VacationBlock } from "./VacationBlock";
 import { useLocale } from "@/lib/i18n";
 
@@ -43,6 +42,17 @@ interface PlannerCellProps {
   onBulkDrop?: (selectedIds: string[], sourceDate: string, targetDate: string) => void;
 }
 
+/** Heatmap color for utilization ratio — matches demo exactly */
+function heatColor(ratio: number): { bg: string; text: string } {
+  if (ratio > 1.02) return { bg: "#FEE2E2", text: "#B91C1C" };
+  if (ratio > 0.85) return { bg: "#D1FAE5", text: "#047857" };
+  if (ratio > 0.5)  return { bg: "#FEF9C3", text: "#A16207" };
+  if (ratio > 0.01) return { bg: "#F3F4F6", text: "#6B7280" };
+  return                    { bg: "#FAFAFA", text: "#D1D5DB" };
+}
+
+export { heatColor };
+
 export function PlannerCell({
   day,
   allocations,
@@ -67,11 +77,14 @@ export function PlannerCell({
   const holidayName = !weekend ? getCompanyHolidayName(day, locale as "en" | "da", disabledHolidayCodes, customHolidays) : null;
   const today = isToday(day);
   const totalAllocated = allocations.reduce((s, a) => s + a.hoursPerDay, 0);
-  const isOverbooked = !weekend && !holiday && dailyTarget > 0 && totalAllocated > dailyTarget;
+  const ratio = dailyTarget > 0 ? totalAllocated / dailyTarget : 0;
   const isEmpty = allocations.length === 0 && !vacation;
   const dateStr = format(day, "yyyy-MM-dd");
+  const hc = heatColor(ratio);
+  const hasAnySelected = selectionMode && selectedIds && allocations.some(a => selectedIds.has(a.id));
 
   const [dragOver, setDragOver] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const handleDragOver = (e: React.DragEvent) => {
     if (weekend || holiday) return;
@@ -80,9 +93,7 @@ export function PlannerCell({
     setDragOver(true);
   };
 
-  const handleDragLeave = () => {
-    setDragOver(false);
-  };
+  const handleDragLeave = () => setDragOver(false);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -92,8 +103,7 @@ export function PlannerCell({
       const raw = e.dataTransfer.getData("application/json");
       if (!raw) return;
       const data = JSON.parse(raw);
-      if (data.sourceDate === dateStr) return; // Dropped on same day
-
+      if (data.sourceDate === dateStr) return;
       if (data.bulkMove && onBulkDrop) {
         onBulkDrop(data.selectedIds, data.sourceDate, dateStr);
       } else if (onAllocationDrop) {
@@ -105,29 +115,42 @@ export function PlannerCell({
         }, dateStr);
       }
     } catch {
-      // ignore bad data
+      // ignore
     }
+  };
+
+  const handleCellClick = (e: React.MouseEvent) => {
+    if (weekend || holiday) return;
+    if (selectionMode && allocations.length > 0) {
+      // In selection mode, toggle all allocations in this cell
+      if (onToggleSelection) {
+        allocations.forEach(a => onToggleSelection(a.id));
+      }
+      return;
+    }
+    // Always open create popover on cell click — lets user add more hours
+    // Clicking the pill itself handles editing (see pill onClick below)
+    onEmptyClick(e);
   };
 
   return (
     <td
       className={cn(
-        "border-b border-r border-border p-0.5 relative h-[56px] transition-colors align-top",
-        weekend && "bg-muted/30",
-        holiday && "bg-amber-50/50 dark:bg-amber-950/20",
-        today && "bg-brand-50/40 dark:bg-brand-950/40",
-        isOverbooked && "border-b-2 border-b-red-400 dark:border-b-red-500",
-        isEmpty && !weekend && !holiday && "group/cell hover:bg-accent/50 cursor-pointer",
-        dragOver && "ring-2 ring-inset ring-brand-500 bg-brand-50/30 dark:bg-brand-950/30"
+        "border-b border-r p-0 relative h-[56px] align-middle",
+        // Barely-visible borders matching demo
+        "border-r-[#F9FAFB] dark:border-r-[#1a1a1a]",
+        "border-b-[#F3F4F6] dark:border-b-[#222]",
+        weekend && "bg-muted/15",
+        holiday && "bg-amber-50/20 dark:bg-amber-950/10",
+        today && "bg-[rgba(251,191,36,0.05)]",
+        isEmpty && !weekend && !holiday && "group/cell cursor-pointer",
+        !isEmpty && !weekend && !holiday && "cursor-pointer",
+        dragOver && "ring-2 ring-inset ring-brand-500 bg-brand-50/30 dark:bg-brand-950/30",
+        hasAnySelected && "bg-blue-50/50 dark:bg-blue-950/20"
       )}
-      onClick={(e) => {
-        if (isEmpty && !weekend && !holiday) {
-          onEmptyClick(e);
-        }
-      }}
+      onClick={handleCellClick}
       onMouseDown={(e) => {
         if (selectionMode && allocations.length > 0 && e.button === 0) {
-          // If any allocation in this cell is selected, let native drag handle it
           const hasSelected = selectedIds && allocations.some((a) => selectedIds.has(a.id));
           if (hasSelected) return;
           if (onDragSelectStart) {
@@ -146,48 +169,62 @@ export function PlannerCell({
       onDrop={handleDrop}
       title={holidayName || undefined}
     >
-      <div className="flex flex-col gap-0.5 p-0.5 min-h-[48px]">
-        {/* Vacation */}
-        {vacation && <VacationBlock type={vacation.type} />}
+      <div className="flex items-center justify-center h-full">
+        {/* Vacation pill */}
+        {vacation && !weekend && (
+          <VacationBlock type={vacation.type} />
+        )}
 
-        {/* Allocations */}
-        {allocations.map((alloc) => (
-          <AllocationBlock
-            key={alloc.id + "-" + dateStr}
-            id={alloc.id}
-            projectName={alloc.projectName}
-            projectColor={alloc.projectColor}
-            hoursPerDay={alloc.hoursPerDay}
-            status={alloc.status}
-            notes={alloc.notes}
-            isMultiDay={alloc.isMultiDay}
-            date={dateStr}
-            selectionMode={selectionMode}
-            isSelected={selectionMode ? selectedIds?.has(alloc.id) ?? false : false}
-            selectedIds={selectedIds}
+        {/* Heatmap pill — click to edit existing allocation */}
+        {!vacation && totalAllocated > 0 && !weekend && !holiday && (
+          <div
+            className="rounded-[6px] px-2.5 py-1.5 text-center min-w-[44px] transition-all duration-200 cursor-pointer"
+            style={{
+              backgroundColor: hc.bg,
+              transform: isHovered ? "scale(1.08)" : "scale(1)",
+              boxShadow: isHovered ? "0 2px 8px rgba(0,0,0,0.08)" : "none",
+            }}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
             onClick={(e) => {
               e.stopPropagation();
-              if (selectionMode && onToggleSelection) {
-                onToggleSelection(alloc.id);
-              } else {
-                onAllocationClick(alloc, e);
+              if (selectionMode) return;
+              if (allocations.length > 0) {
+                onAllocationClick(allocations[0], e);
               }
             }}
-            onDelete={(e) => onAllocationDelete(alloc.id, alloc.isMultiDay, e)}
-          />
-        ))}
+          >
+            <div
+              className="text-[13px] font-bold font-mono leading-none"
+              style={{ color: hc.text, fontVariantNumeric: "tabular-nums" }}
+            >
+              {totalAllocated}
+            </div>
+            <div
+              className="text-[8px] font-medium leading-none mt-0.5"
+              style={{ color: hc.text, opacity: 0.7 }}
+            >
+              hrs
+            </div>
+          </div>
+        )}
 
-        {/* Add button for empty cells */}
+        {/* Empty state — subtle plus icon on hover */}
         {isEmpty && !weekend && !holiday && (
-          <div className="flex items-center justify-center h-full opacity-0 group-hover/cell:opacity-40 transition-opacity">
+          <div className="flex items-center justify-center h-full opacity-0 group-hover/cell:opacity-30 transition-opacity">
             <Plus className="h-4 w-4 text-muted-foreground" />
           </div>
         )}
       </div>
 
-      {/* Today indicator line */}
+      {/* Over-capacity pulsing dot */}
+      {ratio > 1.02 && (
+        <div className="absolute top-1 right-1.5 w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+      )}
+
+      {/* Today vertical line — amber, subtle */}
       {today && (
-        <div className="absolute top-0 left-0 w-0.5 h-full bg-brand-500 z-[5]" />
+        <div className="absolute top-0 left-1/2 bottom-0 w-0.5 bg-[#F59E0B] opacity-30 z-[5]" />
       )}
     </td>
   );

@@ -7,6 +7,7 @@ import { getEffectiveWeeklyCapacity, getDailyTarget } from "@/lib/calculations";
 import { isCompanyHoliday, type CustomHoliday } from "@/lib/holidays";
 import { PlannerCell } from "./PlannerCell";
 import { CapacityColumn } from "./CapacityColumn";
+import { cn } from "@/lib/utils";
 
 interface Employee {
   id: string;
@@ -17,6 +18,7 @@ interface Employee {
   weeklyTarget: number;
   isHourly?: boolean;
   employmentType?: string;
+  role?: string;
 }
 
 interface Allocation {
@@ -57,7 +59,26 @@ interface PlannerRowProps {
   onDragSelectStart?: (allocationIds: string[]) => void;
   onDragSelectEnter?: (allocationIds: string[]) => void;
   onBulkDrop?: (selectedIds: string[], sourceDate: string, targetDate: string) => void;
+  // New props for demo-matching visuals
+  isDimmed?: boolean;
+  isExpanded?: boolean;
+  onExpand?: () => void;
 }
+
+/** Status classification based on utilization ratio */
+function statusOf(ratio: number) {
+  if (ratio > 1.02) return { key: "over",    label: "Overbooked", bg: "#FEE2E2", fg: "#DC2626", dot: "#DC2626" };
+  if (ratio > 0.85) return { key: "optimal", label: "OK",         bg: "#D1FAE5", fg: "#059669", dot: "#059669" };
+  if (ratio > 0.4)  return { key: "partial", label: "Partial",    bg: "#FEF3C7", fg: "#B45309", dot: "#D97706" };
+  return                    { key: "low",     label: "Low",        bg: "#F3F4F6", fg: "#9CA3AF", dot: "#9CA3AF" };
+}
+
+/** Role badge colors matching demo */
+const ROLE_COLORS: Record<string, { bg: string; fg: string; label: string }> = {
+  admin:   { bg: "#DBEAFE", fg: "#1E40AF", label: "Admin" },
+  manager: { bg: "#E0E7FF", fg: "#3730A3", label: "Manager" },
+  employee: { bg: "#F3E8FF", fg: "#6B21A8", label: "Employee" },
+};
 
 export function PlannerRow({
   employee,
@@ -76,6 +97,9 @@ export function PlannerRow({
   onDragSelectStart,
   onDragSelectEnter,
   onBulkDrop,
+  isDimmed,
+  isExpanded,
+  onExpand,
 }: PlannerRowProps) {
   const t = useTranslations("resourcePlanner");
   const tc = useTranslations("common");
@@ -95,10 +119,9 @@ export function PlannerRow({
     return employee.email.split("@")[0];
   };
 
-  const getSubtitle = () => {
-    if (employee.employmentType === "freelancer") return "Freelancer";
-    if (employee.isHourly) return t("hourly") || "Hourly";
-    return `${effectiveCap}${tc("hourAbbrev")}/${t("viewWeek") || "week"}`;
+  const getRoleInfo = () => {
+    const role = employee.role || "employee";
+    return ROLE_COLORS[role] || ROLE_COLORS.employee;
   };
 
   // Get allocations for a specific day (skip weekends)
@@ -145,19 +168,110 @@ export function PlannerRow({
     totalAllocated += dayAllocs.reduce((s, a) => s + a.hoursPerDay, 0);
   });
 
+  const avgRatio = totalCapacity > 0 ? totalAllocated / totalCapacity : 0;
+  const status = statusOf(avgRatio);
+  const roleInfo = getRoleInfo();
+
   return (
-    <tr className="group">
-      {/* Sticky employee name column */}
-      <td className="sticky left-0 z-10 bg-card border-b border-r border-border p-2 min-w-[180px]">
-        <div className="flex items-center gap-2">
-          <Avatar className="h-7 w-7">
-            <AvatarImage src={employee.imageUrl || undefined} />
-            <AvatarFallback className="text-[10px]">{getInitials()}</AvatarFallback>
+    <tr
+      className={cn("group", "transition-all duration-300")}
+      style={{ opacity: isDimmed ? 0.4 : 1 }}
+    >
+      {/* Sticky employee name column — redesigned to match demo */}
+      <td
+        className={cn(
+          "sticky left-0 z-10 border-b border-r border-border p-0 min-w-[220px]",
+          isExpanded ? "bg-[#FAFAF9] dark:bg-[#151515]" : "bg-card",
+        )}
+      >
+        <div
+          className={cn(
+            "flex items-center gap-2.5 px-4 py-3 cursor-pointer transition-colors duration-150",
+            !isExpanded && "hover:bg-[#F9FAFB] dark:hover:bg-[#1a1a1a]"
+          )}
+          onClick={onExpand}
+        >
+          {/* Avatar — 34x34, rounded-[9px] matching demo */}
+          <Avatar className="h-[34px] w-[34px] rounded-[9px] shrink-0">
+            <AvatarImage src={employee.imageUrl || undefined} className="rounded-[9px]" />
+            <AvatarFallback
+              className="rounded-[9px] text-[11px] font-bold"
+              style={{
+                background: `${roleInfo.fg}10`,
+                border: `1.5px solid ${roleInfo.fg}30`,
+                color: roleInfo.fg,
+              }}
+            >
+              {getInitials()}
+            </AvatarFallback>
           </Avatar>
-          <div className="min-w-0">
-            <p className="text-sm font-medium truncate leading-tight">{getDisplayName()}</p>
-            <p className="text-[11px] text-muted-foreground leading-tight">{getSubtitle()}</p>
+
+          {/* Info column */}
+          <div className="flex-1 min-w-0">
+            {/* Row 1: Name + Role badge */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[13px] font-semibold truncate leading-tight">
+                {getDisplayName()}
+              </span>
+              <span
+                className="shrink-0 px-1.5 py-px rounded text-[9px] font-bold uppercase tracking-wide"
+                style={{ background: roleInfo.bg, color: roleInfo.fg }}
+              >
+                {employee.employmentType === "freelancer"
+                  ? "Freelancer"
+                  : employee.isHourly
+                    ? (t("hourly") || "Hourly")
+                    : `${effectiveCap}${tc("hourAbbrev")}`}
+              </span>
+            </div>
+
+            {/* Row 2: Utilization bar + Status badge */}
+            <div className="flex items-center gap-2 mt-1.5">
+              {/* Mini utilization bar */}
+              <div className="flex items-center gap-1.5">
+                <div className="w-[50px] h-[5px] bg-[#E5E7EB] dark:bg-[#374151] rounded-[3px] overflow-hidden">
+                  <div
+                    className="h-[5px] rounded-[3px] transition-all duration-400"
+                    style={{
+                      width: `${Math.min(avgRatio * 100, 100)}%`,
+                      backgroundColor: status.fg,
+                    }}
+                  />
+                </div>
+                <span
+                  className="text-[10px] font-semibold font-mono min-w-[28px]"
+                  style={{ color: status.fg, fontVariantNumeric: "tabular-nums" }}
+                >
+                  {Math.round(avgRatio * 100)}%
+                </span>
+              </div>
+
+              {/* Status badge */}
+              <span
+                className="inline-flex items-center gap-1 px-2 py-px rounded-[10px] text-[10px] font-semibold"
+                style={{ background: status.bg, color: status.fg }}
+              >
+                <span
+                  className="w-[5px] h-[5px] rounded-full"
+                  style={{
+                    background: status.dot,
+                    animation: status.key === "over" ? "pulse 1.5s ease infinite" : "none",
+                  }}
+                />
+                {status.label}
+              </span>
+            </div>
           </div>
+
+          {/* Chevron */}
+          {!selectionMode && (
+            <span
+              className="text-[12px] text-[#9CA3AF] transition-transform duration-300 shrink-0"
+              style={{ transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)" }}
+            >
+              &#x25B8;
+            </span>
+          )}
         </div>
       </td>
 

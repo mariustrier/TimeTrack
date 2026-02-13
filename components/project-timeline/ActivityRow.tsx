@@ -13,6 +13,7 @@ interface ActivityRowProps {
   projectColor: string;
   columns: TimelineColumn[];
   teamMembers: { id: string; name: string; imageUrl: string | null }[];
+  editMode?: boolean;
   onUpdate: (activityId: string, data: Record<string, unknown>) => void;
   onDelete: (activityId: string) => void;
   onClick: (activity: TimelineActivity, e: React.MouseEvent) => void;
@@ -25,6 +26,7 @@ interface ActivityRowProps {
     originalEnd: Date
   ) => void;
   dragState: DragState | null;
+  dragPreview?: { start: Date; end: Date } | null;
 }
 
 const STATUS_OPTIONS: { value: string; label: string; color: string }[] = [
@@ -47,16 +49,24 @@ export function ActivityRow({
   projectColor,
   columns,
   teamMembers,
+  editMode = true,
   onUpdate,
   onDelete,
   onClick,
   startDrag,
   dragState,
+  dragPreview,
 }: ActivityRowProps) {
   const t = useTranslations("timeline");
 
-  const startDate = useMemo(() => new Date(activity.startDate + "T00:00:00"), [activity.startDate]);
-  const endDate = useMemo(() => new Date(activity.endDate + "T00:00:00"), [activity.endDate]);
+  const rawStartDate = useMemo(() => new Date(activity.startDate + "T00:00:00"), [activity.startDate]);
+  const rawEndDate = useMemo(() => new Date(activity.endDate + "T00:00:00"), [activity.endDate]);
+
+  // Use drag preview dates when this activity is being dragged
+  const isBeingDragged = dragState?.entityId === activity.id;
+  const startDate = isBeingDragged && dragPreview ? dragPreview.start : rawStartDate;
+  const endDate = isBeingDragged && dragPreview ? dragPreview.end : rawEndDate;
+
   const today = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -136,6 +146,7 @@ export function ActivityRow({
             type="text"
             className="text-xs font-medium"
             placeholder={t("activityName") || "Activity name"}
+            readOnly={!editMode}
           />
 
           {/* Line 2: Meta */}
@@ -155,10 +166,11 @@ export function ActivityRow({
               options={STATUS_OPTIONS}
               onSave={(v) => onUpdate(activity.id, { status: v })}
               renderDisplay={() => renderStatusBadge(computedStatus)}
+              readOnly={!editMode}
             />
 
             {/* Dates */}
-            <span className="text-[9px] text-muted-foreground">
+            <span className="text-[9px] text-muted-foreground font-mono">
               {formatDate(activity.startDate)} – {formatDate(activity.endDate)}
             </span>
           </div>
@@ -171,7 +183,8 @@ export function ActivityRow({
           key={col.key}
           className={cn(
             "border-b border-r border-border p-0 h-[32px] relative",
-            col.containsToday && "bg-brand-50/20 dark:bg-brand-950/20"
+            col.containsToday && "bg-brand-50/20 dark:bg-brand-950/20",
+            editMode && "overflow-visible"
           )}
         >
           {isInActivity(col) && (
@@ -181,38 +194,42 @@ export function ActivityRow({
               isStart={isActivityStartCol(col)}
               isEnd={isActivityEndCol(col)}
               isOverdue={isOverdue}
-              isDragging={dragState?.entityId === activity.id}
+              isDragging={isBeingDragged}
+              editMode={editMode}
               onResizeStartLeft={(e) => {
+                if (!editMode) return;
                 e.stopPropagation();
                 startDrag(
                   "activity-resize-start",
                   activity.id,
                   activity.projectId,
                   e.clientX,
-                  startDate,
-                  endDate
+                  rawStartDate,
+                  rawEndDate
                 );
               }}
               onResizeStartRight={(e) => {
+                if (!editMode) return;
                 e.stopPropagation();
                 startDrag(
                   "activity-resize-end",
                   activity.id,
                   activity.projectId,
                   e.clientX,
-                  startDate,
-                  endDate
+                  rawStartDate,
+                  rawEndDate
                 );
               }}
               onMoveStart={(e) => {
+                if (!editMode) return;
                 e.preventDefault();
                 startDrag(
                   "activity-move",
                   activity.id,
                   activity.projectId,
                   e.clientX,
-                  startDate,
-                  endDate
+                  rawStartDate,
+                  rawEndDate
                 );
               }}
               onClick={(e) => onClick(activity, e)}
@@ -221,7 +238,7 @@ export function ActivityRow({
 
           {/* Today line */}
           {col.containsToday && (
-            <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-red-500 z-[5]" />
+            <div className="absolute top-0 bottom-0 left-1/2 w-[2px] bg-studio-amber z-[5]" />
           )}
         </td>
       ))}

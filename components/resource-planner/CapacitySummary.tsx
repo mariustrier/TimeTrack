@@ -55,7 +55,7 @@ export function CapacitySummary({ employees, utilization }: CapacitySummaryProps
             </div>
             <div>
               <p className="text-sm text-muted-foreground">{t("teamUtilization") || "Team Utilization"}</p>
-              <p className="text-2xl font-bold">{overallUtilization}%</p>
+              <p className="text-2xl font-bold font-mono">{overallUtilization}%</p>
             </div>
           </div>
         </CardContent>
@@ -77,7 +77,7 @@ export function CapacitySummary({ employees, utilization }: CapacitySummaryProps
             </div>
             <div>
               <p className="text-sm text-muted-foreground">{t("overbooked") || "Overbooked"}</p>
-              <p className="text-2xl font-bold">{overbooked.length}</p>
+              <p className="text-2xl font-bold font-mono">{overbooked.length}</p>
               {overbooked.length > 0 && (
                 <p className="text-xs text-muted-foreground truncate max-w-[150px]">
                   {overbooked.map(e => e.firstName || e.email.split("@")[0]).join(", ")}
@@ -103,7 +103,7 @@ export function CapacitySummary({ employees, utilization }: CapacitySummaryProps
             </div>
             <div>
               <p className="text-sm text-muted-foreground">{t("available") || "Available"}</p>
-              <p className="text-2xl font-bold">{underutilized.length}</p>
+              <p className="text-2xl font-bold font-mono">{underutilized.length}</p>
               {underutilized.length > 0 && (
                 <p className="text-xs text-muted-foreground truncate max-w-[150px]">
                   {underutilized.map(e => e.firstName || e.email.split("@")[0]).join(", ")}

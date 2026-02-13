@@ -12,6 +12,9 @@ interface ProjectBarProps {
   columnStart: Date;
   columnEnd: Date;
   isDragging: boolean;
+  isExpanded?: boolean;
+  isDimmed?: boolean;
+  editMode: boolean;
   onResizeStartLeft: (e: React.MouseEvent) => void;
   onResizeStartRight: (e: React.MouseEvent) => void;
   onMoveStart: (e: React.MouseEvent) => void;
@@ -26,6 +29,9 @@ export function ProjectBar({
   columnStart,
   columnEnd,
   isDragging,
+  isExpanded,
+  isDimmed,
+  editMode,
   onResizeStartLeft,
   onResizeStartRight,
   onMoveStart,
@@ -39,15 +45,23 @@ export function ProjectBar({
       })
     : [];
 
+  // Demo: 0.85 opacity normally, 0.15 when expanded (faded behind activities), 0.85 when dimmed (compact bar)
+  const barOpacity = isDragging ? 0.5 : isExpanded ? 0.15 : 0.85;
+  const barHeight = isDimmed ? 16 : 24;
+
   return (
     <div
       className={cn(
-        "absolute top-1/2 -translate-y-1/2 h-5 inset-x-0 group/bar",
-        isStart && "left-1 rounded-l-md",
-        isEnd && "right-1 rounded-r-md",
-        isDragging && "opacity-50"
+        "absolute top-1/2 -translate-y-1/2 inset-x-0 group/bar transition-all duration-300",
+        isStart && "left-1 rounded-l-[6px]",
+        isEnd && "right-1 rounded-r-[6px]",
       )}
-      style={{ backgroundColor: projectColor + "40" }}
+      style={{
+        backgroundColor: projectColor,
+        opacity: barOpacity,
+        height: barHeight,
+        borderRadius: isDimmed ? 4 : 6,
+      }}
     >
       {/* Phase segments overlay */}
       {overlappingPhases.map((ps) => {
@@ -80,16 +94,16 @@ export function ProjectBar({
       <div
         className={cn(
           "absolute top-0 left-0 right-0 h-1",
-          isStart && "rounded-tl-md",
-          isEnd && "rounded-tr-md"
+          isStart && "rounded-tl-[6px]",
+          isEnd && "rounded-tr-[6px]"
         )}
         style={{ backgroundColor: projectColor }}
       />
 
       {/* Left resize handle */}
-      {isStart && (
+      {editMode && isStart && (
         <div
-          className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize z-20 hover:bg-foreground/20 rounded-l-md"
+          className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize z-20 hover:bg-foreground/20 rounded-l-[6px]"
           onMouseDown={(e) => {
             e.stopPropagation();
             e.preventDefault();
@@ -100,17 +114,18 @@ export function ProjectBar({
 
       {/* Move zone (center area) */}
       <div
-        className="absolute inset-0 cursor-grab active:cursor-grabbing z-10"
+        className={`absolute inset-0 z-10 ${editMode ? "cursor-grab active:cursor-grabbing" : ""}`}
         onMouseDown={(e) => {
+          if (!editMode) return;
           e.preventDefault();
           onMoveStart(e);
         }}
       />
 
       {/* Right resize handle */}
-      {isEnd && (
+      {editMode && isEnd && (
         <div
-          className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize z-20 hover:bg-foreground/20 rounded-r-md"
+          className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize z-20 hover:bg-foreground/20 rounded-r-[6px]"
           onMouseDown={(e) => {
             e.stopPropagation();
             e.preventDefault();

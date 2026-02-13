@@ -24,7 +24,7 @@ export function PlannerSummary({
         </span>
         <span
           className={cn(
-            "text-sm font-semibold",
+            "text-sm font-semibold font-mono",
             utilizationPercent > 100
               ? "text-red-600 dark:text-red-400"
               : utilizationPercent > 85
@@ -41,7 +41,7 @@ export function PlannerSummary({
           <span className="text-xs text-red-600 dark:text-red-400">
             {t("overbooked") || "Overbooked"}
           </span>
-          <span className="text-sm font-semibold text-red-600 dark:text-red-400">
+          <span className="text-sm font-semibold text-red-600 dark:text-red-400 font-mono">
             {overbookedCount}
           </span>
         </div>
@@ -51,7 +51,7 @@ export function PlannerSummary({
         <span className="text-xs text-muted-foreground">
           {t("available") || "Available"}
         </span>
-        <span className="text-sm font-semibold text-foreground">
+        <span className="text-sm font-semibold text-foreground font-mono">
           {availableCount}
         </span>
       </div>

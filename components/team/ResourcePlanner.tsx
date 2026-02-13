@@ -33,6 +33,7 @@ export interface Employee {
   weeklyTarget: number;
   isHourly?: boolean;
   employmentType?: string;
+  role?: string;
 }
 
 export interface Project {
@@ -132,6 +133,9 @@ export function ResourcePlanner() {
   // Selection mode state
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Expand state for employee rows
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Undo delete state
   const undoRef = useRef<{ timeout: ReturnType<typeof setTimeout>; allocationId: string } | null>(
@@ -465,11 +469,17 @@ export function ResourcePlanner() {
 
   // ── Selection mode handlers ──
 
+  const handleExpand = useCallback((employeeId: string) => {
+    if (selectionMode) return;
+    setExpandedId((prev) => (prev === employeeId ? null : employeeId));
+  }, [selectionMode]);
+
   const toggleSelectionMode = useCallback(() => {
     setSelectionMode((prev) => {
       if (prev) setSelectedIds(new Set());
       return !prev;
     });
+    setExpandedId(null);
   }, []);
 
   const toggleSelection = useCallback((allocationId: string) => {
@@ -750,6 +760,8 @@ export function ResourcePlanner() {
             onToggleSelection={toggleSelection}
             onAddToSelection={addToSelection}
             onBulkDrop={handleBulkDrop}
+            expandedId={expandedId}
+            onExpand={handleExpand}
           />
         </CardContent>
       </Card>

@@ -1,394 +1,1321 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
 import {
-  format,
-  addMonths,
-  subMonths,
-  startOfMonth,
-  endOfMonth,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useReducer,
+  useRef,
+} from "react";
+import {
   startOfWeek,
-  endOfWeek,
-  eachDayOfInterval,
-  eachWeekOfInterval,
-  eachMonthOfInterval,
-  isToday,
-  isWithinInterval,
-  getISOWeek,
+  startOfDay,
+  addWeeks,
+  addDays,
+  differenceInCalendarWeeks,
+  differenceInCalendarDays,
+  format,
 } from "date-fns";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { useTranslations, useDateLocale } from "@/lib/i18n";
-import { TimelineGrid } from "@/components/project-timeline/TimelineGrid";
-import { TimelineFilters } from "@/components/project-timeline/TimelineFilters";
-import { ConflictPanel } from "@/components/project-timeline/ConflictPanel";
 import type {
   TimelineProject,
+  TimelineActivity,
   TimelineMilestone,
-  TimelineColumn,
-  TimelineConflict,
-  TimelineViewMode,
-  VisibilityToggles,
   CompanyPhase,
+  DeadlineIcon,
 } from "@/components/project-timeline/types";
+import { DeadlineMarker } from "@/components/project-timeline/DeadlineMarker";
+import { DeadlinePopover } from "@/components/project-timeline/DeadlinePopover";
+
+/* ─────────────────────────────────────────────
+   INTERNAL TYPES (mapped from API data)
+   ───────────────────────────────────────────── */
+
+interface MProject {
+  id: string;
+  name: string;
+  client: string;
+  color: string;
+  budgetHealth: number;
+  startWeek: number;
+  endWeek: number;
+  currentPhase: string;
+  keyDeadline: { week: number; label: string; milestoneId: string } | null;
+  conflicts: number;
+  phases: {
+    id: string;
+    name: string;
+    start: number;
+    end: number;
+    color: string;
+  }[];
+  _startDate: string | null;
+  _endDate: string | null;
+}
+
+interface MActivity {
+  id: string;
+  name: string;
+  projectId: string;
+  phase: string;
+  start: number;
+  end: number;
+  _startDate: string;
+  _endDate: string;
+}
+
+type MilestoneWithWeek = TimelineMilestone & { week: number };
+
+/* ─────────────────────────────────────────────
+   UNDO / REDO REDUCER
+   ───────────────────────────────────────────── */
+
+interface TLState {
+  projects: MProject[];
+  activities: Record<string, MActivity[]>;
+}
+
+interface UndoableState {
+  present: TLState;
+  past: TLState[];
+  future: TLState[];
+}
+
+type UndoAction =
+  | { type: "SET_STATE"; payload: TLState }
+  | { type: "UPDATE"; payload: TLState }
+  | { type: "UNDO" }
+  | { type: "REDO" };
+
+function undoReducer(state: UndoableState, action: UndoAction): UndoableState {
+  switch (action.type) {
+    case "SET_STATE":
+      return {
+        present: action.payload,
+        past: [],
+        future: [],
+      };
+    case "UPDATE":
+      return {
+        present: action.payload,
+        past: [...state.past, state.present],
+        future: [],
+      };
+    case "UNDO": {
+      if (state.past.length === 0) return state;
+      const previous = state.past[state.past.length - 1];
+      return {
+        present: previous,
+        past: state.past.slice(0, -1),
+        future: [state.present, ...state.future],
+      };
+    }
+    case "REDO": {
+      if (state.future.length === 0) return state;
+      const next = state.future[0];
+      return {
+        present: next,
+        past: [...state.past, state.present],
+        future: state.future.slice(1),
+      };
+    }
+    default:
+      return state;
+  }
+}
+
+/* ─────────────────────────────────────────────
+   DRAG STATE
+   ───────────────────────────────────────────── */
+
+interface DragInfo {
+  type: "move" | "resize-left" | "resize-right";
+  entityType: "project" | "activity";
+  entityId: string;
+  projectId: string;
+  startMouseX: number;
+  originalStartWeek: number;
+  originalEndWeek: number;
+}
+
+/* ─────────────────────────────────────────────
+   POPOVER STATE
+   ───────────────────────────────────────────── */
+
+interface PopoverState {
+  entityType: "project" | "activity";
+  entityId: string;
+  projectId: string;
+  name: string;
+  startWeek: number;
+  endWeek: number;
+  anchorRect: DOMRect;
+}
+
+/* ─────────────────────────────────────────────
+   HELPER COMPONENTS (from demo)
+   ───────────────────────────────────────────── */
+
+function BudgetBar({ health }: { health: number }) {
+  const barColor =
+    health > 0.7 ? "#059669" : health > 0.5 ? "#D97706" : "#DC2626";
+  return (
+    <div className="flex items-center gap-1.5">
+      <div
+        style={{
+          width: 48,
+          height: 4,
+          background: "#E5E7EB",
+          borderRadius: 2,
+        }}
+      >
+        <div
+          style={{
+            width: `${Math.min(health, 1) * 100}%`,
+            height: 4,
+            background: barColor,
+            borderRadius: 2,
+            transition: "width 0.4s ease",
+          }}
+        />
+      </div>
+      <span
+        style={{
+          fontSize: 10,
+          color: barColor,
+          fontWeight: 600,
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {Math.round(health * 100)}%
+      </span>
+    </div>
+  );
+}
+
+function ConflictBadge({ count }: { count: number }) {
+  if (!count) return null;
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        background: "#FEE2E2",
+        color: "#DC2626",
+        fontSize: 10,
+        fontWeight: 700,
+        lineHeight: 1,
+      }}
+    >
+      {count}
+    </span>
+  );
+}
+
+function PhaseBadge({ name, color }: { name: string; color?: string }) {
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        padding: "2px 8px",
+        borderRadius: 4,
+        background: color || "#F3F4F6",
+        fontSize: 10,
+        fontWeight: 600,
+        color: "#374151",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {name}
+    </span>
+  );
+}
+
+function NavBtn({
+  onClick,
+  label,
+  wide,
+}: {
+  onClick: () => void;
+  label: string;
+  wide?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: wide ? "5px 14px" : "5px 10px",
+        borderRadius: 6,
+        border: "1px solid #E5E7EB",
+        background: "#fff",
+        fontSize: 12,
+        fontWeight: 500,
+        color: "#374151",
+        cursor: "pointer",
+        lineHeight: 1,
+        transition: "all 0.15s",
+      }}
+      onMouseEnter={(e) =>
+        (e.currentTarget.style.background = "#F9FAFB")
+      }
+      onMouseLeave={(e) =>
+        (e.currentTarget.style.background = "#fff")
+      }
+    >
+      {label}
+    </button>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   MAIN COMPONENT
+   ───────────────────────────────────────────── */
 
 export function ProjectTimeline() {
-  const t = useTranslations("timeline");
-  const dateLocale = useDateLocale();
+  /* ─── View scale (must come before date helpers) ─── */
+  const [viewScale, setViewScale] = useState<"day" | "week" | "month">("month");
 
-  const [currentDate, setCurrentDate] = useState(() => new Date());
-  const [projects, setProjects] = useState<TimelineProject[]>([]);
-  const [milestones, setMilestones] = useState<TimelineMilestone[]>([]);
-  const [phases, setPhases] = useState<CompanyPhase[]>([]);
-  const [conflicts, setConflicts] = useState<TimelineConflict[]>([]);
-  const [teamMembers, setTeamMembers] = useState<Array<{ id: string; name: string; imageUrl: string | null }>>([]);
+  /* ─── Anchor / date helpers ─── */
+  const WEEK_ANCHOR = useMemo(
+    () => startOfWeek(addWeeks(new Date(), -8), { weekStartsOn: 1 }),
+    []
+  );
+  const DAY_ANCHOR = useMemo(
+    () => startOfDay(addDays(new Date(), -56)),
+    []
+  );
+
+  const ANCHOR = viewScale === "day" ? DAY_ANCHOR : WEEK_ANCHOR;
+
+  const TODAY_WEEK = useMemo(
+    () =>
+      viewScale === "day"
+        ? differenceInCalendarDays(new Date(), DAY_ANCHOR)
+        : differenceInCalendarWeeks(new Date(), WEEK_ANCHOR, { weekStartsOn: 1 }),
+    [viewScale, DAY_ANCHOR, WEEK_ANCHOR]
+  );
+
+  const dateToWeek = useCallback(
+    (dateStr: string) => {
+      // Handle both "2025-06-15" and "2025-06-15T00:00:00.000Z" formats
+      const dateOnly = dateStr.slice(0, 10);
+      const d = new Date(dateOnly + "T00:00:00");
+      if (viewScale === "day") {
+        return differenceInCalendarDays(d, DAY_ANCHOR);
+      }
+      return differenceInCalendarWeeks(d, WEEK_ANCHOR, { weekStartsOn: 1 });
+    },
+    [viewScale, DAY_ANCHOR, WEEK_ANCHOR]
+  );
+
+  const weekToDate = useCallback(
+    (unit: number) => {
+      if (viewScale === "day") {
+        return format(addDays(DAY_ANCHOR, unit), "yyyy-MM-dd");
+      }
+      return format(addWeeks(WEEK_ANCHOR, unit), "yyyy-MM-dd");
+    },
+    [viewScale, DAY_ANCHOR, WEEK_ANCHOR]
+  );
+
+  const weekToLabel = useCallback(
+    (unit: number) => {
+      if (viewScale === "day") {
+        const d = addDays(DAY_ANCHOR, unit);
+        return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      }
+      const d = addWeeks(WEEK_ANCHOR, unit);
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    },
+    [viewScale, DAY_ANCHOR, WEEK_ANCHOR]
+  );
+
+  /* ─── UI State ─── */
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<TimelineViewMode>("day");
-  const [spans, setSpans] = useState<Record<TimelineViewMode, number>>({ day: 3, week: 6, month: 12 });
+  const [expandedProject, setExpandedProject] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [scrollOffset, setScrollOffset] = useState(0);
+  const [hoveredActivity, setHoveredActivity] = useState<string | null>(null);
+  const [popover, setPopover] = useState<PopoverState | null>(null);
+  const [drag, setDrag] = useState<DragInfo | null>(null);
+  const [dragDelta, setDragDelta] = useState(0);
+  const dragRef = useRef<DragInfo | null>(null);
+  const dragDeltaRef = useRef(0);
+  const justDraggedRef = useRef(false);
 
-  // Filters
-  const [clientFilter, setClientFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("active");
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [visibility, setVisibility] = useState<VisibilityToggles>({
-    phases: true,
-    team: false,
-    burndown: false,
-    conflicts: true,
+  /* ─── Activity cache (lazy loaded per project) ─── */
+  const [activityCache, setActivityCache] = useState<
+    Record<string, MActivity[]>
+  >({});
+  const loadingActivitiesRef = useRef<Set<string>>(new Set());
+
+  /* ─── Milestones (outside undo/redo — immediate API calls) ─── */
+  const [liveMilestones, setLiveMilestones] = useState<MilestoneWithWeek[]>([]);
+  const [companyPhases, setCompanyPhases] = useState<CompanyPhase[]>([]);
+  const [deadlinePopover, setDeadlinePopover] = useState<{
+    open: boolean;
+    position: { top: number; left: number } | null;
+    milestone: TimelineMilestone | null;
+    projectId: string;
+    projectColor: string;
+    defaultDate?: string;
+  }>({ open: false, position: null, milestone: null, projectId: "", projectColor: "" });
+
+  /* ─── Undo/Redo state ─── */
+  const [undoState, dispatch] = useReducer(undoReducer, {
+    present: { projects: [], activities: {} },
+    past: [],
+    future: [],
   });
 
-  const spanConfig: Record<TimelineViewMode, { min: number; max: number; step: number }> = {
-    day: { min: 1, max: 6, step: 1 },
-    week: { min: 2, max: 12, step: 1 },
-    month: { min: 6, max: 24, step: 3 },
-  };
+  const editBaselineRef = useRef<TLState | null>(null);
+  const isSavingRef = useRef(false);
 
-  const currentSpan = spans[viewMode];
+  /* ─── Derived ─── */
+  const projects = undoState.present.projects;
 
-  // Debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 300);
-    return () => clearTimeout(timer);
-  }, [search]);
+  const phaseDeadlinesByProject = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    liveMilestones.forEach((m) => {
+      if (m.type === "phase" && m.phaseId) {
+        if (!map[m.projectId]) map[m.projectId] = [];
+        map[m.projectId].push(m.phaseId);
+      }
+    });
+    return map;
+  }, [liveMilestones]);
 
-  // Calculate visible date range
-  const dateRange = useMemo(() => {
-    const half = Math.floor(currentSpan / 2);
-    const remainder = currentSpan - half;
+  const COL_WIDTH = viewScale === "day" ? 36 : viewScale === "week" ? 56 : 96;
+  const VISIBLE_COLS = viewScale === "day" ? 35 : viewScale === "week" ? 16 : 10;
+  const LEFT_COL = 260;
 
-    switch (viewMode) {
-      case "day":
-        return {
-          start: startOfMonth(subMonths(currentDate, half)),
-          end: endOfMonth(addMonths(currentDate, remainder - 1)),
-        };
-      case "week":
-        return {
-          start: startOfWeek(subMonths(currentDate, half), { weekStartsOn: 1 }),
-          end: endOfWeek(addMonths(currentDate, remainder), { weekStartsOn: 1 }),
-        };
-      case "month":
-        return {
-          start: startOfMonth(subMonths(currentDate, half)),
-          end: endOfMonth(addMonths(currentDate, remainder)),
-        };
+  const TOTAL_WEEKS = useMemo(() => {
+    const defaultTotal = viewScale === "day" ? 180 : 26;
+    if (projects.length === 0) return defaultTotal;
+    let minW = Infinity;
+    let maxW = -Infinity;
+    for (const p of projects) {
+      if (p.startWeek < minW) minW = p.startWeek;
+      if (p.endWeek > maxW) maxW = p.endWeek;
     }
-  }, [currentDate, viewMode, currentSpan]);
+    const padding = viewScale === "day" ? 30 : 6;
+    const range = maxW - minW + padding;
+    return Math.max(defaultTotal, range);
+  }, [projects, viewScale]);
 
-  // Generate columns
-  const columns = useMemo((): TimelineColumn[] => {
-    const today = new Date();
+  const viewMode = editMode
+    ? "edit"
+    : expandedProject
+    ? "planning"
+    : "overview";
 
-    switch (viewMode) {
-      case "day":
-        return eachDayOfInterval({ start: dateRange.start, end: dateRange.end }).map((day) => ({
-          key: format(day, "yyyy-MM-dd"),
-          label: format(day, "d"),
-          start: day,
-          end: day,
-          containsToday: isToday(day),
-          month: startOfMonth(day),
+  const weekNumbers = useMemo(() => {
+    const arr: number[] = [];
+    for (let i = 0; i < VISIBLE_COLS; i++) arr.push(i + scrollOffset);
+    return arr;
+  }, [scrollOffset, VISIBLE_COLS]);
+
+  const changeCount = undoState.past.length;
+
+  /* ─── Map API data to internal format ─── */
+  const mapProjectsFromApi = useCallback(
+    (
+      apiProjects: TimelineProject[],
+      apiMilestones: TimelineMilestone[]
+    ): { projects: MProject[]; milestones: MilestoneWithWeek[] } => {
+      const mProjects: MProject[] = apiProjects.map((p) => {
+        const startWeek = p.startDate ? dateToWeek(p.startDate) : 0;
+        const endWeek = p.endDate
+          ? dateToWeek(p.endDate)
+          : startWeek + 12;
+        const budgetHealth =
+          p.budgetHours && p.budgetHours > 0
+            ? p.hoursUsed / p.budgetHours
+            : 1;
+
+        const phaseName = p.currentPhase?.name || "";
+
+        // Find the first upcoming milestone as key deadline
+        const projectMilestones = apiMilestones.filter(
+          (m) => m.projectId === p.id && !m.completed
+        );
+        let keyDeadline: { week: number; label: string; milestoneId: string } | null = null;
+        if (projectMilestones.length > 0) {
+          const sorted = projectMilestones.sort(
+            (a, b) =>
+              new Date(a.dueDate).getTime() -
+              new Date(b.dueDate).getTime()
+          );
+          keyDeadline = {
+            week: dateToWeek(sorted[0].dueDate),
+            label: sorted[0].title,
+            milestoneId: sorted[0].id,
+          };
+        }
+
+        const phases = (p.projectPhases || []).map((pp) => ({
+          id: pp.id,
+          name: pp.phaseName,
+          start: dateToWeek(pp.startDate),
+          end: dateToWeek(pp.endDate),
+          color: pp.phaseColor,
         }));
-      case "week":
-        return eachWeekOfInterval(
-          { start: dateRange.start, end: dateRange.end },
-          { weekStartsOn: 1 }
-        ).map((weekStart) => {
-          const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
-          return {
-            key: format(weekStart, "yyyy") + "-W" + getISOWeek(weekStart),
-            label: "W" + getISOWeek(weekStart),
-            start: weekStart,
-            end: weekEnd,
-            containsToday: isWithinInterval(today, { start: weekStart, end: weekEnd }),
-            month: startOfMonth(weekStart),
-          };
-        });
-      case "month":
-        return eachMonthOfInterval({ start: dateRange.start, end: dateRange.end }).map((monthStart) => {
-          const monthEnd = endOfMonth(monthStart);
-          return {
-            key: format(monthStart, "yyyy-MM"),
-            label: format(monthStart, "MMM", { locale: dateLocale }),
-            start: monthStart,
-            end: monthEnd,
-            containsToday: isWithinInterval(today, { start: monthStart, end: monthEnd }),
-            month: monthStart,
-          };
-        });
-    }
-  }, [dateRange, viewMode, dateLocale]);
 
-  // Build includes based on visibility
-  const includes = useMemo(() => {
-    const parts: string[] = [];
-    if (visibility.phases) parts.push("phases");
-    if (visibility.team) parts.push("allocations");
-    if (visibility.burndown) parts.push("burndown");
-    if (visibility.conflicts) parts.push("conflicts");
-    return parts.join(",");
-  }, [visibility]);
+        return {
+          id: p.id,
+          name: p.name,
+          client: p.client || "",
+          color: p.color,
+          budgetHealth,
+          startWeek,
+          endWeek,
+          currentPhase: phaseName,
+          keyDeadline,
+          conflicts: 0,
+          phases,
+          _startDate: p.startDate,
+          _endDate: p.endDate,
+        };
+      });
 
-  // Fetch data from enriched timeline endpoint
+      const mMilestones: MilestoneWithWeek[] = apiMilestones.map((m) => ({
+        ...m,
+        week: dateToWeek(m.dueDate),
+      }));
+
+      return { projects: mProjects, milestones: mMilestones };
+    },
+    [dateToWeek]
+  );
+
+  const mapActivitiesFromApi = useCallback(
+    (apiActivities: TimelineActivity[], projectId: string): MActivity[] => {
+      return apiActivities.map((a) => ({
+        id: a.id,
+        name: a.name,
+        projectId,
+        phase: a.phaseName || a.categoryName || "",
+        start: dateToWeek(a.startDate),
+        end: dateToWeek(a.endDate),
+        _startDate: a.startDate,
+        _endDate: a.endDate,
+      }));
+    },
+    [dateToWeek]
+  );
+
+  /* ─── Data fetching ─── */
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
+      const startDate = weekToDate(scrollOffset - 4);
+      const endDate = weekToDate(scrollOffset + VISIBLE_COLS + 4);
 
       const params = new URLSearchParams({
-        startDate: format(dateRange.start, "yyyy-MM-dd"),
-        endDate: format(dateRange.end, "yyyy-MM-dd"),
-        status: statusFilter,
+        startDate,
+        endDate,
+        status: "active",
+        include: "phases",
       });
-      if (includes) params.set("include", includes);
-      if (clientFilter && clientFilter !== "all") params.set("client", clientFilter);
-      if (debouncedSearch) params.set("search", debouncedSearch);
 
       const res = await fetch(`/api/projects/timeline?${params.toString()}`);
       if (!res.ok) throw new Error("Failed to fetch timeline data");
 
       const data = await res.json();
-      setProjects(data.projects || []);
-      setMilestones(data.milestones || []);
-      setPhases(data.phases || []);
-      setConflicts(data.conflicts || []);
+      const { projects: mp, milestones: mm } = mapProjectsFromApi(
+        data.projects || [],
+        data.milestones || []
+      );
+
+      const newState: TLState = {
+        projects: mp,
+        activities: {},
+      };
+
+      dispatch({ type: "SET_STATE", payload: newState });
+      setLiveMilestones(mm);
+      setCompanyPhases(data.phases || []);
+
+      // Auto-set scroll to show today
+      if (mp.length > 0) {
+        const targetOffset = Math.max(
+          0,
+          TODAY_WEEK - Math.floor(VISIBLE_COLS / 2)
+        );
+        setScrollOffset(targetOffset);
+      }
     } catch (error) {
       console.error("Error fetching timeline data:", error);
-      toast.error(t("fetchError") || "Failed to load data");
+      toast.error("Failed to load timeline data");
     } finally {
       setLoading(false);
     }
-  }, [dateRange, includes, clientFilter, statusFilter, debouncedSearch, t]);
+  }, [weekToDate, scrollOffset, VISIBLE_COLS, mapProjectsFromApi, TODAY_WEEK]);
 
+  // Initial load + refetch on viewScale change
+  const prevViewScaleRef = useRef(viewScale);
+  const hasLoadedRef = useRef(false);
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (!hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      fetchData();
+    } else if (prevViewScaleRef.current !== viewScale) {
+      prevViewScaleRef.current = viewScale;
+      setActivityCache({});
+      loadingActivitiesRef.current.clear();
+      fetchData();
+    }
+  }, [fetchData, viewScale]);
 
-  // Fetch team members (for activity assignee dropdown)
-  useEffect(() => {
-    const fetchTeam = async () => {
+  /* ─── Lazy load activities when project expanded ─── */
+  const fetchActivities = useCallback(
+    async (projectId: string) => {
+      if (
+        activityCache[projectId] ||
+        loadingActivitiesRef.current.has(projectId)
+      )
+        return;
+      loadingActivitiesRef.current.add(projectId);
       try {
-        const res = await fetch("/api/team");
-        if (!res.ok) return;
-        const data = await res.json();
-        setTeamMembers(
-          (data.members || []).map((m: { id: string; firstName: string | null; lastName: string | null; imageUrl: string | null }) => ({
-            id: m.id,
-            name: [m.firstName, m.lastName].filter(Boolean).join(" ") || "Unknown",
-            imageUrl: m.imageUrl,
-          }))
-        );
-      } catch {
-        // silently fail — assignee dropdown will just be empty
+        const res = await fetch(`/api/projects/${projectId}/activities`);
+        if (!res.ok) throw new Error("Failed to fetch activities");
+        const data: TimelineActivity[] = await res.json();
+        const mapped = mapActivitiesFromApi(data, projectId);
+        setActivityCache((prev) => ({ ...prev, [projectId]: mapped }));
+        // Also add to undo state
+        dispatch({
+          type: "SET_STATE",
+          payload: {
+            ...undoState.present,
+            activities: {
+              ...undoState.present.activities,
+              [projectId]: mapped,
+            },
+          },
+        });
+      } catch (error) {
+        console.error("Error fetching activities:", error);
+      } finally {
+        loadingActivitiesRef.current.delete(projectId);
       }
-    };
-    fetchTeam();
+    },
+    [activityCache, mapActivitiesFromApi, undoState.present]
+  );
+
+  useEffect(() => {
+    if (expandedProject) {
+      fetchActivities(expandedProject);
+    }
+  }, [expandedProject, fetchActivities]);
+
+  /* ─── Navigation ─── */
+  const handleExpand = useCallback(
+    (id: string) => {
+      setExpandedProject((prev) => (prev === id ? null : id));
+    },
+    []
+  );
+
+  const NAV_STEP = viewScale === "day" ? 7 : 4;
+  const handlePrev = () => setScrollOffset((s) => Math.max(0, s - NAV_STEP));
+  const handleNext = () =>
+    setScrollOffset((s) =>
+      Math.min(TOTAL_WEEKS - VISIBLE_COLS, s + NAV_STEP)
+    );
+  const handleToday = () =>
+    setScrollOffset(
+      Math.max(0, TODAY_WEEK - Math.floor(VISIBLE_COLS / 2))
+    );
+
+  /* ─── Edit mode toggle ─── */
+  const enterEditMode = useCallback(() => {
+    editBaselineRef.current = JSON.parse(
+      JSON.stringify(undoState.present)
+    );
+    setEditMode(true);
+  }, [undoState.present]);
+
+  const exitEditMode = useCallback(() => {
+    setEditMode(false);
+    setPopover(null);
+    dragRef.current = null;
+    dragDeltaRef.current = 0;
+    setDrag(null);
+    setDragDelta(0);
   }, []);
 
-  // Navigation
-  const goToPrevious = () => setCurrentDate((d) => subMonths(d, 1));
-  const goToNext = () => setCurrentDate((d) => addMonths(d, 1));
-  const goToToday = () => setCurrentDate(new Date());
+  /* ─── Undo / Redo ─── */
+  const undo = useCallback(() => dispatch({ type: "UNDO" }), []);
+  const redo = useCallback(() => dispatch({ type: "REDO" }), []);
 
-  // Unique clients for filter
-  const clients = useMemo(() => {
-    const uniqueClients = new Set<string>();
-    projects.forEach((p) => {
-      if (p.client) uniqueClients.add(p.client);
-    });
-    return Array.from(uniqueClients).sort();
-  }, [projects]);
-
-  // Update project dates (from drag)
-  const handleUpdateProjectDates = async (
-    projectId: string,
-    startDate: string | null,
-    endDate: string | null
-  ) => {
-    try {
-      const res = await fetch(`/api/projects/${projectId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ startDate, endDate }),
-      });
-      if (!res.ok) throw new Error("Failed to update project");
-      toast.success(t("projectUpdated") || "Project dates updated");
-      fetchData();
-    } catch (error) {
-      console.error("Error updating project:", error);
-      toast.error(t("updateError") || "Failed to update project");
-    }
-  };
-
-  // Update milestone date (from drag)
-  const handleUpdateMilestoneDate = async (
-    milestoneId: string,
-    projectId: string,
-    dueDate: string
-  ) => {
-    try {
-      const res = await fetch(`/api/projects/${projectId}/milestones`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ milestoneId, dueDate }),
-      });
-      if (!res.ok) throw new Error("Failed to update milestone");
-      toast.success(t("milestoneUpdated") || "Milestone updated");
-      fetchData();
-    } catch (error) {
-      console.error("Error updating milestone:", error);
-      toast.error(t("updateError") || "Failed to update milestone");
-    }
-  };
-
-  // Save milestone (from popover — supports both plain milestones and deadlines)
-  const handleSaveMilestone = async (data: {
-    projectId: string;
-    milestoneId?: string;
-    title: string;
-    dueDate: string;
-    completed?: boolean;
-    type?: "phase" | "custom";
-    phaseId?: string | null;
-    description?: string | null;
-    icon?: string | null;
-    color?: string | null;
-  }) => {
-    try {
-      const body: Record<string, unknown> = {
-        title: data.title,
-        dueDate: data.dueDate,
-      };
-      if (data.completed !== undefined) body.completed = data.completed;
-      if (data.type !== undefined) body.type = data.type;
-      if (data.phaseId !== undefined) body.phaseId = data.phaseId;
-      if (data.description !== undefined) body.description = data.description;
-      if (data.icon !== undefined) body.icon = data.icon;
-      if (data.color !== undefined) body.color = data.color;
-
-      if (data.milestoneId) {
-        body.milestoneId = data.milestoneId;
-        const res = await fetch(`/api/projects/${data.projectId}/milestones`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        if (!res.ok) throw new Error("Failed to update milestone");
-        const isDeadline = data.type === "phase" || data.icon || data.description;
-        toast.success(isDeadline
-          ? t("deadlineUpdated") || "Deadline updated"
-          : t("milestoneUpdated") || "Milestone updated"
-        );
-      } else {
-        const res = await fetch(`/api/projects/${data.projectId}/milestones`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        if (!res.ok) throw new Error("Failed to create milestone");
-        const isDeadline = data.type === "phase" || data.icon || data.description;
-        toast.success(isDeadline
-          ? t("deadlineCreated") || "Deadline created"
-          : t("milestoneCreated") || "Milestone created"
-        );
+  /* ─── Keyboard shortcuts ─── */
+  useEffect(() => {
+    if (!editMode) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if (
+        (e.ctrlKey || e.metaKey) &&
+        ((e.key === "z" && e.shiftKey) || e.key === "y")
+      ) {
+        e.preventDefault();
+        redo();
+      } else if (e.key === "Escape") {
+        setPopover(null);
       }
-      fetchData();
-    } catch (error) {
-      console.error("Error saving milestone:", error);
-      toast.error(t("saveError") || "Failed to save milestone");
-    }
-  };
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [editMode, undo, redo]);
 
-  // Delete milestone
-  const handleDeleteMilestone = async (milestoneId: string, projectId: string) => {
+  /* ─── Discard ─── */
+  const discard = useCallback(() => {
+    if (editBaselineRef.current) {
+      dispatch({ type: "SET_STATE", payload: editBaselineRef.current });
+      // Also restore activity cache
+      setActivityCache(editBaselineRef.current.activities);
+    }
+    exitEditMode();
+  }, [exitEditMode]);
+
+  /* ─── Save ─── */
+  const save = useCallback(async () => {
+    if (isSavingRef.current) return;
+    isSavingRef.current = true;
+    const baseline = editBaselineRef.current;
+    if (!baseline) {
+      exitEditMode();
+      isSavingRef.current = false;
+      return;
+    }
+
     try {
-      const res = await fetch(
-        `/api/projects/${projectId}/milestones?milestoneId=${milestoneId}`,
-        { method: "DELETE" }
+      const promises: Promise<Response>[] = [];
+
+      // Diff projects
+      for (const proj of undoState.present.projects) {
+        const orig = baseline.projects.find((p) => p.id === proj.id);
+        if (!orig) continue;
+        if (
+          proj.startWeek !== orig.startWeek ||
+          proj.endWeek !== orig.endWeek
+        ) {
+          promises.push(
+            fetch(`/api/projects/${proj.id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                startDate: weekToDate(proj.startWeek),
+                endDate: weekToDate(proj.endWeek),
+              }),
+            })
+          );
+        }
+      }
+
+      // Diff activities
+      for (const [projectId, activities] of Object.entries(
+        undoState.present.activities
+      )) {
+        const origActivities = baseline.activities[projectId] || [];
+        for (const act of activities) {
+          const isNew = act.id.startsWith("temp_");
+          const orig = origActivities.find((a) => a.id === act.id);
+
+          if (isNew) {
+            // New activity — POST
+            promises.push(
+              fetch(`/api/projects/${projectId}/activities`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  name: act.name,
+                  startDate: weekToDate(act.start),
+                  endDate: weekToDate(act.end),
+                  status: "not_started",
+                }),
+              })
+            );
+          } else if (orig) {
+            // Existing activity — check if changed
+            if (act.start !== orig.start || act.end !== orig.end || act.name !== orig.name) {
+              promises.push(
+                fetch(`/api/projects/${projectId}/activities`, {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    activityId: act.id,
+                    name: act.name,
+                    startDate: weekToDate(act.start),
+                    endDate: weekToDate(act.end),
+                  }),
+                })
+              );
+            }
+          }
+        }
+
+        // Check for deleted activities
+        for (const orig of origActivities) {
+          if (!activities.find((a) => a.id === orig.id)) {
+            promises.push(
+              fetch(`/api/projects/${projectId}/activities?activityId=${orig.id}`, {
+                method: "DELETE",
+              })
+            );
+          }
+        }
+      }
+
+      if (promises.length > 0) {
+        const results = await Promise.all(promises);
+        const failedCount = results.filter((r) => !r.ok).length;
+        if (failedCount > 0) {
+          toast.error(`${failedCount} update(s) failed`);
+        } else {
+          toast.success("All changes saved");
+        }
+      } else {
+        toast.success("No changes to save");
+      }
+
+      exitEditMode();
+    } catch (error) {
+      console.error("Error saving:", error);
+      toast.error("Failed to save changes");
+    } finally {
+      isSavingRef.current = false;
+    }
+  }, [undoState.present, weekToDate, exitEditMode]);
+
+  /* ─── DRAG HANDLING (window-level listeners) ─── */
+  const gridRef = useRef<HTMLDivElement>(null);
+  const colWidthRef = useRef(COL_WIDTH);
+  colWidthRef.current = COL_WIDTH;
+  const undoStateRef = useRef(undoState.present);
+  undoStateRef.current = undoState.present;
+
+  const commitDrag = useCallback(() => {
+    const d = dragRef.current;
+    const delta = dragDeltaRef.current;
+
+    // Always suppress click-to-create after any drag attempt
+    justDraggedRef.current = true;
+    setTimeout(() => { justDraggedRef.current = false; }, 100);
+
+    if (!d || delta === 0) {
+      dragRef.current = null;
+      dragDeltaRef.current = 0;
+      setDrag(null);
+      setDragDelta(0);
+      return;
+    }
+
+    let newStart = d.originalStartWeek;
+    let newEnd = d.originalEndWeek;
+
+    if (d.type === "move") {
+      newStart = d.originalStartWeek + delta;
+      newEnd = d.originalEndWeek + delta;
+    } else if (d.type === "resize-left") {
+      newStart = d.originalStartWeek + delta;
+      if (newStart >= newEnd) newStart = newEnd - 1;
+    } else if (d.type === "resize-right") {
+      newEnd = d.originalEndWeek + delta;
+      if (newEnd <= newStart) newEnd = newStart + 1;
+    }
+
+    const currentState = undoStateRef.current;
+    let newState: TLState;
+
+    if (d.entityType === "project") {
+      newState = {
+        ...currentState,
+        projects: currentState.projects.map((p) =>
+          p.id === d.entityId
+            ? { ...p, startWeek: newStart, endWeek: newEnd }
+            : p
+        ),
+      };
+    } else {
+      const projActivities =
+        currentState.activities[d.projectId] || [];
+      newState = {
+        ...currentState,
+        activities: {
+          ...currentState.activities,
+          [d.projectId]: projActivities.map((a) =>
+            a.id === d.entityId
+              ? { ...a, start: newStart, end: newEnd }
+              : a
+          ),
+        },
+      };
+    }
+
+    dispatch({ type: "UPDATE", payload: newState });
+
+    if (d.entityType === "activity") {
+      setActivityCache((prev) => ({
+        ...prev,
+        [d.projectId]: (prev[d.projectId] || []).map((a) =>
+          a.id === d.entityId
+            ? { ...a, start: newStart, end: newEnd }
+            : a
+        ),
+      }));
+    }
+
+    dragRef.current = null;
+    dragDeltaRef.current = 0;
+    setDrag(null);
+    setDragDelta(0);
+  }, []);
+
+  // Window-level mousemove/mouseup — always on during edit mode
+  // Uses refs to avoid stale closure / timing gap between setDrag and useEffect
+  useEffect(() => {
+    if (!editMode) return;
+
+    const onMove = (e: MouseEvent) => {
+      const d = dragRef.current;
+      if (!d) return;
+      const delta = Math.round(
+        (e.clientX - d.startMouseX) / colWidthRef.current
       );
-      if (!res.ok) throw new Error("Failed to delete milestone");
-      toast.success(t("milestoneDeleted") || "Milestone deleted");
-      fetchData();
-    } catch (error) {
-      console.error("Error deleting milestone:", error);
-      toast.error(t("deleteError") || "Failed to delete milestone");
-    }
-  };
+      if (delta !== dragDeltaRef.current) {
+        dragDeltaRef.current = delta;
+        setDragDelta(delta);
+      }
+    };
 
-  // Auto-populate phases for a project
-  const handleAutoPopulatePhases = async (projectId: string) => {
-    try {
-      const res = await fetch(`/api/projects/${projectId}/project-phases`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "auto-populate" }),
+    const onUp = () => {
+      if (!dragRef.current) return;
+      commitDrag();
+    };
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [editMode, commitDrag]);
+
+  const startDrag = useCallback(
+    (
+      e: React.MouseEvent,
+      type: DragInfo["type"],
+      entityType: "project" | "activity",
+      entityId: string,
+      projectId: string,
+      startWeek: number,
+      endWeek: number
+    ) => {
+      if (!editMode) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const info: DragInfo = {
+        type,
+        entityType,
+        entityId,
+        projectId,
+        startMouseX: e.clientX,
+        originalStartWeek: startWeek,
+        originalEndWeek: endWeek,
+      };
+      dragRef.current = info;
+      dragDeltaRef.current = 0;
+      setDrag(info);
+      setDragDelta(0);
+    },
+    [editMode]
+  );
+
+  // Compute dragged bar positions
+  const getDraggedPosition = useCallback(
+    (
+      entityType: "project" | "activity",
+      entityId: string,
+      startW: number,
+      endW: number
+    ): { startWeek: number; endWeek: number } => {
+      if (
+        !drag ||
+        drag.entityType !== entityType ||
+        drag.entityId !== entityId
+      ) {
+        return { startWeek: startW, endWeek: endW };
+      }
+      let ns = startW;
+      let ne = endW;
+      if (drag.type === "move") {
+        ns = drag.originalStartWeek + dragDelta;
+        ne = drag.originalEndWeek + dragDelta;
+      } else if (drag.type === "resize-left") {
+        ns = drag.originalStartWeek + dragDelta;
+        if (ns >= ne) ns = ne - 1;
+      } else if (drag.type === "resize-right") {
+        ne = drag.originalEndWeek + dragDelta;
+        if (ne <= ns) ne = ns + 1;
+      }
+      return { startWeek: ns, endWeek: ne };
+    },
+    [drag, dragDelta]
+  );
+
+  /* ─── DOUBLE-CLICK POPOVER ─── */
+  const handleDoubleClick = useCallback(
+    (
+      e: React.MouseEvent,
+      entityType: "project" | "activity",
+      entityId: string,
+      projectId: string,
+      name: string,
+      startWeek: number,
+      endWeek: number
+    ) => {
+      if (!editMode) return;
+      const rect = e.currentTarget.getBoundingClientRect();
+      setPopover({
+        entityType,
+        entityId,
+        projectId,
+        name,
+        startWeek,
+        endWeek,
+        anchorRect: rect,
       });
-      if (!res.ok) throw new Error("Failed to auto-populate phases");
-      toast.success(t("phaseDateUpdated") || "Phase dates created");
-      fetchData();
-    } catch (error) {
-      console.error("Error auto-populating phases:", error);
-      toast.error(t("updateError") || "Failed to create phase dates");
-    }
-  };
+    },
+    [editMode]
+  );
 
-  // Update activity dates (from drag)
-  const handleUpdateActivityDates = async (
-    activityId: string,
-    projectId: string,
-    startDate: string,
-    endDate: string
-  ) => {
-    try {
-      const res = await fetch(`/api/projects/${projectId}/activities`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ activityId, startDate, endDate }),
-      });
-      if (!res.ok) throw new Error("Failed to update activity");
-      toast.success(t("activityUpdated") || "Activity updated");
-      fetchData();
-    } catch (error) {
-      console.error("Error updating activity:", error);
-      toast.error(t("updateError") || "Failed to update activity");
-    }
-  };
+  const handlePopoverApply = useCallback(
+    (newStart: number, newEnd: number, newName: string) => {
+      if (!popover) return;
+      const currentState = undoState.present;
+      let newState: TLState;
 
-  // Scroll to a project row
-  const handleConflictClick = (projectId: string) => {
-    const row = document.getElementById(`project-row-${projectId}`);
-    if (row) {
-      row.scrollIntoView({ behavior: "smooth", block: "center" });
-      row.classList.add("bg-amber-50", "dark:bg-amber-950/30");
+      if (popover.entityType === "project") {
+        newState = {
+          ...currentState,
+          projects: currentState.projects.map((p) =>
+            p.id === popover.entityId
+              ? { ...p, startWeek: newStart, endWeek: newEnd, name: newName }
+              : p
+          ),
+        };
+      } else {
+        const projActivities =
+          currentState.activities[popover.projectId] || [];
+        newState = {
+          ...currentState,
+          activities: {
+            ...currentState.activities,
+            [popover.projectId]: projActivities.map((a) =>
+              a.id === popover.entityId
+                ? { ...a, start: newStart, end: newEnd, name: newName }
+                : a
+            ),
+          },
+        };
+        setActivityCache((prev) => ({
+          ...prev,
+          [popover.projectId]: (prev[popover.projectId] || []).map(
+            (a) =>
+              a.id === popover.entityId
+                ? { ...a, start: newStart, end: newEnd, name: newName }
+                : a
+          ),
+        }));
+      }
+
+      dispatch({ type: "UPDATE", payload: newState });
+      setPopover(null);
+    },
+    [popover, undoState.present]
+  );
+
+  const handlePopoverDelete = useCallback(() => {
+    if (!popover) return;
+    const currentState = undoState.present;
+    let newState: TLState;
+    const deleteName =
+      popover.entityType === "project"
+        ? projects.find((p) => p.id === popover.entityId)?.name || "Item"
+        : "Activity";
+
+    if (popover.entityType === "project") {
+      newState = {
+        ...currentState,
+        projects: currentState.projects.filter(
+          (p) => p.id !== popover.entityId
+        ),
+      };
+      // Also clean up milestones for this project
+      setLiveMilestones((prev) =>
+        prev.filter((m) => m.projectId !== popover.entityId)
+      );
+    } else {
+      const projActivities =
+        currentState.activities[popover.projectId] || [];
+      newState = {
+        ...currentState,
+        activities: {
+          ...currentState.activities,
+          [popover.projectId]: projActivities.filter(
+            (a) => a.id !== popover.entityId
+          ),
+        },
+      };
+      setActivityCache((prev) => ({
+        ...prev,
+        [popover.projectId]: (prev[popover.projectId] || []).filter(
+          (a) => a.id !== popover.entityId
+        ),
+      }));
+    }
+
+    dispatch({ type: "UPDATE", payload: newState });
+    setPopover(null);
+    toast.success(`Deleted "${deleteName}"`);
+  }, [popover, undoState.present, projects]);
+
+  /* ─── Add new activity ─── */
+  const handleAddActivity = useCallback(
+    (projectId: string, atWeek?: number) => {
+      const proj = undoState.present.projects.find((p) => p.id === projectId);
+      if (!proj) return;
+      const start = atWeek ?? proj.startWeek;
+      const end = start + 2;
+      const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      const newAct: MActivity = {
+        id: tempId,
+        name: "New Activity",
+        projectId,
+        phase: "",
+        start,
+        end,
+        _startDate: weekToDate(start),
+        _endDate: weekToDate(end),
+      };
+
+      const currentState = undoState.present;
+      const projActivities = currentState.activities[projectId] || activityCache[projectId] || [];
+      const newState: TLState = {
+        ...currentState,
+        activities: {
+          ...currentState.activities,
+          [projectId]: [...projActivities, newAct],
+        },
+      };
+      dispatch({ type: "UPDATE", payload: newState });
+      setActivityCache((prev) => ({
+        ...prev,
+        [projectId]: [...(prev[projectId] || []), newAct],
+      }));
+
+      // Immediately open popover to name it
       setTimeout(() => {
-        row.classList.remove("bg-amber-50", "dark:bg-amber-950/30");
-      }, 2000);
-    }
-  };
+        const barEl = document.querySelector(`[data-activity-id="${tempId}"]`);
+        if (barEl) {
+          const rect = barEl.getBoundingClientRect();
+          setPopover({
+            entityType: "activity",
+            entityId: tempId,
+            projectId,
+            name: "New Activity",
+            startWeek: start,
+            endWeek: end,
+            anchorRect: rect,
+          });
+        }
+      }, 50);
+    },
+    [undoState.present, activityCache, weekToDate]
+  );
 
-  const dateRangeLabel = `${format(dateRange.start, "MMM yyyy", { locale: dateLocale })} - ${format(dateRange.end, "MMM yyyy", { locale: dateLocale })}`;
+  /* ─── Click on empty grid area to add activity ─── */
+  const handleGridClick = useCallback(
+    (e: React.MouseEvent, projectId: string) => {
+      if (!editMode) return;
+      // Suppress if we just finished a drag
+      if (justDraggedRef.current) return;
+      if (dragRef.current) return;
+      // Only handle clicks on the background, not on existing bars
+      if ((e.target as HTMLElement).closest("[data-activity-id]")) return;
+      const gridRect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      const relX = e.clientX - gridRect.left;
+      const weekClicked = Math.floor(relX / COL_WIDTH) + scrollOffset;
+      handleAddActivity(projectId, weekClicked);
+    },
+    [editMode, COL_WIDTH, scrollOffset, handleAddActivity]
+  );
 
+  /* ─── Deadline CRUD (immediate API, not undo/redo) ─── */
+  const handleSaveDeadline = useCallback(
+    async (data: {
+      projectId: string;
+      milestoneId?: string;
+      title: string;
+      dueDate: string;
+      completed?: boolean;
+      type: "phase" | "custom";
+      phaseId?: string | null;
+      description?: string | null;
+      icon?: DeadlineIcon | null;
+      color?: string | null;
+    }) => {
+      try {
+        const isUpdate = !!data.milestoneId;
+        const url = `/api/projects/${data.projectId}/milestones`;
+        const method = isUpdate ? "PUT" : "POST";
+        const body = isUpdate
+          ? {
+              milestoneId: data.milestoneId,
+              title: data.title,
+              dueDate: data.dueDate,
+              completed: data.completed,
+              type: data.type,
+              phaseId: data.phaseId,
+              description: data.description,
+              icon: data.icon,
+              color: data.color,
+            }
+          : {
+              title: data.title,
+              dueDate: data.dueDate,
+              type: data.type,
+              phaseId: data.phaseId,
+              description: data.description,
+              icon: data.icon,
+              color: data.color,
+            };
+
+        const res = await fetch(url, {
+          method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) throw new Error("Failed to save deadline");
+
+        const saved = await res.json();
+        const dueDateStr = saved.dueDate
+          ? format(new Date(saved.dueDate), "yyyy-MM-dd")
+          : data.dueDate;
+
+        const savedMs: MilestoneWithWeek = {
+          id: saved.id,
+          projectId: saved.projectId || data.projectId,
+          title: saved.title,
+          dueDate: dueDateStr,
+          completed: saved.completed ?? false,
+          completedAt: saved.completedAt ?? null,
+          sortOrder: saved.sortOrder ?? 0,
+          type: saved.type || "custom",
+          phaseId: saved.phaseId || null,
+          phaseName: saved.phase?.name || null,
+          phaseColor: saved.phase?.color || null,
+          description: saved.description || null,
+          icon: saved.icon || null,
+          color: saved.color || null,
+          week: dateToWeek(dueDateStr),
+        };
+
+        setLiveMilestones((prev) =>
+          isUpdate
+            ? prev.map((m) => (m.id === savedMs.id ? savedMs : m))
+            : [...prev, savedMs]
+        );
+        toast.success(isUpdate ? "Deadline updated" : "Deadline created");
+      } catch (error) {
+        console.error("Error saving deadline:", error);
+        toast.error("Failed to save deadline");
+      }
+    },
+    [dateToWeek]
+  );
+
+  const handleDeleteDeadline = useCallback(
+    async (milestoneId: string, projectId: string) => {
+      try {
+        const res = await fetch(
+          `/api/projects/${projectId}/milestones?milestoneId=${milestoneId}`,
+          { method: "DELETE" }
+        );
+        if (!res.ok) throw new Error("Failed to delete deadline");
+
+        setLiveMilestones((prev) => prev.filter((m) => m.id !== milestoneId));
+        toast.success("Deadline deleted");
+      } catch (error) {
+        console.error("Error deleting deadline:", error);
+        toast.error("Failed to delete deadline");
+      }
+    },
+    []
+  );
+
+  const handleMilestoneClick = useCallback(
+    (e: React.MouseEvent, milestone: MilestoneWithWeek, projectColor: string) => {
+      e.stopPropagation();
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      setDeadlinePopover({
+        open: true,
+        position: { top: rect.bottom + 4, left: Math.max(16, rect.left - 100) },
+        milestone,
+        projectId: milestone.projectId,
+        projectColor,
+      });
+    },
+    []
+  );
+
+  const handleCreateDeadline = useCallback(
+    (e: React.MouseEvent, projectId: string, projectColor: string, atWeek?: number) => {
+      e.stopPropagation();
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      setDeadlinePopover({
+        open: true,
+        position: { top: rect.bottom + 4, left: Math.max(16, rect.left - 100) },
+        milestone: null,
+        projectId,
+        projectColor,
+        defaultDate: atWeek !== undefined ? weekToDate(atWeek) : undefined,
+      });
+    },
+    [weekToDate]
+  );
+
+  /* ─── Mode badge ─── */
+  const modeBadge = {
+    overview: {
+      label: "Overview",
+      bg: "#F0FDF4",
+      fg: "#166534",
+      ring: "#BBF7D0",
+    },
+    planning: {
+      label: "Planning",
+      bg: "#EFF6FF",
+      fg: "#1E40AF",
+      ring: "#BFDBFE",
+    },
+    edit: {
+      label: "Editing",
+      bg: "#FEF3C7",
+      fg: "#92400E",
+      ring: "#FDE68A",
+    },
+  }[viewMode];
+
+  /* ─── Loading skeleton ─── */
   if (loading && projects.length === 0) {
     return (
       <div className="space-y-6 p-6">
@@ -398,60 +1325,1841 @@ export function ProjectTimeline() {
     );
   }
 
+  /* ─── No projects ─── */
+  if (!loading && projects.length === 0) {
+    return (
+      <div
+        style={{
+          fontFamily: "'DM Sans', 'Avenir Next', system-ui, sans-serif",
+          background: "#FAFAF9",
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#6B7280",
+          fontSize: 16,
+          fontWeight: 500,
+        }}
+      >
+        No projects found
+      </div>
+    );
+  }
+
+  /* ─── Get activities for a project ─── */
+  const getActivities = (projectId: string): MActivity[] => {
+    return (
+      undoState.present.activities[projectId] ||
+      activityCache[projectId] ||
+      []
+    );
+  };
+
+  /* ─── Get milestones for a project ─── */
+  const getProjectMilestones = (projectId: string): MilestoneWithWeek[] => {
+    return liveMilestones.filter((m) => m.projectId === projectId);
+  };
+
+  /* ─── Footer button style ─── */
+  const btnStyle: React.CSSProperties = {
+    padding: "6px 16px",
+    borderRadius: 6,
+    border: "none",
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: "pointer",
+    transition: "all 0.15s",
+  };
+
   return (
-    <div className="space-y-4 p-6">
-      {/* Controls */}
-      <TimelineFilters
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        currentSpan={currentSpan}
-        spanConfig={spanConfig[viewMode]}
-        onSpanChange={(v) => setSpans((s) => ({ ...s, [viewMode]: v }))}
-        clients={clients}
-        selectedClient={clientFilter}
-        onClientChange={setClientFilter}
-        statusFilter={statusFilter}
-        onStatusFilterChange={setStatusFilter}
-        search={search}
-        onSearchChange={setSearch}
-        visibility={visibility}
-        onVisibilityChange={setVisibility}
-        onPrevious={goToPrevious}
-        onNext={goToNext}
-        onToday={goToToday}
-        dateRangeLabel={dateRangeLabel}
+    <div
+      style={{
+        fontFamily: "'DM Sans', 'Avenir Next', system-ui, sans-serif",
+        background: "#FAFAF9",
+        minHeight: "100vh",
+        color: "#1F2937",
+      }}
+    >
+      {/* Google Font */}
+      <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet"
       />
 
-      {/* Timeline Grid */}
-      <Card>
-        <CardContent className="p-0">
-          <TimelineGrid
-            projects={projects}
-            milestones={milestones}
-            columns={columns}
-            viewMode={viewMode}
-            dateRange={dateRange}
-            visibility={visibility}
-            conflicts={conflicts}
-            onUpdateProjectDates={handleUpdateProjectDates}
-            onUpdateMilestoneDate={handleUpdateMilestoneDate}
-            onSaveMilestone={handleSaveMilestone}
-            onDeleteMilestone={handleDeleteMilestone}
-            onAutoPopulatePhases={handleAutoPopulatePhases}
-            onUpdateActivityDates={handleUpdateActivityDates}
-            teamMembers={teamMembers}
-            companyPhases={phases}
-          />
-        </CardContent>
-      </Card>
+      {/* ══════════════════════════════════
+          TOP BAR
+         ══════════════════════════════════ */}
+      <header
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "14px 28px",
+          borderBottom: "1px solid #E5E7EB",
+          background: "#fff",
+          position: "sticky",
+          top: 0,
+          zIndex: 40,
+        }}
+      >
+        {/* Left cluster */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <h1
+            style={{
+              fontSize: 15,
+              fontWeight: 700,
+              letterSpacing: "-0.02em",
+              margin: 0,
+            }}
+          >
+            Project Timeline
+          </h1>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "3px 10px",
+              borderRadius: 6,
+              fontSize: 11,
+              fontWeight: 600,
+              background: modeBadge.bg,
+              color: modeBadge.fg,
+              border: `1px solid ${modeBadge.ring}`,
+              transition: "all 0.25s ease",
+            }}
+          >
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: 3,
+                background: modeBadge.fg,
+                opacity: viewMode === "edit" ? 1 : 0.6,
+                animation:
+                  viewMode === "edit"
+                    ? "pulse 1.5s ease infinite"
+                    : "none",
+              }}
+            />
+            {modeBadge.label}
+          </span>
+        </div>
 
-      {/* Conflict Panel */}
-      {visibility.conflicts && conflicts.length > 0 && (
-        <ConflictPanel
-          conflicts={conflicts}
-          onConflictClick={handleConflictClick}
+        {/* Center: navigation */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <NavBtn onClick={handlePrev} label="\u2039" />
+          <NavBtn onClick={handleToday} label="Today" wide />
+          <NavBtn onClick={handleNext} label="\u203A" />
+          <span
+            style={{
+              fontSize: 13,
+              fontWeight: 500,
+              color: "#6B7280",
+              marginLeft: 8,
+              fontVariantNumeric: "tabular-nums",
+              minWidth: 160,
+              textAlign: "center",
+            }}
+          >
+            {weekToLabel(scrollOffset)}
+            {" \u2014 "}
+            {weekToLabel(scrollOffset + VISIBLE_COLS - 1)}
+          </span>
+        </div>
+
+        {/* Right cluster */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {/* View scale toggle */}
+          <div
+            style={{
+              display: "flex",
+              borderRadius: 6,
+              border: "1px solid #E5E7EB",
+              overflow: "hidden",
+            }}
+          >
+            {(["day", "week", "month"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setViewScale(s)}
+                style={{
+                  padding: "5px 14px",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  border: "none",
+                  cursor: "pointer",
+                  background: viewScale === s ? "#1F2937" : "#fff",
+                  color: viewScale === s ? "#fff" : "#6B7280",
+                  transition: "all 0.2s ease",
+                  textTransform: "capitalize",
+                }}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+
+          {/* Edit toggle */}
+          <button
+            onClick={() => {
+              if (editMode) {
+                if (changeCount > 0) {
+                  // prompt is handled by footer; just toggle Done
+                  exitEditMode();
+                } else {
+                  exitEditMode();
+                }
+              } else {
+                enterEditMode();
+              }
+            }}
+            style={{
+              padding: "6px 16px",
+              borderRadius: 6,
+              fontSize: 12,
+              fontWeight: 600,
+              border: editMode
+                ? "1.5px solid #D97706"
+                : "1.5px solid #E5E7EB",
+              background: editMode ? "#FFFBEB" : "#fff",
+              color: editMode ? "#92400E" : "#374151",
+              cursor: "pointer",
+              transition: "all 0.25s ease",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            {editMode ? (
+              <>
+                <span style={{ fontSize: 13 }}>{"\u2713"}</span> Done
+                Editing
+              </>
+            ) : (
+              <>
+                <span style={{ fontSize: 11 }}>{"\u270E"}</span> Edit
+                Timeline
+              </>
+            )}
+          </button>
+        </div>
+      </header>
+
+      {/* ══════════════════════════════════
+          TIMELINE BODY
+         ══════════════════════════════════ */}
+      <div
+        style={{ display: "flex", overflow: "hidden" }}
+      >
+        {/* ─── LEFT COLUMN ─── */}
+        <div
+          style={{
+            width: LEFT_COL,
+            flexShrink: 0,
+            borderRight: "1px solid #E5E7EB",
+            background: "#fff",
+            zIndex: 10,
+          }}
+        >
+          {/* Header cell */}
+          <div
+            style={{
+              height: 44,
+              borderBottom: "1px solid #E5E7EB",
+              display: "flex",
+              alignItems: "center",
+              padding: "0 20px",
+            }}
+          >
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                color: "#9CA3AF",
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+              }}
+            >
+              Projects
+            </span>
+          </div>
+
+          {/* Project rows */}
+          {projects.map((proj) => {
+            const isExpanded = expandedProject === proj.id;
+            const isCollapsed = expandedProject !== null && !isExpanded;
+            const activities = getActivities(proj.id);
+            return (
+              <div
+                key={proj.id}
+                style={{
+                  borderBottom: "1px solid #F3F4F6",
+                  transition:
+                    "all 0.35s cubic-bezier(0.4,0,0.2,1)",
+                  opacity: isCollapsed ? 0.45 : 1,
+                  background: isExpanded ? "#FAFAF9" : "#fff",
+                }}
+              >
+                <div
+                  onClick={() => handleExpand(proj.id)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "14px 20px",
+                    cursor: editMode ? "default" : "pointer",
+                    transition: "background 0.15s",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!editMode)
+                      e.currentTarget.style.background =
+                        "#F9FAFB";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background =
+                      isExpanded ? "#FAFAF9" : "#fff";
+                  }}
+                >
+                  {/* Color dot */}
+                  <div
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: 3,
+                      background: proj.color,
+                      flexShrink: 0,
+                    }}
+                  />
+
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        lineHeight: 1.3,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {proj.name}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "#9CA3AF",
+                        marginTop: 1,
+                      }}
+                    >
+                      {proj.client}
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        marginTop: 6,
+                      }}
+                    >
+                      {proj.currentPhase && (
+                        <PhaseBadge
+                          name={proj.currentPhase}
+                          color={
+                            proj.phases.find(
+                              (p) =>
+                                p.name === proj.currentPhase
+                            )?.color
+                          }
+                        />
+                      )}
+                      <BudgetBar health={proj.budgetHealth} />
+                      <ConflictBadge count={proj.conflicts} />
+                    </div>
+                  </div>
+
+                  {/* Chevron */}
+                  {!editMode && (
+                    <span
+                      style={{
+                        fontSize: 12,
+                        color: "#9CA3AF",
+                        transition: "transform 0.3s ease",
+                        transform: isExpanded
+                          ? "rotate(90deg)"
+                          : "rotate(0deg)",
+                      }}
+                    >
+                      {"\u25B8"}
+                    </span>
+                  )}
+                </div>
+
+                {/* Expanded: activity list in left column */}
+                <div
+                  style={{
+                    maxHeight: isExpanded ? 300 : 0,
+                    overflow: "hidden",
+                    transition:
+                      "max-height 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.3s ease",
+                    opacity: isExpanded ? 1 : 0,
+                  }}
+                >
+                  <div style={{ padding: "0 20px 12px 40px" }}>
+                    {proj.phases.length > 0
+                      ? proj.phases.map((phase) => {
+                          const acts = activities.filter(
+                            (a) => a.phase === phase.name
+                          );
+                          return (
+                            <div
+                              key={phase.name}
+                              style={{ marginBottom: 8 }}
+                            >
+                              <div
+                                style={{
+                                  fontSize: 9,
+                                  fontWeight: 700,
+                                  color: "#9CA3AF",
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.08em",
+                                  marginBottom: 3,
+                                }}
+                              >
+                                {phase.name}
+                              </div>
+                              {acts.map((act) => (
+                                <div
+                                  key={act.id}
+                                  style={{
+                                    fontSize: 11,
+                                    color: "#6B7280",
+                                    padding: "2px 0",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      width: 4,
+                                      height: 4,
+                                      borderRadius: 2,
+                                      background: proj.color,
+                                      opacity: 0.5,
+                                    }}
+                                  />
+                                  {act.name}
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })
+                      : activities.map((act) => (
+                          <div
+                            key={act.id}
+                            style={{
+                              fontSize: 11,
+                              color: "#6B7280",
+                              padding: "2px 0",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 6,
+                            }}
+                          >
+                            <span
+                              style={{
+                                width: 4,
+                                height: 4,
+                                borderRadius: 2,
+                                background: proj.color,
+                                opacity: 0.5,
+                              }}
+                            />
+                            {act.name}
+                          </div>
+                        ))}
+
+                    {/* Add activity button (edit mode) */}
+                    {editMode && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAddActivity(proj.id);
+                        }}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                          fontSize: 11,
+                          color: proj.color,
+                          padding: "4px 0",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          fontWeight: 500,
+                          opacity: 0.7,
+                          transition: "opacity 0.15s",
+                          marginTop: 4,
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+                        onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.7")}
+                      >
+                        <span style={{ fontSize: 14, lineHeight: 1 }}>+</span>
+                        Add activity
+                      </button>
+                    )}
+                    {editMode && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCreateDeadline(e, proj.id, proj.color);
+                        }}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                          fontSize: 11,
+                          color: proj.color,
+                          padding: "4px 0",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          fontWeight: 500,
+                          opacity: 0.7,
+                          transition: "opacity 0.15s",
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+                        onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.7")}
+                      >
+                        <span style={{ fontSize: 14, lineHeight: 1 }}>+</span>
+                        Add deadline
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ─── GRID AREA ─── */}
+        <div ref={gridRef} style={{ flex: 1, overflowX: "auto" }}>
+          {/* Week headers */}
+          <div
+            style={{
+              display: "flex",
+              height: 44,
+              borderBottom: "1px solid #E5E7EB",
+              background: "#fff",
+              zIndex: 5,
+            }}
+          >
+            {weekNumbers.map((w) => {
+              const isToday = w === TODAY_WEEK;
+              let topLabel: string;
+              let bottomLabel: string;
+
+              if (viewScale === "day") {
+                const d = addDays(DAY_ANCHOR, w);
+                const dayOfWeek = d.getDay(); // 0=Sun, 6=Sat
+                const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                const dayNames = ["S", "M", "T", "W", "T", "F", "S"];
+                topLabel = isToday ? "Today" : dayNames[dayOfWeek];
+                bottomLabel = format(d, "d");
+
+                return (
+                  <div
+                    key={w}
+                    style={{
+                      width: COL_WIDTH,
+                      flexShrink: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRight: "1px solid #F3F4F6",
+                      background: isToday
+                        ? "#FFFBEB"
+                        : isWeekend
+                        ? "#F9FAFB"
+                        : "transparent",
+                      opacity: isWeekend && !isToday ? 0.6 : 1,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 9,
+                        fontWeight: 600,
+                        color: isToday ? "#D97706" : "#9CA3AF",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                      }}
+                    >
+                      {topLabel}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        color: isToday ? "#92400E" : "#6B7280",
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      {bottomLabel}
+                    </span>
+                  </div>
+                );
+              }
+
+              topLabel = isToday ? "Today" : `W${w + 1}`;
+              bottomLabel = weekToLabel(w);
+
+              return (
+                <div
+                  key={w}
+                  style={{
+                    width: COL_WIDTH,
+                    flexShrink: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRight: "1px solid #F3F4F6",
+                    background: isToday ? "#FFFBEB" : "transparent",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 9,
+                      fontWeight: 600,
+                      color: isToday ? "#D97706" : "#9CA3AF",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                    }}
+                  >
+                    {topLabel}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      color: isToday ? "#92400E" : "#6B7280",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    {bottomLabel}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Project rows */}
+          {projects.map((proj) => {
+            const isExpanded = expandedProject === proj.id;
+            const isCollapsed =
+              expandedProject !== null && !isExpanded;
+            const activities = getActivities(proj.id);
+            const projectMilestones = getProjectMilestones(
+              proj.id
+            );
+
+            // Apply drag preview for project bar
+            const { startWeek: pStart, endWeek: pEnd } =
+              getDraggedPosition(
+                "project",
+                proj.id,
+                proj.startWeek,
+                proj.endWeek
+              );
+            const isDraggingThisProject =
+              drag?.entityType === "project" &&
+              drag?.entityId === proj.id &&
+              dragDelta !== 0;
+
+            return (
+              <div
+                key={proj.id}
+                style={{
+                  borderBottom: "1px solid #F3F4F6",
+                  transition:
+                    "all 0.35s cubic-bezier(0.4,0,0.2,1)",
+                  opacity: isCollapsed ? 0.35 : 1,
+                }}
+              >
+                {/* Overview bar row */}
+                <div
+                  style={{
+                    position: "relative",
+                    height: isCollapsed ? 48 : 72,
+                    transition: "height 0.3s ease",
+                  }}
+                >
+                  {/* Grid lines */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      display: "flex",
+                    }}
+                  >
+                    {weekNumbers.map((w) => {
+                      const isWeekendCell = viewScale === "day" && (() => {
+                        const d = addDays(DAY_ANCHOR, w);
+                        const dow = d.getDay();
+                        return dow === 0 || dow === 6;
+                      })();
+                      return (
+                        <div
+                          key={w}
+                          style={{
+                            width: COL_WIDTH,
+                            flexShrink: 0,
+                            borderRight: "1px solid #F9FAFB",
+                            background:
+                              w === TODAY_WEEK
+                                ? "rgba(251,191,36,0.06)"
+                                : isWeekendCell
+                                ? "rgba(0,0,0,0.02)"
+                                : "transparent",
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+
+                  {/* Today line */}
+                  {TODAY_WEEK >= scrollOffset &&
+                    TODAY_WEEK <
+                      scrollOffset + VISIBLE_COLS && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          left:
+                            (TODAY_WEEK - scrollOffset) *
+                              COL_WIDTH +
+                            COL_WIDTH / 2,
+                          top: 0,
+                          bottom: 0,
+                          width: 2,
+                          background: "#F59E0B",
+                          opacity: 0.4,
+                          zIndex: 3,
+                        }}
+                      />
+                    )}
+
+                  {/* Ghost bar (original position during drag) */}
+                  {isDraggingThisProject &&
+                    drag.originalStartWeek <
+                      scrollOffset + VISIBLE_COLS &&
+                    drag.originalEndWeek > scrollOffset && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: Math.max(
+                            0,
+                            (drag.originalStartWeek -
+                              scrollOffset) *
+                              COL_WIDTH
+                          ),
+                          width:
+                            (Math.min(
+                              drag.originalEndWeek,
+                              scrollOffset + VISIBLE_COLS
+                            ) -
+                              Math.max(
+                                drag.originalStartWeek,
+                                scrollOffset
+                              )) *
+                            COL_WIDTH,
+                          top: isCollapsed ? 16 : 24,
+                          height: isCollapsed ? 16 : 24,
+                          borderRadius: isCollapsed ? 4 : 6,
+                          background: proj.color,
+                          opacity: 0.2,
+                          border: `1px dashed ${proj.color}`,
+                          zIndex: 1,
+                        }}
+                      />
+                    )}
+
+                  {/* Project bar */}
+                  {pStart < scrollOffset + VISIBLE_COLS &&
+                    pEnd > scrollOffset && (
+                      <div
+                        onMouseDown={(e) =>
+                          startDrag(
+                            e,
+                            "move",
+                            "project",
+                            proj.id,
+                            proj.id,
+                            proj.startWeek,
+                            proj.endWeek
+                          )
+                        }
+                        onDoubleClick={(e) =>
+                          handleDoubleClick(
+                            e,
+                            "project",
+                            proj.id,
+                            proj.id,
+                            proj.name,
+                            pStart,
+                            pEnd
+                          )
+                        }
+                        style={{
+                          position: "absolute",
+                          left: Math.max(
+                            0,
+                            (pStart - scrollOffset) *
+                              COL_WIDTH
+                          ),
+                          right: "auto",
+                          width:
+                            (Math.min(
+                              pEnd,
+                              scrollOffset + VISIBLE_COLS
+                            ) -
+                              Math.max(
+                                pStart,
+                                scrollOffset
+                              )) *
+                            COL_WIDTH,
+                          top: isCollapsed ? 16 : 24,
+                          height: isCollapsed ? 16 : 24,
+                          borderRadius: isCollapsed ? 4 : 6,
+                          background: proj.color,
+                          opacity: isExpanded ? 0.15 : 0.85,
+                          transition: isDraggingThisProject
+                            ? "none"
+                            : "all 0.35s ease",
+                          zIndex: 2,
+                          cursor: editMode ? "move" : "default",
+                        }}
+                      >
+                        {/* Drag handles in edit mode */}
+                        {editMode && !isCollapsed && (
+                          <>
+                            <div
+                              onMouseDown={(e) => {
+                                e.stopPropagation();
+                                startDrag(
+                                  e,
+                                  "resize-left",
+                                  "project",
+                                  proj.id,
+                                  proj.id,
+                                  proj.startWeek,
+                                  proj.endWeek
+                                );
+                              }}
+                              style={{
+                                position: "absolute",
+                                left: -1,
+                                top: 0,
+                                bottom: 0,
+                                width: 6,
+                                borderRadius:
+                                  "6px 0 0 6px",
+                                background: proj.color,
+                                cursor: "ew-resize",
+                                opacity: 0.9,
+                              }}
+                            />
+                            <div
+                              onMouseDown={(e) => {
+                                e.stopPropagation();
+                                startDrag(
+                                  e,
+                                  "resize-right",
+                                  "project",
+                                  proj.id,
+                                  proj.id,
+                                  proj.startWeek,
+                                  proj.endWeek
+                                );
+                              }}
+                              style={{
+                                position: "absolute",
+                                right: -1,
+                                top: 0,
+                                bottom: 0,
+                                width: 6,
+                                borderRadius:
+                                  "0 6px 6px 0",
+                                background: proj.color,
+                                cursor: "ew-resize",
+                                opacity: 0.9,
+                              }}
+                            />
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                  {/* Key deadline diamond (overview only) */}
+                  {!isExpanded &&
+                    proj.keyDeadline &&
+                    proj.keyDeadline.week >= scrollOffset &&
+                    proj.keyDeadline.week <
+                      scrollOffset + VISIBLE_COLS && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          left:
+                            (proj.keyDeadline.week -
+                              scrollOffset) *
+                              COL_WIDTH +
+                            COL_WIDTH / 2 -
+                            6,
+                          top: isCollapsed ? 10 : 18,
+                          width: 12,
+                          height: 12,
+                          background: "#DC2626",
+                          borderRadius: 2,
+                          transform: "rotate(45deg)",
+                          zIndex: 4,
+                          boxShadow:
+                            "0 1px 3px rgba(220,38,38,0.3)",
+                          cursor: "pointer",
+                        }}
+                        title={proj.keyDeadline.label}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const ms = liveMilestones.find(
+                            (m) => m.id === proj.keyDeadline!.milestoneId
+                          );
+                          if (ms) {
+                            handleMilestoneClick(e, ms, proj.color);
+                          }
+                        }}
+                      />
+                    )}
+
+                  {/* Conflict badge on bar */}
+                  {!isCollapsed && proj.conflicts > 0 && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        left:
+                          Math.max(
+                            0,
+                            (proj.startWeek -
+                              scrollOffset) *
+                              COL_WIDTH
+                          ) - 6,
+                        top: isCollapsed ? 10 : 16,
+                        zIndex: 5,
+                      }}
+                    >
+                      <ConflictBadge count={proj.conflicts} />
+                    </div>
+                  )}
+                </div>
+
+                {/* Expanded: phases + activities */}
+                <div
+                  style={{
+                    maxHeight: isExpanded ? 600 : 0,
+                    overflow: "hidden",
+                    transition:
+                      "max-height 0.45s cubic-bezier(0.4,0,0.2,1)",
+                  }}
+                >
+                  {isExpanded && (
+                    <div
+                      onClick={(e) => handleGridClick(e, proj.id)}
+                      style={{
+                        position: "relative",
+                        paddingBottom: 16,
+                        cursor: editMode ? "crosshair" : "default",
+                      }}
+                    >
+                      {/* Phase background bands */}
+                      {proj.phases.map((phase) => {
+                        if (
+                          phase.end <= scrollOffset ||
+                          phase.start >=
+                            scrollOffset + VISIBLE_COLS
+                        )
+                          return null;
+                        return (
+                          <div
+                            key={phase.name}
+                            style={{
+                              position: "absolute",
+                              left: Math.max(
+                                0,
+                                (phase.start -
+                                  scrollOffset) *
+                                  COL_WIDTH
+                              ),
+                              width:
+                                (Math.min(
+                                  phase.end,
+                                  scrollOffset +
+                                    VISIBLE_COLS
+                                ) -
+                                  Math.max(
+                                    phase.start,
+                                    scrollOffset
+                                  )) *
+                                COL_WIDTH,
+                              top: 0,
+                              bottom: 0,
+                              background: phase.color,
+                              opacity: 0.12,
+                              borderRadius: 4,
+                            }}
+                          />
+                        );
+                      })}
+
+                      {/* Phase labels */}
+                      <div
+                        style={{
+                          position: "relative",
+                          height: 24,
+                          marginBottom: 4,
+                        }}
+                      >
+                        {proj.phases.map((phase) => {
+                          const left = Math.max(
+                            0,
+                            (phase.start - scrollOffset) *
+                              COL_WIDTH
+                          );
+                          const width =
+                            (Math.min(
+                              phase.end,
+                              scrollOffset + VISIBLE_COLS
+                            ) -
+                              Math.max(
+                                phase.start,
+                                scrollOffset
+                              )) *
+                            COL_WIDTH;
+                          if (width <= 0) return null;
+                          return (
+                            <div
+                              key={phase.name}
+                              style={{
+                                position: "absolute",
+                                left: left + 8,
+                                top: 4,
+                                fontSize: 9,
+                                fontWeight: 700,
+                                color: proj.color,
+                                opacity: 0.7,
+                                textTransform: "uppercase",
+                                letterSpacing: "0.06em",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {phase.name}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Activity bars */}
+                      {activities.map((act, i) => {
+                        // Apply drag preview for activity
+                        const {
+                          startWeek: aStart,
+                          endWeek: aEnd,
+                        } = getDraggedPosition(
+                          "activity",
+                          act.id,
+                          act.start,
+                          act.end
+                        );
+                        const isDraggingThisActivity =
+                          drag?.entityType === "activity" &&
+                          drag?.entityId === act.id &&
+                          dragDelta !== 0;
+
+                        if (
+                          aEnd <= scrollOffset &&
+                          !isDraggingThisActivity
+                        )
+                          return null;
+                        if (
+                          aStart >=
+                            scrollOffset + VISIBLE_COLS &&
+                          !isDraggingThisActivity
+                        )
+                          return null;
+
+                        const left = Math.max(
+                          0,
+                          (aStart - scrollOffset) *
+                            COL_WIDTH
+                        );
+                        const width =
+                          (Math.min(
+                            aEnd,
+                            scrollOffset + VISIBLE_COLS
+                          ) -
+                            Math.max(
+                              aStart,
+                              scrollOffset
+                            )) *
+                          COL_WIDTH;
+                        const isHovered =
+                          hoveredActivity ===
+                          `${proj.id}-${i}`;
+
+                        return (
+                          <div
+                            key={act.id}
+                            style={{
+                              position: "relative",
+                              height: 28,
+                              marginBottom: 3,
+                            }}
+                          >
+                            {/* Ghost bar during drag */}
+                            {isDraggingThisActivity &&
+                              drag.originalStartWeek <
+                                scrollOffset +
+                                  VISIBLE_COLS &&
+                              drag.originalEndWeek >
+                                scrollOffset && (
+                                <div
+                                  style={{
+                                    position: "absolute",
+                                    left: Math.max(
+                                      0,
+                                      (drag.originalStartWeek -
+                                        scrollOffset) *
+                                        COL_WIDTH
+                                    ),
+                                    width:
+                                      (Math.min(
+                                        drag.originalEndWeek,
+                                        scrollOffset +
+                                          VISIBLE_COLS
+                                      ) -
+                                        Math.max(
+                                          drag.originalStartWeek,
+                                          scrollOffset
+                                        )) *
+                                        COL_WIDTH -
+                                      4,
+                                    height: 22,
+                                    top: 3,
+                                    borderRadius: 5,
+                                    background:
+                                      proj.color,
+                                    opacity: 0.2,
+                                    border: `1px dashed ${proj.color}`,
+                                    zIndex: 1,
+                                  }}
+                                />
+                              )}
+
+                            <div
+                              data-activity-id={act.id}
+                              onMouseEnter={() =>
+                                setHoveredActivity(
+                                  `${proj.id}-${i}`
+                                )
+                              }
+                              onMouseLeave={() =>
+                                setHoveredActivity(null)
+                              }
+                              onMouseDown={(e) =>
+                                startDrag(
+                                  e,
+                                  "move",
+                                  "activity",
+                                  act.id,
+                                  proj.id,
+                                  act.start,
+                                  act.end
+                                )
+                              }
+                              onDoubleClick={(e) =>
+                                handleDoubleClick(
+                                  e,
+                                  "activity",
+                                  act.id,
+                                  proj.id,
+                                  act.name,
+                                  aStart,
+                                  aEnd
+                                )
+                              }
+                              style={{
+                                position: "absolute",
+                                left,
+                                width: Math.max(
+                                  width - 4,
+                                  16
+                                ),
+                                height: 22,
+                                top: 3,
+                                borderRadius: 5,
+                                background: isHovered
+                                  ? proj.color
+                                  : `${proj.color}CC`,
+                                display: "flex",
+                                alignItems: "center",
+                                paddingLeft: 8,
+                                cursor: editMode
+                                  ? "move"
+                                  : "pointer",
+                                transition:
+                                  isDraggingThisActivity
+                                    ? "none"
+                                    : "background 0.15s, box-shadow 0.15s",
+                                boxShadow: isHovered
+                                  ? `0 2px 8px ${proj.color}40`
+                                  : "none",
+                                zIndex: 3,
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 500,
+                                  color: "#fff",
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow:
+                                    "ellipsis",
+                                }}
+                              >
+                                {act.name}
+                              </span>
+
+                              {/* Edit drag handles */}
+                              {editMode && (
+                                <>
+                                  <div
+                                    onMouseDown={(
+                                      e
+                                    ) => {
+                                      e.stopPropagation();
+                                      startDrag(
+                                        e,
+                                        "resize-left",
+                                        "activity",
+                                        act.id,
+                                        proj.id,
+                                        act.start,
+                                        act.end
+                                      );
+                                    }}
+                                    style={{
+                                      position:
+                                        "absolute",
+                                      left: 0,
+                                      top: 0,
+                                      bottom: 0,
+                                      width: 5,
+                                      borderRadius:
+                                        "5px 0 0 5px",
+                                      background:
+                                        "rgba(255,255,255,0.4)",
+                                      cursor: "ew-resize",
+                                    }}
+                                  />
+                                  <div
+                                    onMouseDown={(
+                                      e
+                                    ) => {
+                                      e.stopPropagation();
+                                      startDrag(
+                                        e,
+                                        "resize-right",
+                                        "activity",
+                                        act.id,
+                                        proj.id,
+                                        act.start,
+                                        act.end
+                                      );
+                                    }}
+                                    style={{
+                                      position:
+                                        "absolute",
+                                      right: 0,
+                                      top: 0,
+                                      bottom: 0,
+                                      width: 5,
+                                      borderRadius:
+                                        "0 5px 5px 0",
+                                      background:
+                                        "rgba(255,255,255,0.4)",
+                                      cursor: "ew-resize",
+                                    }}
+                                  />
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Add activity row (edit mode) */}
+                      {editMode && (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (justDraggedRef.current) return;
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const relX = e.clientX - rect.left;
+                            const weekClicked = Math.floor(relX / COL_WIDTH) + scrollOffset;
+                            handleAddActivity(proj.id, weekClicked);
+                          }}
+                          style={{
+                            position: "relative",
+                            height: 28,
+                            marginBottom: 3,
+                            borderRadius: 5,
+                            border: "1px dashed #D1D5DB",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
+                            transition: "all 0.15s",
+                            opacity: 0.5,
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.opacity = "0.8";
+                            e.currentTarget.style.borderColor = proj.color;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.opacity = "0.5";
+                            e.currentTarget.style.borderColor = "#D1D5DB";
+                          }}
+                        >
+                          <span style={{ fontSize: 11, color: "#9CA3AF", fontWeight: 500 }}>
+                            + Click to add activity
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Milestones (DeadlineMarker) */}
+                      <div
+                        style={{
+                          position: "relative",
+                          height: 32,
+                          marginTop: 4,
+                        }}
+                        onDoubleClick={(e) => {
+                          if (!editMode) return;
+                          if ((e.target as HTMLElement).closest("[data-milestone-id]")) return;
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          const relX = e.clientX - rect.left;
+                          const weekClicked = Math.floor(relX / COL_WIDTH) + scrollOffset;
+                          handleCreateDeadline(e, proj.id, proj.color, weekClicked);
+                        }}
+                      >
+                        {projectMilestones.map((ms) => {
+                          if (
+                            ms.week < scrollOffset ||
+                            ms.week >= scrollOffset + VISIBLE_COLS
+                          )
+                            return null;
+                          return (
+                            <div
+                              key={ms.id}
+                              data-milestone-id={ms.id}
+                              style={{
+                                position: "absolute",
+                                left: (ms.week - scrollOffset) * COL_WIDTH,
+                                top: 0,
+                                width: COL_WIDTH,
+                                height: 32,
+                                zIndex: 4,
+                              }}
+                            >
+                              <DeadlineMarker
+                                milestone={ms}
+                                projectColor={proj.color}
+                                onClick={(e) => handleMilestoneClick(e, ms, proj.color)}
+                              />
+                            </div>
+                          );
+                        })}
+
+                        {/* Add deadline button (edit mode) */}
+                        {editMode && (
+                          <button
+                            onClick={(e) => handleCreateDeadline(e, proj.id, proj.color)}
+                            style={{
+                              position: "absolute",
+                              right: 8,
+                              top: 6,
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 3,
+                              fontSize: 10,
+                              color: proj.color,
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              fontWeight: 500,
+                              opacity: 0.5,
+                              transition: "opacity 0.15s",
+                              zIndex: 5,
+                            }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.5"; }}
+                            title="Add deadline"
+                          >
+                            + Deadline
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Double-click popover ── */}
+      {popover && (
+        <PopoverEditor
+          popover={popover}
+          onApply={handlePopoverApply}
+          onDelete={handlePopoverDelete}
+          onClose={() => setPopover(null)}
         />
       )}
+
+      {/* ── Deadline popover ── */}
+      {deadlinePopover.open && deadlinePopover.position && (
+        <DeadlinePopover
+          open={deadlinePopover.open}
+          position={deadlinePopover.position}
+          milestone={deadlinePopover.milestone}
+          projectId={deadlinePopover.projectId}
+          projectColor={deadlinePopover.projectColor}
+          companyPhases={companyPhases}
+          existingPhaseDeadlines={
+            phaseDeadlinesByProject[deadlinePopover.projectId] || []
+          }
+          defaultDate={deadlinePopover.defaultDate}
+          onSave={(payload) => {
+            handleSaveDeadline(payload);
+            setDeadlinePopover((prev) => ({ ...prev, open: false }));
+          }}
+          onDelete={(milestoneId, projectId) => {
+            handleDeleteDeadline(milestoneId, projectId);
+            setDeadlinePopover((prev) => ({ ...prev, open: false }));
+          }}
+          onClose={() =>
+            setDeadlinePopover((prev) => ({ ...prev, open: false }))
+          }
+        />
+      )}
+
+      {/* ── Edit mode footer ── */}
+      {editMode && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 52,
+            background: "#FFFBEB",
+            borderTop: "2px solid #FDE68A",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 12,
+            zIndex: 50,
+            animation: "slideUp 0.3s ease",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 12,
+              color: "#92400E",
+              fontWeight: 500,
+            }}
+          >
+            {"\u270E"} {changeCount} unsaved change
+            {changeCount !== 1 ? "s" : ""}
+          </span>
+          <button
+            onClick={undo}
+            disabled={undoState.past.length === 0}
+            style={{
+              ...btnStyle,
+              background:
+                undoState.past.length === 0
+                  ? "#F3F4F6"
+                  : "#fff",
+              color:
+                undoState.past.length === 0
+                  ? "#9CA3AF"
+                  : "#374151",
+              border: "1px solid #E5E7EB",
+              cursor:
+                undoState.past.length === 0
+                  ? "not-allowed"
+                  : "pointer",
+            }}
+          >
+            Undo
+          </button>
+          <button
+            onClick={redo}
+            disabled={undoState.future.length === 0}
+            style={{
+              ...btnStyle,
+              background:
+                undoState.future.length === 0
+                  ? "#F3F4F6"
+                  : "#fff",
+              color:
+                undoState.future.length === 0
+                  ? "#9CA3AF"
+                  : "#374151",
+              border: "1px solid #E5E7EB",
+              cursor:
+                undoState.future.length === 0
+                  ? "not-allowed"
+                  : "pointer",
+            }}
+          >
+            Redo
+          </button>
+          <button
+            onClick={discard}
+            style={{
+              ...btnStyle,
+              border: "1px solid #D97706",
+              background: "transparent",
+              color: "#92400E",
+            }}
+          >
+            Discard
+          </button>
+          <button
+            onClick={save}
+            disabled={changeCount === 0}
+            style={{
+              ...btnStyle,
+              background:
+                changeCount === 0 ? "#E5E7EB" : "#D97706",
+              color: changeCount === 0 ? "#9CA3AF" : "#fff",
+              cursor:
+                changeCount === 0 ? "not-allowed" : "pointer",
+            }}
+          >
+            Save
+          </button>
+        </div>
+      )}
+
+      {/* ── Legend (bottom-left) ── */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: editMode ? 64 : 16,
+          left: 20,
+          display: "flex",
+          gap: 16,
+          fontSize: 10,
+          color: "#9CA3AF",
+          background: "rgba(255,255,255,0.9)",
+          padding: "6px 12px",
+          borderRadius: 6,
+          border: "1px solid #F3F4F6",
+          transition: "bottom 0.3s ease",
+          zIndex: 40,
+        }}
+      >
+        <span
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          <span
+            style={{
+              width: 14,
+              height: 0,
+              borderTop: "2px dashed #6366F1",
+              display: "inline-block",
+            }}
+          />{" "}
+          Phase deadline
+        </span>
+        <span
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          <span
+            style={{
+              width: 14,
+              height: 0,
+              borderTop: "2px dotted #F59E0B",
+              display: "inline-block",
+            }}
+          />{" "}
+          Custom deadline
+        </span>
+        <span
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          <span
+            style={{
+              width: 18,
+              height: 6,
+              background: "#6B7280",
+              borderRadius: 3,
+              display: "inline-block",
+              opacity: 0.5,
+            }}
+          />{" "}
+          Project bar
+        </span>
+        <span
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+          }}
+        >
+          <ConflictBadge count={1} /> Conflict
+        </span>
+      </div>
+
+      {/* Animations */}
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+        @keyframes slideUp {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+      `}</style>
     </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   POPOVER EDITOR COMPONENT
+   ───────────────────────────────────────────── */
+
+function PopoverEditor({
+  popover,
+  onApply,
+  onDelete,
+  onClose,
+}: {
+  popover: PopoverState;
+  onApply: (newStart: number, newEnd: number, newName: string) => void;
+  onDelete: () => void;
+  onClose: () => void;
+}) {
+  const [name, setName] = useState(popover.name);
+  const [startWeek, setStartWeek] = useState(popover.startWeek);
+  const [endWeek, setEndWeek] = useState(popover.endWeek);
+
+  const handleApply = () => {
+    if (endWeek <= startWeek) {
+      toast.error("End week must be after start week");
+      return;
+    }
+    onApply(startWeek, endWeek, name);
+  };
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 99,
+        }}
+      />
+      {/* Popover */}
+      <div
+        style={{
+          position: "fixed",
+          left: Math.min(
+            popover.anchorRect.left,
+            typeof window !== "undefined"
+              ? window.innerWidth - 296
+              : popover.anchorRect.left
+          ),
+          top: popover.anchorRect.bottom + 8,
+          width: 280,
+          padding: 16,
+          background: "#fff",
+          borderRadius: 8,
+          boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+          border: "1px solid #E5E7EB",
+          zIndex: 100,
+          fontFamily:
+            "'DM Sans', 'Avenir Next', system-ui, sans-serif",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ marginBottom: 12 }}>
+          <label
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: "#6B7280",
+              display: "block",
+              marginBottom: 4,
+            }}
+          >
+            Name
+          </label>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "6px 10px",
+              borderRadius: 6,
+              border: "1px solid #E5E7EB",
+              fontSize: 13,
+              color: "#1F2937",
+              outline: "none",
+              boxSizing: "border-box",
+            }}
+          />
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            marginBottom: 12,
+          }}
+        >
+          <div style={{ flex: 1 }}>
+            <label
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: "#6B7280",
+                display: "block",
+                marginBottom: 4,
+              }}
+            >
+              Start Week
+            </label>
+            <input
+              type="number"
+              value={startWeek}
+              onChange={(e) =>
+                setStartWeek(parseInt(e.target.value) || 0)
+              }
+              style={{
+                width: "100%",
+                padding: "6px 10px",
+                borderRadius: 6,
+                border: "1px solid #E5E7EB",
+                fontSize: 13,
+                color: "#1F2937",
+                outline: "none",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: "#6B7280",
+                display: "block",
+                marginBottom: 4,
+              }}
+            >
+              End Week
+            </label>
+            <input
+              type="number"
+              value={endWeek}
+              onChange={(e) =>
+                setEndWeek(parseInt(e.target.value) || 0)
+              }
+              style={{
+                width: "100%",
+                padding: "6px 10px",
+                borderRadius: 6,
+                border: "1px solid #E5E7EB",
+                fontSize: 13,
+                color: "#1F2937",
+                outline: "none",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <button
+            onClick={onDelete}
+            style={{
+              padding: "6px 14px",
+              borderRadius: 6,
+              border: "1px solid #FCA5A5",
+              background: "#FEF2F2",
+              color: "#DC2626",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "all 0.15s",
+            }}
+          >
+            Delete
+          </button>
+          <button
+            onClick={handleApply}
+            style={{
+              padding: "6px 18px",
+              borderRadius: 6,
+              border: "none",
+              background: "#2563EB",
+              color: "#fff",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "all 0.15s",
+            }}
+          >
+            Apply
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
