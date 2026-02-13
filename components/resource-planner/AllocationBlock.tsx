@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { X, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "@/lib/i18n";
@@ -37,10 +38,11 @@ export function AllocationBlock({
 }: AllocationBlockProps) {
   const tc = useTranslations("common");
   const canDrag = !selectionMode || isSelected;
+  const didDrag = useRef(false);
 
   const handleDragStart = (e: React.DragEvent) => {
+    didDrag.current = true;
     if (selectionMode && isSelected && selectedIds && selectedIds.size > 1) {
-      // Bulk drag: move all selected allocations
       e.dataTransfer.setData("application/json", JSON.stringify({
         bulkMove: true,
         selectedIds: Array.from(selectedIds),
@@ -63,10 +65,25 @@ export function AllocationBlock({
     e.dataTransfer.effectAllowed = "move";
   };
 
+  const handleDragEnd = () => {
+    // Reset after a short delay so click (which fires right after) is still suppressed
+    setTimeout(() => { didDrag.current = false; }, 0);
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    // Suppress click if a drag just happened
+    if (didDrag.current) {
+      didDrag.current = false;
+      return;
+    }
+    onClick(e);
+  };
+
   return (
     <div
       draggable={canDrag}
       onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       className={cn(
         "group/block relative flex items-center gap-1 rounded px-1.5 py-0.5 transition-all",
         selectionMode
@@ -81,7 +98,7 @@ export function AllocationBlock({
         backgroundColor: projectColor + (status === "tentative" ? "99" : "CC"),
       }}
       title={notes || undefined}
-      onClick={onClick}
+      onClick={handleClick}
     >
       {isSelected && (
         <div className="absolute -top-1.5 -left-1.5 w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center z-10">
