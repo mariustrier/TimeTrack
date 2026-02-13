@@ -140,6 +140,7 @@ export const createVacationSchema = z.object({
   endDate: z.string().min(1),
   type: z.enum(["vacation", "sick", "personal"]).optional(),
   note: z.string().max(500).optional().nullable(),
+  userId: z.string().optional(),
 });
 
 // --- Company Expenses ---

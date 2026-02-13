@@ -473,7 +473,10 @@
     "hoursRemaining": "{hours}h remaining",
     "hoursAccrued": "{hours}h accrued",
     "hoursCost": "This will use approx. {hours} vacation hours ({days} days × {perDay}h/day)",
-    "extraHours": "extra hours"
+    "extraHours": "extra hours",
+    "selectEmployee": "Employee",
+    "autoApproved": "This request will be automatically approved",
+    "createdOnBehalf": "Vacation created and approved"
   },
   "adminVacations": {
     "title": "Vacation Requests",

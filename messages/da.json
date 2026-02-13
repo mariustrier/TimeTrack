@@ -473,7 +473,10 @@
     "hoursRemaining": "{hours}t tilbage",
     "hoursAccrued": "{hours}t optjent",
     "hoursCost": "Dette vil bruge ca. {hours} ferietimer ({days} dage × {perDay}t/dag)",
-    "extraHours": "ekstra timer"
+    "extraHours": "ekstra timer",
+    "selectEmployee": "Medarbejder",
+    "autoApproved": "Denne anmodning godkendes automatisk",
+    "createdOnBehalf": "Ferie oprettet og godkendt"
   },
   "adminVacations": {
     "title": "Ferieanmodninger",

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { format, differenceInBusinessDays } from "date-fns";
-import { Palmtree, Plus, X } from "lucide-react";
+import { Palmtree, Plus, X, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -90,6 +90,10 @@ export default function VacationsPage() {
   const [vacationTrackingUnit, setVacationTrackingUnit] = useState("days");
   const [vacationHoursPerYear, setVacationHoursPerYear] = useState<number | null>(null);
   const [userWeeklyTarget, setUserWeeklyTarget] = useState(37);
+  const [userRole, setUserRole] = useState("");
+  const [teamMembers, setTeamMembers] = useState<{ id: string; firstName: string; lastName: string }[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const isAdmin = userRole === "admin" || userRole === "manager";
 
   const currentMonth = new Date().getMonth() + 1; // 1-indexed
   const isVacationHours = vacationTrackingUnit === "hours";
@@ -122,6 +126,14 @@ export default function VacationsPage() {
         if (data.vacationTrackingUnit) setVacationTrackingUnit(data.vacationTrackingUnit);
         if (data.vacationHoursPerYear != null) setVacationHoursPerYear(data.vacationHoursPerYear);
         if (data.weeklyTarget != null) setUserWeeklyTarget(data.weeklyTarget);
+        if (data.role) setUserRole(data.role);
+        // Fetch team list for admin/manager on-behalf feature
+        if (data.role === "admin" || data.role === "manager") {
+          fetch("/api/team")
+            .then((res) => res.json())
+            .then((members) => setTeamMembers(members))
+            .catch(() => {});
+        }
       })
       .catch(() => {});
   }, [fetchRequests]);
@@ -137,12 +149,17 @@ export default function VacationsPage() {
 
   async function handleSubmit() {
     if (!startDate || !endDate) return;
+    if (isAdmin && !selectedUserId) return;
     setSaving(true);
     try {
+      const payload: Record<string, string> = { startDate, endDate, type, note };
+      if (isAdmin && selectedUserId) {
+        payload.userId = selectedUserId;
+      }
       const res = await fetch("/api/vacations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ startDate, endDate, type, note }),
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
         setModalOpen(false);
@@ -150,6 +167,7 @@ export default function VacationsPage() {
         setEndDate("");
         setType("vacation");
         setNote("");
+        setSelectedUserId("");
         fetchRequests();
       }
     } catch (error) {
@@ -332,6 +350,29 @@ export default function VacationsPage() {
             <DialogTitle>{t("requestVacation")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {isAdmin && (
+              <div className="space-y-2">
+                <Label>{t("selectEmployee")}</Label>
+                <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("selectEmployee")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teamMembers.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.firstName} {m.lastName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedUserId && (
+                  <p className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
+                    <Info className="h-3 w-3" />
+                    {t("autoApproved")}
+                  </p>
+                )}
+              </div>
+            )}
             <div className="space-y-2">
               <Label>{tc("type")}</Label>
               <Select value={type} onValueChange={setType}>
@@ -393,7 +434,7 @@ export default function VacationsPage() {
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={saving || !startDate || !endDate}
+              disabled={saving || !startDate || !endDate || (isAdmin && !selectedUserId)}
             >
               {saving ? tc("saving") : t("submitRequest")}
             </Button>
