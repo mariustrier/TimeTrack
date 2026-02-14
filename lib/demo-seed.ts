@@ -549,41 +549,41 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
 
   await db.projectAllocation.createMany({
     data: [
-      // Havnefronten — large project, most employees mid-track
-      { projectId: hvf.id, userId: adminUserId, hours: 650, companyId },   // Marta ~420h used → 35% left → GREEN
-      { projectId: hvf.id, userId: anders.id, hours: 780, companyId },     // ~575h → 26% left → GREEN
-      { projectId: hvf.id, userId: jonas.id, hours: 850, companyId },      // ~720h → 15% left → RED
-      { projectId: hvf.id, userId: amara.id, hours: 320, companyId },      // ~240h → 25% left → GREEN
-      { projectId: hvf.id, userId: katrine.id, hours: 210, companyId },    // ~160h → 24% left → GREEN
-      { projectId: hvf.id, userId: erik.id, hours: 680, companyId },       // ~540h → 21% left → ORANGE
-      { projectId: hvf.id, userId: marcus.id, hours: 640, companyId },     // ~540h → 16% left → RED
-      { projectId: hvf.id, userId: lukas.id, hours: 560, companyId },      // ~464h → 17% left → RED
-      { projectId: hvf.id, userId: sofieD.id, hours: 500, companyId },     // ~370h → 26% left → GREEN
-      { projectId: hvf.id, userId: oliver.id, hours: 300, companyId },     // ~200h → 33% left → GREEN
-      // Kulturhuset Vestby — newer, more budget remaining
-      { projectId: khv.id, userId: adminUserId, hours: 350, companyId },   // Marta ~180h → 49% left → GREEN
-      { projectId: khv.id, userId: anders.id, hours: 280, companyId },     // ~160h → 43% left → GREEN
-      { projectId: khv.id, userId: amara.id, hours: 300, companyId },      // ~180h → 40% left → GREEN
-      { projectId: khv.id, userId: katrine.id, hours: 170, companyId },    // ~120h → 29% left → ORANGE
-      { projectId: khv.id, userId: nadia.id, hours: 340, companyId },      // ~225h → 34% left → GREEN
-      { projectId: khv.id, userId: oliver.id, hours: 280, companyId },     // ~204h → 27% left → ORANGE
+      // Havnefronten — large project, tight allocations
+      { projectId: hvf.id, userId: adminUserId, hours: 455, companyId },   // Marta ~420h used → ~35h left → ORANGE
+      { projectId: hvf.id, userId: anders.id, hours: 610, companyId },     // ~575h → ~35h left → RED
+      { projectId: hvf.id, userId: jonas.id, hours: 755, companyId },      // ~720h → ~35h left → RED
+      { projectId: hvf.id, userId: amara.id, hours: 270, companyId },      // ~240h → ~30h left → ORANGE
+      { projectId: hvf.id, userId: katrine.id, hours: 185, companyId },    // ~160h → ~25h left → ORANGE
+      { projectId: hvf.id, userId: erik.id, hours: 575, companyId },       // ~540h → ~35h left → RED
+      { projectId: hvf.id, userId: marcus.id, hours: 570, companyId },     // ~540h → ~30h left → RED
+      { projectId: hvf.id, userId: lukas.id, hours: 500, companyId },      // ~464h → ~36h left → ORANGE
+      { projectId: hvf.id, userId: sofieD.id, hours: 405, companyId },     // ~370h → ~35h left → ORANGE
+      { projectId: hvf.id, userId: oliver.id, hours: 235, companyId },     // ~200h → ~35h left → ORANGE
+      // Kulturhuset Vestby — newer project, moderate slack
+      { projectId: khv.id, userId: adminUserId, hours: 225, companyId },   // Marta ~190h → ~35h left → ORANGE
+      { projectId: khv.id, userId: anders.id, hours: 195, companyId },     // ~160h → ~35h left → ORANGE
+      { projectId: khv.id, userId: amara.id, hours: 215, companyId },      // ~180h → ~35h left → ORANGE
+      { projectId: khv.id, userId: katrine.id, hours: 150, companyId },    // ~120h → ~30h left → ORANGE
+      { projectId: khv.id, userId: nadia.id, hours: 260, companyId },      // ~225h → ~35h left → ORANGE
+      { projectId: khv.id, userId: oliver.id, hours: 240, companyId },     // ~204h → ~36h left → ORANGE
       // Søbredden Kontor
-      { projectId: sbk.id, userId: amara.id, hours: 480, companyId },      // ~370h → 23% left → ORANGE
-      { projectId: sbk.id, userId: sofia.id, hours: 130, companyId },      // ~90h → 31% left → GREEN
-      { projectId: sbk.id, userId: marcus.id, hours: 310, companyId },     // ~240h → 23% left → ORANGE
-      { projectId: sbk.id, userId: lukas.id, hours: 260, companyId },      // ~200h → 23% left → ORANGE
-      // Villa Hansen — tight budget, amber warning story
-      { projectId: vht.id, userId: katrine.id, hours: 165, companyId },    // ~152h → 8% left → RED
-      { projectId: vht.id, userId: erik.id, hours: 80, companyId },        // ~65h → 19% left → RED
+      { projectId: sbk.id, userId: amara.id, hours: 400, companyId },      // ~370h → ~30h left → ORANGE
+      { projectId: sbk.id, userId: sofia.id, hours: 115, companyId },      // ~90h → ~25h left → ORANGE
+      { projectId: sbk.id, userId: marcus.id, hours: 270, companyId },     // ~240h → ~30h left → ORANGE
+      { projectId: sbk.id, userId: lukas.id, hours: 230, companyId },      // ~200h → ~30h left → ORANGE
+      // Villa Hansen — tight budget, budget warning story
+      { projectId: vht.id, userId: katrine.id, hours: 160, companyId },    // ~152h → ~8h left → RED
+      { projectId: vht.id, userId: erik.id, hours: 72, companyId },        // ~65h → ~7h left → RED
       // Elmegade Rækkehuse — winding down
-      { projectId: elm.id, userId: katrine.id, hours: 240, companyId },    // ~200h → 17% left → RED
-      { projectId: elm.id, userId: sofia.id, hours: 600, companyId },      // ~480h → 20% left → ORANGE
-      { projectId: elm.id, userId: erik.id, hours: 130, companyId },       // ~100h → 23% left → ORANGE
-      { projectId: elm.id, userId: nadia.id, hours: 340, companyId },      // ~258h → 24% left → ORANGE
+      { projectId: elm.id, userId: katrine.id, hours: 220, companyId },    // ~200h → ~20h left → ORANGE
+      { projectId: elm.id, userId: sofia.id, hours: 510, companyId },      // ~480h → ~30h left → RED
+      { projectId: elm.id, userId: erik.id, hours: 115, companyId },       // ~100h → ~15h left → ORANGE
+      { projectId: elm.id, userId: nadia.id, hours: 285, companyId },      // ~258h → ~27h left → ORANGE
       // Arkitektkonkurrence — competition, tighter budgets
-      { projectId: kon.id, userId: jonas.id, hours: 150, companyId },      // ~120h → 20% left → ORANGE
-      { projectId: kon.id, userId: nadia.id, hours: 100, companyId },      // ~75h → 25% left → GREEN
-      { projectId: kon.id, userId: oliver.id, hours: 180, companyId },     // ~136h → 24% left → ORANGE
+      { projectId: kon.id, userId: jonas.id, hours: 138, companyId },      // ~120h → ~18h left → ORANGE
+      { projectId: kon.id, userId: nadia.id, hours: 92, companyId },       // ~75h → ~17h left → ORANGE
+      { projectId: kon.id, userId: oliver.id, hours: 160, companyId },     // ~136h → ~24h left → ORANGE
     ],
   });
 
@@ -1026,6 +1026,11 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
   // Vacation dates to skip (employee → set of date keys)
   const vacationDates: Record<string, Set<string>> = {};
 
+  // Marta (admin): 3 days in November (Wed-Fri, week 13)
+  const martaVacStart = addDays(getMonday(addWeeks(dataStart, 13)), 2); // Wednesday
+  vacationDates[adminUserId] = new Set<string>();
+  for (let i = 0; i < 3; i++) vacationDates[adminUserId].add(dateKey(addDays(martaVacStart, i)));
+
   // Nadia: 1 week in October (month 2, week ~10)
   const nadiaVacStart = getMonday(addWeeks(dataStart, 9));
   vacationDates[nadia.id] = new Set<string>();
@@ -1396,6 +1401,8 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
 
   await db.vacationRequest.createMany({
     data: [
+      // Marta: 3 days Nov (Wed-Fri)
+      { userId: adminUserId, companyId, startDate: martaVacStart, endDate: addDays(martaVacStart, 2), type: "vacation", status: "approved", reviewedBy: adminUserId, reviewedAt: addDays(martaVacStart, -5) },
       // Anders: 1 week Sep
       { userId: anders.id, companyId, startDate: andersVacStart, endDate: addDays(andersVacStart, 4), type: "vacation", status: "approved", reviewedBy: adminUserId, reviewedAt: addDays(andersVacStart, -7) },
       // Amara: 3 separate weeks

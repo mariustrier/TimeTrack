@@ -189,6 +189,7 @@ export default function DashboardPage() {
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const [saving, setSaving] = useState(false);
   const [vacationDaysUsed, setVacationDaysUsed] = useState(0);
+  const [currentUserId, setCurrentUserId] = useState<string>("");
   const [bonusVacationDays, setBonusVacationDays] = useState(0);
   const [isHourly, setIsHourly] = useState(false);
   const [vacationTrackingUnit, setVacationTrackingUnit] = useState("days");
@@ -343,9 +344,23 @@ export default function DashboardPage() {
         const data = await plannedRes.json();
         setPlannedHours(data);
       }
+      // Process vacations AFTER meData so we have the user ID for filtering
+      let resolvedUserId = "";
+      if (userMeRes.ok) {
+        const meData = await userMeRes.json();
+        if (meData.id) { resolvedUserId = meData.id; setCurrentUserId(meData.id); }
+        if (meData.vacationDays != null) setBonusVacationDays(meData.vacationDays);
+        if (meData.isHourly != null && !selectedEmployeeId) setIsHourly(meData.isHourly);
+        if (meData.role) setUserRole(meData.role);
+        if (meData.vacationTrackingUnit) setVacationTrackingUnit(meData.vacationTrackingUnit);
+        if (meData.vacationHoursPerYear != null) setVacationHoursPerYear(meData.vacationHoursPerYear);
+      }
       if (vacationsRes.ok) {
         const vacations = await vacationsRes.json();
-        const approved = vacations.filter((v: { status: string }) => v.status === "approved");
+        const effectiveUserId = selectedEmployeeId || resolvedUserId;
+        const approved = vacations.filter((v: { status: string; userId: string }) =>
+          v.status === "approved" && (!effectiveUserId || v.userId === effectiveUserId)
+        );
         const usedDays = approved.reduce((sum: number, v: { startDate: string; endDate: string }) => {
           const days = differenceInBusinessDays(new Date(v.endDate), new Date(v.startDate)) + 1;
           return sum + Math.max(days, 1);
@@ -364,14 +379,7 @@ export default function DashboardPage() {
           })),
         );
       }
-      if (userMeRes.ok) {
-        const meData = await userMeRes.json();
-        if (meData.vacationDays != null) setBonusVacationDays(meData.vacationDays);
-        if (meData.isHourly != null && !selectedEmployeeId) setIsHourly(meData.isHourly);
-        if (meData.role) setUserRole(meData.role);
-        if (meData.vacationTrackingUnit) setVacationTrackingUnit(meData.vacationTrackingUnit);
-        if (meData.vacationHoursPerYear != null) setVacationHoursPerYear(meData.vacationHoursPerYear);
-      }
+      // meData already processed above (before vacation counting)
       setLastUpdated(new Date());
     } catch (error) {
       console.error("Failed to fetch data:", error);
