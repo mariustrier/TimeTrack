@@ -44,6 +44,7 @@ interface InvoiceCreateDialogProps {
   projectId: string;
   projectName: string;
   clientName: string;
+  oldestEntryDate?: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -52,6 +53,7 @@ export function InvoiceCreateDialog({
   projectId,
   projectName,
   clientName: defaultClientName,
+  oldestEntryDate,
   open,
   onOpenChange,
 }: InvoiceCreateDialogProps) {
@@ -59,11 +61,16 @@ export function InvoiceCreateDialog({
   const now = new Date();
   const lastMonth = subMonths(now, 1);
 
+  // Default period: from oldest uninvoiced entry (or start of last month) to end of last month
+  const defaultStart = oldestEntryDate
+    ? format(startOfMonth(new Date(oldestEntryDate)), "yyyy-MM-dd")
+    : format(startOfMonth(lastMonth), "yyyy-MM-dd");
+
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
   // Step 1: Scope
-  const [periodStart, setPeriodStart] = useState(format(startOfMonth(lastMonth), "yyyy-MM-dd"));
+  const [periodStart, setPeriodStart] = useState(defaultStart);
   const [periodEnd, setPeriodEnd] = useState(format(endOfMonth(lastMonth), "yyyy-MM-dd"));
   const [groupBy, setGroupBy] = useState<"employee" | "phase" | "description" | "flat">("employee");
   const [includeExpenses, setIncludeExpenses] = useState(true);

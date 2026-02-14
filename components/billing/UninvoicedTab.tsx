@@ -41,6 +41,7 @@ export function UninvoicedTab() {
   const [createProjectId, setCreateProjectId] = useState<string | null>(null);
   const [createProjectName, setCreateProjectName] = useState("");
   const [createClient, setCreateClient] = useState("");
+  const [createOldestEntry, setCreateOldestEntry] = useState<string | null>(null);
 
   const [externalProjects, setExternalProjects] = useState<ExternallyInvoicedProject[]>([]);
   const [externalSystem, setExternalSystem] = useState<string | null>(null);
@@ -152,6 +153,7 @@ export function UninvoicedTab() {
                     setCreateProjectId(p.projectId);
                     setCreateProjectName(p.projectName);
                     setCreateClient(p.client);
+                    setCreateOldestEntry(p.oldestEntry);
                   }}
                 >
                   <FileText className="mr-2 h-4 w-4" />
@@ -228,6 +230,7 @@ export function UninvoicedTab() {
           projectId={createProjectId}
           projectName={createProjectName}
           clientName={createClient}
+          oldestEntryDate={createOldestEntry}
           open={!!createProjectId}
           onOpenChange={(open) => {
             if (!open) {
