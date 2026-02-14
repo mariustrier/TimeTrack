@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LiveDemoButton } from "./LiveDemoButton";
 
 export function Hero() {
   return (
@@ -19,6 +20,7 @@ export function Hero() {
           Se integrationer
         </a>
       </div>
+      <LiveDemoButton />
       <p className="lp-hero-note">
         14 dage gratis · Intet kreditkort · Dansk support
       </p>

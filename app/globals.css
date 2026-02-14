@@ -157,6 +157,59 @@ html { scroll-behavior: smooth; }
 
 .lp-btn-lg { padding: 13px 28px; font-size: 14.5px; border-radius: 9px; }
 
+/* Demo button */
+.lp-demo-wrap {
+  margin-top: 16px;
+  text-align: center;
+}
+.lp-btn-demo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border: 1.5px solid var(--lp-accent);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--lp-accent);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.lp-btn-demo:hover {
+  background: var(--lp-accent);
+  color: #fff;
+}
+.lp-btn-demo:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+.lp-demo-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: lp-spin 0.6s linear infinite;
+}
+@keyframes lp-spin {
+  to { transform: rotate(360deg); }
+}
+.lp-demo-sub {
+  margin-top: 6px;
+  font-size: 0.82rem;
+  color: var(--lp-muted);
+  font-family: 'DM Sans', sans-serif;
+}
+.lp-demo-error {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: #DC2626;
+  font-weight: 500;
+}
+
 @keyframes lp-fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 /* ── HERO ── */

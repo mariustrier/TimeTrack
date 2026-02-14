@@ -25,6 +25,10 @@ model Company {
   logoUrl                     String?
   lastActivityAt              DateTime?  // Track when any user from this company was last active
 
+  // Demo
+  isDemo          Boolean   @default(false)
+  demoExpiresAt   DateTime?
+
   // Holiday configuration
   disabledHolidays String[] @default([]) // Danish holiday codes that are disabled for this company
 
@@ -86,6 +90,8 @@ model User {
   companyId     String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  isDemo               Boolean   @default(false)
 
   acceptedTermsAt      DateTime?
   tourCompletedAt      DateTime?
