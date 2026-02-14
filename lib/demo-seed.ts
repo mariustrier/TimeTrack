@@ -949,17 +949,20 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
   const febStart = new Date(2026, 1, 1, 12, 0, 0);
   const submittedWeekStart = addWeeks(thisMonday, -1);
 
-  function getApproval(d: Date): { approvalStatus: string; approvedAt: Date | null; approvedBy: string | null; submittedAt: Date | null } {
+  // Only Jonas and Erik submitted last week — keeps admin badge at ~20 instead of 156
+  const submittedUserIds = new Set([jonas.id, erik.id]);
+
+  function getApproval(d: Date, userId: string): { approvalStatus: string; approvedAt: Date | null; approvedBy: string | null; submittedAt: Date | null } {
     const dk = dateKey(d);
     const febKey = dateKey(febStart);
     const subKey = dateKey(submittedWeekStart);
 
     if (dk >= febKey) {
-      if (dk >= subKey) {
-        // Last week: submitted
+      if (dk >= subKey && submittedUserIds.has(userId)) {
+        // Last week, submitted employees only
         return { approvalStatus: "submitted", approvedAt: null, approvedBy: null, submittedAt: addDays(d, 2) };
       }
-      // Feb before last week: draft
+      // Feb: draft (not yet submitted)
       return { approvalStatus: "draft", approvedAt: null, approvedBy: null, submittedAt: null };
     }
     if (dk >= dateKey(janStart)) {
@@ -993,7 +996,7 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
         if (isChristmasPeriod(day) && rand() > 0.3) continue;
 
         const monthIdx = Math.min(getMonthIndex(day, dataStart), 6);
-        const approval = getApproval(day);
+        const approval = getApproval(day, pattern.userId);
 
         const dayEntries = pattern.getEntries(day, monthIdx);
 
@@ -1319,11 +1322,9 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
       { companyId, entityType: "TimeEntry", entityId: "batch-jan-approve-2", action: "APPROVE", fromStatus: "submitted", toStatus: "approved", actorId: adminUserId, createdAt: new Date(2026, 0, 15, 10, 30) },
       { companyId, entityType: "TimeEntry", entityId: "batch-jan-approve-3", action: "APPROVE", fromStatus: "submitted", toStatus: "approved", actorId: adminUserId, createdAt: new Date(2026, 0, 22, 14, 0) },
       { companyId, entityType: "TimeEntry", entityId: "batch-jan-approve-4", action: "APPROVE", fromStatus: "submitted", toStatus: "approved", actorId: adminUserId, createdAt: new Date(2026, 0, 29, 11, 45) },
-      // Weekly submissions
+      // Weekly submissions (only Jonas + Erik submitted last week)
       { companyId, entityType: "TimeEntry", entityId: "batch-submit-jonas", action: "SUBMIT", fromStatus: "draft", toStatus: "submitted", actorId: jonas.id, createdAt: addDays(today, -8) },
-      { companyId, entityType: "TimeEntry", entityId: "batch-submit-amara", action: "SUBMIT", fromStatus: "draft", toStatus: "submitted", actorId: amara.id, createdAt: addDays(today, -7) },
       { companyId, entityType: "TimeEntry", entityId: "batch-submit-erik", action: "SUBMIT", fromStatus: "draft", toStatus: "submitted", actorId: erik.id, createdAt: addDays(today, -7) },
-      { companyId, entityType: "TimeEntry", entityId: "batch-submit-sofia", action: "SUBMIT", fromStatus: "draft", toStatus: "submitted", actorId: sofia.id, createdAt: addDays(today, -6) },
       // Billing edits
       { companyId, entityType: "TimeEntry", entityId: "billing-edit-1", action: "EDIT_BILLING", actorId: adminUserId, metadata: JSON.stringify({ project: "Villa Hansen Tilbygning", change: "billable → non_billable", hours: 2.5 }), createdAt: new Date(2025, 11, 12, 16, 0) },
       // Phase changes
