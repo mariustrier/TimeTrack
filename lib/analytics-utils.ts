@@ -673,3 +673,60 @@ export function calculateForecast(
 
   return forecast;
 }
+
+// --- Current-period projection ---
+
+/**
+ * Adds `proj_*` fields to time-series chart data so the current (incomplete) period
+ * shows a dotted projection line instead of dropping to 0.
+ *
+ * For the second-to-last data point: proj_* = actual value (connection point).
+ * For the last data point: proj_* = actual / elapsed_ratio (projected full period).
+ * All other points: proj_* fields are undefined (Recharts ignores them).
+ *
+ * Usage in Recharts: add `<Line dataKey="proj_revenue" strokeDasharray="6 3" ... />`
+ */
+export function withProjection<T extends object>(
+  data: T[],
+  today: Date,
+  granularity: "monthly" | "weekly",
+  numericKeys: string[]
+): T[] {
+  if (data.length < 2) return data;
+
+  let ratio: number;
+  if (granularity === "weekly") {
+    const dow = today.getDay();
+    ratio = (dow === 0 ? 5 : Math.min(dow, 5)) / 5;
+  } else {
+    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    ratio = today.getDate() / daysInMonth;
+  }
+
+  if (ratio >= 0.95) return data; // Period almost complete, no projection needed
+
+  const lastIdx = data.length - 1;
+
+  return data.map((item, i) => {
+    if (i === lastIdx - 1) {
+      // Connection point: projected = actual
+      const result = { ...item } as Record<string, unknown>;
+      for (const key of numericKeys) {
+        result[`proj_${key}`] = (item as Record<string, unknown>)[key];
+      }
+      return result as T;
+    }
+    if (i === lastIdx) {
+      // Projected values = actual scaled up
+      const result = { ...item } as Record<string, unknown>;
+      for (const key of numericKeys) {
+        const val = (item as Record<string, unknown>)[key];
+        if (typeof val === "number") {
+          result[`proj_${key}`] = Math.round((val / ratio) * 10) / 10;
+        }
+      }
+      return result as T;
+    }
+    return item;
+  });
+}

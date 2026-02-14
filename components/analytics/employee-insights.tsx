@@ -31,6 +31,8 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/calculations";
+import { withProjection } from "@/lib/analytics-utils";
+import { getToday } from "@/lib/demo-date";
 
 interface EmployeeInsightsProps {
   dateRange: { from: Date; to: Date };
@@ -294,7 +296,7 @@ export function EmployeeInsights({
               exportData={utilizationTrend}
               exportFilename="utilization-trend"
             >
-              <LineChart data={utilizationTrend}>
+              <LineChart data={withProjection(utilizationTrend, getToday(), granularity, ["billableUtil", "totalUtil"])}>
                 <CartesianGrid
                   strokeDasharray="3 3"
                   stroke={theme.grid}
@@ -347,6 +349,24 @@ export function EmployeeInsights({
                   dot={{ r: 4 }}
                   activeDot={{ r: 6 }}
                 />
+                <Line
+                  type="monotone"
+                  dataKey="proj_billableUtil"
+                  stroke={METRIC_COLORS.billableUtil}
+                  strokeWidth={2}
+                  strokeDasharray="6 3"
+                  dot={false}
+                  legendType="none"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="proj_totalUtil"
+                  stroke={METRIC_COLORS.totalUtil}
+                  strokeWidth={2}
+                  strokeDasharray="6 3"
+                  dot={false}
+                  legendType="none"
+                />
               </LineChart>
             </ChartCard>
 
@@ -359,7 +379,7 @@ export function EmployeeInsights({
               exportData={profitability}
               exportFilename="profitability"
             >
-              <ComposedChart data={profitability}>
+              <ComposedChart data={withProjection(profitability, getToday(), granularity, ["revenue", "cost", "profit"])}>
                 <CartesianGrid
                   strokeDasharray="3 3"
                   stroke={theme.grid}
@@ -406,6 +426,33 @@ export function EmployeeInsights({
                   strokeWidth={2}
                   dot={{ r: 4 }}
                   activeDot={{ r: 6 }}
+                />
+                <Line2
+                  type="monotone"
+                  dataKey="proj_revenue"
+                  stroke={METRIC_COLORS.revenue}
+                  strokeWidth={2}
+                  strokeDasharray="6 3"
+                  dot={false}
+                  legendType="none"
+                />
+                <Line2
+                  type="monotone"
+                  dataKey="proj_cost"
+                  stroke={METRIC_COLORS.cost}
+                  strokeWidth={2}
+                  strokeDasharray="6 3"
+                  dot={false}
+                  legendType="none"
+                />
+                <Line2
+                  type="monotone"
+                  dataKey="proj_profit"
+                  stroke={METRIC_COLORS.profit}
+                  strokeWidth={2}
+                  strokeDasharray="6 3"
+                  dot={false}
+                  legendType="none"
                 />
               </ComposedChart>
             </ChartCard>

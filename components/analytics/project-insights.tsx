@@ -32,6 +32,8 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/calculations";
+import { withProjection } from "@/lib/analytics-utils";
+import { getToday } from "@/lib/demo-date";
 
 interface ProjectInsightsProps {
   dateRange: { from: Date; to: Date };
@@ -270,7 +272,7 @@ export function ProjectInsights({
             exportData={burndown}
             exportFilename="contract-burndown"
           >
-            <LineChart data={burndown}>
+            <LineChart data={withProjection(burndown, getToday(), granularity, ["hoursUsed", "hoursRemaining"])}>
               <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
               <XAxis
                 dataKey="period"
@@ -329,6 +331,8 @@ export function ProjectInsights({
                 dot={false}
                 name="idealBurn"
               />
+              <Line dataKey="proj_hoursUsed" stroke={METRIC_COLORS.billableUtil} strokeWidth={2} strokeDasharray="6 3" dot={false} legendType="none" />
+              <Line dataKey="proj_hoursRemaining" stroke={METRIC_COLORS.billableUtil} strokeWidth={2} strokeDasharray="6 3" dot={false} legendType="none" />
             </LineChart>
           </ChartCard>
 
@@ -340,7 +344,7 @@ export function ProjectInsights({
             exportData={profitability}
             exportFilename="project-profitability"
           >
-            <ComposedChart data={profitability}>
+            <ComposedChart data={withProjection(profitability, getToday(), granularity, ["revenue", "cost", "profit"])}>
               <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
               <XAxis
                 dataKey="period"
@@ -394,6 +398,9 @@ export function ProjectInsights({
                 dot={{ r: 3, fill: METRIC_COLORS.profit }}
                 name="profit"
               />
+              <Line dataKey="proj_revenue" stroke={METRIC_COLORS.revenue} strokeWidth={2} strokeDasharray="6 3" dot={false} legendType="none" />
+              <Line dataKey="proj_cost" stroke={METRIC_COLORS.cost} strokeWidth={2} strokeDasharray="6 3" dot={false} legendType="none" />
+              <Line dataKey="proj_profit" stroke={METRIC_COLORS.profit} strokeWidth={2} strokeDasharray="6 3" dot={false} legendType="none" />
             </ComposedChart>
           </ChartCard>
 

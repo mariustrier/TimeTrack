@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { format, parse, addMonths } from "date-fns";
+import { withProjection } from "@/lib/analytics-utils";
+import { getToday } from "@/lib/demo-date";
 import {
   ComposedChart,
   Area,
@@ -133,9 +135,20 @@ export function CompanyInsights({
     labelStyle: { color: theme.tooltipText },
   };
 
+  // Project current incomplete period for revenue/overhead chart
+  const projectedRevenueOverhead = useMemo(
+    () =>
+      withProjection(revenueOverhead, getToday(), granularity, [
+        "revenue",
+        "overhead",
+        "contributionMargin",
+      ]),
+    [revenueOverhead, granularity]
+  );
+
   const forecastResult = useMemo(() => {
-    if (granularity !== "monthly" || revenueOverhead.length < 3) {
-      return { data: revenueOverhead as any[], hasForecast: false };
+    if (granularity !== "monthly" || projectedRevenueOverhead.length < 3) {
+      return { data: projectedRevenueOverhead as any[], hasForecast: false };
     }
 
     const last3 = revenueOverhead.slice(-3);
@@ -149,7 +162,7 @@ export function CompanyInsights({
     const lastPeriod = revenueOverhead[revenueOverhead.length - 1].period;
     const lastDate = parse(lastPeriod, "MMM yyyy", new Date());
 
-    const combined: any[] = revenueOverhead.map((d) => ({ ...d }));
+    const combined: any[] = projectedRevenueOverhead.map((d) => ({ ...d }));
     combined[combined.length - 1].forecastRevenue =
       combined[combined.length - 1].revenue;
     combined[combined.length - 1].forecastMargin =
@@ -165,7 +178,36 @@ export function CompanyInsights({
     }
 
     return { data: combined, hasForecast: true };
-  }, [revenueOverhead, granularity]);
+  }, [revenueOverhead, projectedRevenueOverhead, granularity]);
+
+  // Project current incomplete period for non-billable trend
+  const projectedNonBillableTrend = useMemo(
+    () =>
+      withProjection(nonBillableTrend, getToday(), granularity, [
+        "totalPercent",
+        "internal",
+        "presales",
+        "nonBillable",
+      ]),
+    [nonBillableTrend, granularity]
+  );
+
+  // Project current incomplete period for expense breakdown (bars show projected height)
+  const projectedExpenseBreakdown = useMemo(
+    () =>
+      withProjection(expenseBreakdown, getToday(), granularity, [
+        "travel",
+        "materials",
+        "software",
+        "meals",
+        "rent",
+        "insurance",
+        "utilities",
+        "salaries",
+        "other",
+      ]),
+    [expenseBreakdown, granularity]
+  );
 
   return (
     <div className="space-y-6">
@@ -249,6 +291,9 @@ export function CompanyInsights({
               />
             </>
           )}
+          {/* Current-period projection lines */}
+          <Line type="monotone" dataKey="proj_revenue" stroke="#10B981" strokeWidth={2} strokeDasharray="6 3" dot={false} legendType="none" />
+          <Line type="monotone" dataKey="proj_contributionMargin" stroke="#6366F1" strokeWidth={2} strokeDasharray="6 3" dot={false} legendType="none" />
         </ComposedChart>
       </ChartCard>
 
@@ -266,7 +311,7 @@ export function CompanyInsights({
         exportData={expenseBreakdown}
         exportFilename="expense-breakdown"
       >
-        <BarChart data={expenseBreakdown}>
+        <BarChart data={projectedExpenseBreakdown}>
           <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
           <XAxis
             dataKey="period"
@@ -310,7 +355,7 @@ export function CompanyInsights({
         exportData={nonBillableTrend}
         exportFilename="non-billable-trend"
       >
-        <LineChart data={nonBillableTrend}>
+        <LineChart data={projectedNonBillableTrend}>
           <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
           <ReferenceArea y1={0} y2={15} fill="#10B981" fillOpacity={0.06} />
           <ReferenceArea y1={15} y2={25} fill="#F59E0B" fillOpacity={0.06} />
@@ -371,6 +416,11 @@ export function CompanyInsights({
             dot={{ fill: BILLING_COLORS.non_billable, r: 4 }}
             activeDot={{ r: 6 }}
           />
+          {/* Current-period projection lines */}
+          <Line type="monotone" dataKey="proj_totalPercent" stroke="#9CA3AF" strokeWidth={2} strokeDasharray="6 3" dot={false} legendType="none" />
+          <Line type="monotone" dataKey="proj_internal" stroke={BILLING_COLORS.internal} strokeWidth={2} strokeDasharray="6 3" dot={false} legendType="none" />
+          <Line type="monotone" dataKey="proj_presales" stroke={BILLING_COLORS.presales} strokeWidth={2} strokeDasharray="6 3" dot={false} legendType="none" />
+          <Line type="monotone" dataKey="proj_nonBillable" stroke={BILLING_COLORS.non_billable} strokeWidth={2} strokeDasharray="6 3" dot={false} legendType="none" />
         </LineChart>
       </ChartCard>
 
