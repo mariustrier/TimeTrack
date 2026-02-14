@@ -1,10 +1,17 @@
 const { withSentryConfig } = require("@sentry/nextjs");
+const fs = require("fs");
+const path = require("path");
+
+// Write demo date to a JSON file so client-side code can import it directly.
+// This bypasses webpack DefinePlugin which was unreliable for this env var.
+const demoDate = process.env.NEXT_PUBLIC_DEMO_DATE || null;
+fs.writeFileSync(
+  path.join(__dirname, "lib", "demo-date-generated.json"),
+  JSON.stringify({ date: demoDate }) + "\n"
+);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  env: {
-    NEXT_PUBLIC_DEMO_DATE: process.env.NEXT_PUBLIC_DEMO_DATE || "",
-  },
   images: {
     remotePatterns: [
       {

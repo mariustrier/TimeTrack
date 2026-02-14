@@ -8,6 +8,9 @@
 
 # next.js
 /.next/
+
+# Generated at build time by next.config.js
+lib/demo-date-generated.json
 /out/
 
 # production

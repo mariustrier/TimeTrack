@@ -1,14 +1,16 @@
 /**
  * Returns a pinned "today" date for the demo deployment.
- * Hardcoded to 2026-02-12 to match demo seed data.
- * To use the real date instead, set NEXT_PUBLIC_DEMO_DATE=none in env vars.
+ * Set NEXT_PUBLIC_DEMO_DATE=2026-02-12 in Vercel env vars for the demo.
+ * Remove the env var (or set to "none") for real customers.
+ *
+ * The date is written to demo-date-generated.json by next.config.js at build time,
+ * then imported here so it's baked into the client bundle reliably.
  */
-const DEMO_PIN = "2026-02-12";
+import config from "./demo-date-generated.json";
 
 export function getToday(): Date {
-  const env = process.env.NEXT_PUBLIC_DEMO_DATE;
-  const pin = env === "none" ? null : env || DEMO_PIN;
-  if (pin) {
+  const pin = config.date;
+  if (pin && pin !== "none") {
     const [y, m, d] = pin.split("-").map(Number);
     return new Date(y, m - 1, d, 12, 0, 0);
   }
