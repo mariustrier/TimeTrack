@@ -46,6 +46,17 @@ export async function GET(req: Request) {
       },
     });
 
+    // Fetch the target user's weekly target for Friday adjustment
+    const targetUser = targetUserId === user.id
+      ? user
+      : await db.user.findUnique({ where: { id: targetUserId }, select: { weeklyTarget: true, isHourly: true } });
+    const weeklyTarget = targetUser?.weeklyTarget ?? 37;
+    const isSalaried = !targetUser?.isHourly;
+    // Danish convention: Mon-Thu = ceil, Friday = remainder (e.g. 37h → 7.5×4 + 7)
+    const monThuDaily = isSalaried ? Math.ceil((weeklyTarget / 5) * 2) / 2 : 0; // round up to nearest 0.5
+    const fridayDaily = isSalaried ? weeklyTarget - monThuDaily * 4 : 0;
+    const fridayScale = monThuDaily > 0 ? fridayDaily / monThuDaily : 1;
+
     // Calculate planned hours per project per day
     const byProject: Record<string, { planned: number; projectName: string; projectColor: string }> = {};
     const byProjectDay: Record<string, Record<string, number>> = {};
@@ -61,6 +72,10 @@ export async function GET(req: Request) {
         // Only count weekdays
         if (dayOfWeek !== 0 && dayOfWeek !== 6) {
           const dateStr = format(current, "yyyy-MM-dd");
+          // Friday (dayOfWeek=5): scale down to match Danish convention
+          const hours = isSalaried && dayOfWeek === 5
+            ? Math.round(alloc.hoursPerDay * fridayScale * 10) / 10
+            : alloc.hoursPerDay;
 
           if (!byProject[alloc.projectId]) {
             byProject[alloc.projectId] = {
@@ -69,13 +84,13 @@ export async function GET(req: Request) {
               projectColor: alloc.project.color,
             };
           }
-          byProject[alloc.projectId].planned += alloc.hoursPerDay;
+          byProject[alloc.projectId].planned += hours;
 
           if (!byProjectDay[alloc.projectId]) {
             byProjectDay[alloc.projectId] = {};
           }
           byProjectDay[alloc.projectId][dateStr] =
-            (byProjectDay[alloc.projectId][dateStr] || 0) + alloc.hoursPerDay;
+            (byProjectDay[alloc.projectId][dateStr] || 0) + hours;
         }
         current.setDate(current.getDate() + 1);
       }

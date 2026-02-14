@@ -3,7 +3,7 @@ const { withSentryConfig } = require("@sentry/nextjs");
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   env: {
-    NEXT_PUBLIC_DEMO_DATE: process.env.NEXT_PUBLIC_DEMO_DATE || "",
+    DEMO_DATE_PIN: process.env.NEXT_PUBLIC_DEMO_DATE || "",
   },
   images: {
     remotePatterns: [

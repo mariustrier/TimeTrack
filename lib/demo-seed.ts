@@ -1507,68 +1507,112 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
   await db.companyExpense.createMany({ data: overheadEntries });
 
   // ── RESOURCE ALLOCATIONS ───────────────────────────────────
-  // Forward-looking: Feb–Apr 2026 (12 weeks forward)
-  // Every salaried employee's allocations sum to their daily target (7.4h or 6h for Katrine)
-  // Stories preserved: Jonas overbooked, Nadia project transition, Sofie D contract ending
+  // Cover BOTH historical (dataStart → today) and forward (today → +12wk) periods.
+  // hoursPerDay = Mon-Thu rate; the planned-hours API auto-scales Friday to 7h for 37h employees.
+  // All salaried employees sum to 7.5h/day Mon-Thu (→ 37h/wk with 7h Fri).
+
+  const wk8 = addWeeks(dataStart, 8);   // ~Oct: KHV/KON start for some
+  const wk13 = addWeeks(dataStart, 13); // ~Nov: Amara switches HVF→KHV
 
   await db.resourceAllocation.createMany({
     data: [
-      // Marta (7.4h/day = 37h/wk): HVF 3h + KHV 2h + INT 2.5h = 7.5h
-      { companyId, userId: adminUserId, projectId: hvf.id, startDate: today, endDate: addWeeks(today, 12), hoursPerDay: 3, status: "confirmed" },
-      { companyId, userId: adminUserId, projectId: khv.id, startDate: today, endDate: addWeeks(today, 12), hoursPerDay: 2, status: "confirmed" },
-      { companyId, userId: adminUserId, projectId: int.id, startDate: today, endDate: addWeeks(today, 12), hoursPerDay: 2.5, status: "confirmed" },
-      // Anders (7.4h/day): HVF 4.5h + KHV 2h + INT 1h = 7.5h
-      { companyId, userId: anders.id, projectId: hvf.id, startDate: today, endDate: addWeeks(today, 12), hoursPerDay: 4.5, status: "confirmed" },
-      { companyId, userId: anders.id, projectId: khv.id, startDate: today, endDate: addWeeks(today, 10), hoursPerDay: 2, status: "confirmed" },
-      { companyId, userId: anders.id, projectId: int.id, startDate: today, endDate: addWeeks(today, 12), hoursPerDay: 1, status: "confirmed" },
-      // Jonas (7.4h/day): wk 1-4 OVERBOOKED (HVF 5.5 + KON 2 + INT 0.5 = 8h), wk 5-7 normal, wk 8-12 slight over
-      { companyId, userId: jonas.id, projectId: hvf.id, startDate: today, endDate: addWeeks(today, 12), hoursPerDay: 5.5, status: "confirmed" },
-      { companyId, userId: jonas.id, projectId: kon.id, startDate: today, endDate: addWeeks(today, 4), hoursPerDay: 2, status: "confirmed" },
-      { companyId, userId: jonas.id, projectId: int.id, startDate: today, endDate: addWeeks(today, 12), hoursPerDay: 0.5, status: "confirmed" },
+      // ── Marta (37h/wk) ──
+      // Historical early (dataStart→wk8): HVF 5h + INT 2.5h = 7.5h
+      { companyId, userId: adminUserId, projectId: hvf.id, startDate: dataStart, endDate: wk8, hoursPerDay: 5, status: "confirmed" },
+      { companyId, userId: adminUserId, projectId: int.id, startDate: dataStart, endDate: wk8, hoursPerDay: 2.5, status: "confirmed" },
+      // Historical+forward (wk8→today+12): HVF 3h + KHV 2h + INT 2.5h = 7.5h
+      { companyId, userId: adminUserId, projectId: hvf.id, startDate: wk8, endDate: addWeeks(today, 12), hoursPerDay: 3, status: "confirmed" },
+      { companyId, userId: adminUserId, projectId: khv.id, startDate: wk8, endDate: addWeeks(today, 12), hoursPerDay: 2, status: "confirmed" },
+      { companyId, userId: adminUserId, projectId: int.id, startDate: wk8, endDate: addWeeks(today, 12), hoursPerDay: 2.5, status: "confirmed" },
+
+      // ── Anders (37h/wk) ──
+      // Early (dataStart→wk8): HVF 6h + INT 1.5h = 7.5h
+      { companyId, userId: anders.id, projectId: hvf.id, startDate: dataStart, endDate: wk8, hoursPerDay: 6, status: "confirmed" },
+      { companyId, userId: anders.id, projectId: int.id, startDate: dataStart, endDate: wk8, hoursPerDay: 1.5, status: "confirmed" },
+      // Main (wk8→today+12): HVF 4.5h + KHV 2h + INT 1h = 7.5h
+      { companyId, userId: anders.id, projectId: hvf.id, startDate: wk8, endDate: addWeeks(today, 12), hoursPerDay: 4.5, status: "confirmed" },
+      { companyId, userId: anders.id, projectId: khv.id, startDate: wk8, endDate: addWeeks(today, 12), hoursPerDay: 2, status: "confirmed" },
+      { companyId, userId: anders.id, projectId: int.id, startDate: wk8, endDate: addWeeks(today, 12), hoursPerDay: 1, status: "confirmed" },
+
+      // ── Jonas (37h/wk) ──
+      // Early (dataStart→wk8): HVF 6.5h + INT 1h = 7.5h
+      { companyId, userId: jonas.id, projectId: hvf.id, startDate: dataStart, endDate: wk8, hoursPerDay: 6.5, status: "confirmed" },
+      { companyId, userId: jonas.id, projectId: int.id, startDate: dataStart, endDate: addWeeks(today, 12), hoursPerDay: 0.5, status: "confirmed" },
+      // Main (wk8→today): HVF 5.5h + KON 1.5h = 7.5h (+ INT 0.5)
+      { companyId, userId: jonas.id, projectId: hvf.id, startDate: wk8, endDate: addWeeks(today, 12), hoursPerDay: 5.5, status: "confirmed" },
+      { companyId, userId: jonas.id, projectId: kon.id, startDate: wk8, endDate: addWeeks(today, 4), hoursPerDay: 1.5, status: "confirmed" },
+      // Forward overbooked (today+7→+12): KHV 2.5h added
       { companyId, userId: jonas.id, projectId: khv.id, startDate: addWeeks(today, 7), endDate: addWeeks(today, 12), hoursPerDay: 2.5, status: "tentative" },
-      // Amara (7.4h/day): KHV 3h + SBK 3.5h + INT 1h = 7.5h
-      { companyId, userId: amara.id, projectId: khv.id, startDate: today, endDate: addWeeks(today, 10), hoursPerDay: 3, status: "confirmed" },
-      { companyId, userId: amara.id, projectId: sbk.id, startDate: today, endDate: addWeeks(today, 8), hoursPerDay: 3.5, status: "confirmed" },
-      { companyId, userId: amara.id, projectId: int.id, startDate: today, endDate: addWeeks(today, 10), hoursPerDay: 1, status: "confirmed" },
-      // Katrine (6h/day = 30h/wk): wk 1-6 VHT 4h + HVF 2h = 6h, wk 7-12 HVF 4h + INT 2h = 6h
-      { companyId, userId: katrine.id, projectId: vht.id, startDate: today, endDate: addWeeks(today, 6), hoursPerDay: 4, status: "confirmed" },
-      { companyId, userId: katrine.id, projectId: hvf.id, startDate: today, endDate: addWeeks(today, 6), hoursPerDay: 2, status: "confirmed" },
+
+      // ── Amara (37h/wk) ──
+      // Early (dataStart→wk13): HVF 4h + SBK 3.5h = 7.5h
+      { companyId, userId: amara.id, projectId: hvf.id, startDate: dataStart, endDate: wk13, hoursPerDay: 4, status: "confirmed" },
+      { companyId, userId: amara.id, projectId: sbk.id, startDate: dataStart, endDate: wk13, hoursPerDay: 3.5, status: "confirmed" },
+      // Main (wk13→today+10): KHV 4h + SBK 3.5h = 7.5h
+      { companyId, userId: amara.id, projectId: khv.id, startDate: wk13, endDate: addWeeks(today, 10), hoursPerDay: 4, status: "confirmed" },
+      { companyId, userId: amara.id, projectId: sbk.id, startDate: wk13, endDate: addWeeks(today, 10), hoursPerDay: 3.5, status: "confirmed" },
+
+      // ── Katrine (30h/wk = 6h/day, no Friday scaling) ──
+      // Historical pre-Jan (dataStart→wk22): VHT 1.5h + ELM 2h + HVF 1.5h + INT 1h = 6h
+      { companyId, userId: katrine.id, projectId: vht.id, startDate: dataStart, endDate: addWeeks(dataStart, 22), hoursPerDay: 1.5, status: "confirmed" },
+      { companyId, userId: katrine.id, projectId: elm.id, startDate: dataStart, endDate: addWeeks(dataStart, 22), hoursPerDay: 2, status: "confirmed" },
+      { companyId, userId: katrine.id, projectId: hvf.id, startDate: dataStart, endDate: addWeeks(dataStart, 22), hoursPerDay: 1.5, status: "confirmed" },
+      { companyId, userId: katrine.id, projectId: int.id, startDate: dataStart, endDate: addWeeks(dataStart, 22), hoursPerDay: 1, status: "confirmed" },
+      // Post-Jan (wk22→today+6): HVF 4h + INT 2h = 6h
+      { companyId, userId: katrine.id, projectId: hvf.id, startDate: addWeeks(dataStart, 22), endDate: addWeeks(today, 6), hoursPerDay: 4, status: "confirmed" },
+      { companyId, userId: katrine.id, projectId: int.id, startDate: addWeeks(dataStart, 22), endDate: addWeeks(today, 6), hoursPerDay: 2, status: "confirmed" },
+      // Forward (today+6→+12): HVF 4h + INT 2h = 6h
       { companyId, userId: katrine.id, projectId: hvf.id, startDate: addWeeks(today, 6), endDate: addWeeks(today, 12), hoursPerDay: 4, status: "tentative" },
       { companyId, userId: katrine.id, projectId: int.id, startDate: addWeeks(today, 6), endDate: addWeeks(today, 12), hoursPerDay: 2, status: "tentative" },
-      // Erik (7.4h/day): HVF 4.5h + VHT 1h (wk 1-6) + ELM 1h (wk 1-4) + INT 1h = 7.5h
-      { companyId, userId: erik.id, projectId: hvf.id, startDate: today, endDate: addWeeks(today, 12), hoursPerDay: 4.5, status: "confirmed" },
-      { companyId, userId: erik.id, projectId: vht.id, startDate: today, endDate: addWeeks(today, 6), hoursPerDay: 1, status: "confirmed" },
-      { companyId, userId: erik.id, projectId: elm.id, startDate: today, endDate: addWeeks(today, 4), hoursPerDay: 1, status: "confirmed" },
-      { companyId, userId: erik.id, projectId: int.id, startDate: today, endDate: addWeeks(today, 12), hoursPerDay: 1, status: "confirmed" },
+
+      // ── Erik (37h/wk) ──
+      // Full period: HVF 4.5h + VHT 1h + ELM 1h + INT 1h = 7.5h
+      { companyId, userId: erik.id, projectId: hvf.id, startDate: dataStart, endDate: addWeeks(today, 12), hoursPerDay: 4.5, status: "confirmed" },
+      { companyId, userId: erik.id, projectId: vht.id, startDate: dataStart, endDate: addWeeks(today, 6), hoursPerDay: 1, status: "confirmed" },
+      { companyId, userId: erik.id, projectId: elm.id, startDate: dataStart, endDate: addWeeks(today, 4), hoursPerDay: 1, status: "confirmed" },
+      { companyId, userId: erik.id, projectId: int.id, startDate: dataStart, endDate: addWeeks(today, 12), hoursPerDay: 1, status: "confirmed" },
       { companyId, userId: erik.id, projectId: khv.id, startDate: addWeeks(today, 6), endDate: addWeeks(today, 12), hoursPerDay: 1, status: "tentative" },
-      // Sofia (7.4h/day): wk 1-4 ELM 4.5h + SBK 1.5h + INT 1.5h = 7.5h, wk 5-12 SBK 4h + ELM 2h + INT 1.5h = 7.5h
-      { companyId, userId: sofia.id, projectId: elm.id, startDate: today, endDate: addWeeks(today, 4), hoursPerDay: 4.5, status: "confirmed" },
-      { companyId, userId: sofia.id, projectId: sbk.id, startDate: today, endDate: addWeeks(today, 4), hoursPerDay: 1.5, status: "confirmed" },
-      { companyId, userId: sofia.id, projectId: int.id, startDate: today, endDate: addWeeks(today, 12), hoursPerDay: 1.5, status: "confirmed" },
-      { companyId, userId: sofia.id, projectId: sbk.id, startDate: addWeeks(today, 4), endDate: addWeeks(today, 12), hoursPerDay: 4, status: "tentative" },
-      { companyId, userId: sofia.id, projectId: elm.id, startDate: addWeeks(today, 4), endDate: addWeeks(today, 8), hoursPerDay: 2, status: "tentative" },
-      // Marcus (7.4h/day): SBK 4h + HVF 2.5h + INT 1h = 7.5h
-      { companyId, userId: marcus.id, projectId: sbk.id, startDate: today, endDate: addWeeks(today, 10), hoursPerDay: 4, status: "confirmed" },
-      { companyId, userId: marcus.id, projectId: hvf.id, startDate: today, endDate: addWeeks(today, 10), hoursPerDay: 2.5, status: "confirmed" },
-      { companyId, userId: marcus.id, projectId: int.id, startDate: today, endDate: addWeeks(today, 10), hoursPerDay: 1, status: "confirmed" },
-      // Lukas (7.4h/day): HVF 4.5h + SBK 2.5h + INT 0.5h = 7.5h
-      { companyId, userId: lukas.id, projectId: hvf.id, startDate: today, endDate: addWeeks(today, 12), hoursPerDay: 4.5, status: "confirmed" },
-      { companyId, userId: lukas.id, projectId: sbk.id, startDate: today, endDate: addWeeks(today, 8), hoursPerDay: 2.5, status: "confirmed" },
-      { companyId, userId: lukas.id, projectId: int.id, startDate: today, endDate: addWeeks(today, 12), hoursPerDay: 0.5, status: "confirmed" },
-      // Nadia (7.4h/day): wk 1-4 ELM 3h + KHV 2.5h + KON 1h + INT 1h = 7.5h, wk 5-7 KHV 4h + KON 1.5h + INT 2h = 7.5h, wk 8-12 KHV 5h + INT 1.5h + KON 1h = 7.5h
-      { companyId, userId: nadia.id, projectId: elm.id, startDate: today, endDate: addWeeks(today, 4), hoursPerDay: 3, status: "confirmed" },
-      { companyId, userId: nadia.id, projectId: khv.id, startDate: today, endDate: addWeeks(today, 4), hoursPerDay: 2.5, status: "confirmed" },
-      { companyId, userId: nadia.id, projectId: kon.id, startDate: today, endDate: addWeeks(today, 7), hoursPerDay: 1, status: "confirmed" },
-      { companyId, userId: nadia.id, projectId: int.id, startDate: today, endDate: addWeeks(today, 12), hoursPerDay: 1, status: "confirmed" },
-      { companyId, userId: nadia.id, projectId: khv.id, startDate: addWeeks(today, 4), endDate: addWeeks(today, 7), hoursPerDay: 4, status: "tentative" },
-      { companyId, userId: nadia.id, projectId: int.id, startDate: addWeeks(today, 4), endDate: addWeeks(today, 7), hoursPerDay: 1.5, status: "tentative" },
-      { companyId, userId: nadia.id, projectId: khv.id, startDate: addWeeks(today, 7), endDate: addWeeks(today, 12), hoursPerDay: 5, status: "tentative" },
-      { companyId, userId: nadia.id, projectId: kon.id, startDate: addWeeks(today, 7), endDate: addWeeks(today, 12), hoursPerDay: 0.5, status: "tentative" },
-      // Sofie D. (5h/day, Mon-Wed only): HVF 5h, contract ends wk 6
-      { companyId, userId: sofieD.id, projectId: hvf.id, startDate: today, endDate: addWeeks(today, 6), hoursPerDay: 5, status: "confirmed" },
-      // Oliver (5h/day, Tue-Fri): KHV 3h + KON 2h = 5h
-      { companyId, userId: oliver.id, projectId: khv.id, startDate: today, endDate: addWeeks(today, 8), hoursPerDay: 3, status: "confirmed" },
-      { companyId, userId: oliver.id, projectId: kon.id, startDate: today, endDate: addWeeks(today, 4), hoursPerDay: 2, status: "confirmed" },
+
+      // ── Sofia (37h/wk) ──
+      // Full: ELM 4h + INT 1.5h + SBK 2h = 7.5h
+      { companyId, userId: sofia.id, projectId: elm.id, startDate: dataStart, endDate: addWeeks(today, 8), hoursPerDay: 4, status: "confirmed" },
+      { companyId, userId: sofia.id, projectId: int.id, startDate: dataStart, endDate: addWeeks(today, 12), hoursPerDay: 1.5, status: "confirmed" },
+      { companyId, userId: sofia.id, projectId: sbk.id, startDate: addWeeks(dataStart, 12), endDate: addWeeks(today, 12), hoursPerDay: 2, status: "confirmed" },
+
+      // ── Marcus (37h/wk) ──
+      // Early (dataStart→wk13): HVF 6.5h + INT 1h = 7.5h
+      { companyId, userId: marcus.id, projectId: hvf.id, startDate: dataStart, endDate: wk13, hoursPerDay: 6.5, status: "confirmed" },
+      { companyId, userId: marcus.id, projectId: int.id, startDate: dataStart, endDate: addWeeks(today, 10), hoursPerDay: 1, status: "confirmed" },
+      // Main (wk13→today+10): SBK 4h + HVF 2.5h + INT 1h = 7.5h
+      { companyId, userId: marcus.id, projectId: sbk.id, startDate: wk13, endDate: addWeeks(today, 10), hoursPerDay: 4, status: "confirmed" },
+      { companyId, userId: marcus.id, projectId: hvf.id, startDate: wk13, endDate: addWeeks(today, 10), hoursPerDay: 2.5, status: "confirmed" },
+
+      // ── Lukas (37h/wk, starts wk8) ──
+      // Early (wk8→wk13): HVF 7h + INT 0.5h = 7.5h
+      { companyId, userId: lukas.id, projectId: hvf.id, startDate: wk8, endDate: wk13, hoursPerDay: 7, status: "confirmed" },
+      { companyId, userId: lukas.id, projectId: int.id, startDate: wk8, endDate: addWeeks(today, 12), hoursPerDay: 0.5, status: "confirmed" },
+      // Main (wk13→today+12): HVF 4.5h + SBK 2.5h + INT 0.5h = 7.5h
+      { companyId, userId: lukas.id, projectId: hvf.id, startDate: wk13, endDate: addWeeks(today, 12), hoursPerDay: 4.5, status: "confirmed" },
+      { companyId, userId: lukas.id, projectId: sbk.id, startDate: wk13, endDate: addWeeks(today, 12), hoursPerDay: 2.5, status: "confirmed" },
+
+      // ── Nadia (37h/wk) ──
+      // Early (dataStart→wk8): ELM 6h + INT 1.5h = 7.5h
+      { companyId, userId: nadia.id, projectId: elm.id, startDate: dataStart, endDate: wk8, hoursPerDay: 6, status: "confirmed" },
+      { companyId, userId: nadia.id, projectId: int.id, startDate: dataStart, endDate: addWeeks(today, 12), hoursPerDay: 1, status: "confirmed" },
+      // Main (wk8→today+4): ELM 2.5h + KHV 3h + KON 1h = 7.5h (+ INT 1h from above)
+      { companyId, userId: nadia.id, projectId: elm.id, startDate: wk8, endDate: addWeeks(today, 4), hoursPerDay: 2.5, status: "confirmed" },
+      { companyId, userId: nadia.id, projectId: khv.id, startDate: wk8, endDate: addWeeks(today, 12), hoursPerDay: 3, status: "confirmed" },
+      { companyId, userId: nadia.id, projectId: kon.id, startDate: wk8, endDate: addWeeks(today, 12), hoursPerDay: 1, status: "confirmed" },
+
+      // ── Sofie D. (15h/wk, Mon-Wed, hourly) ──
+      { companyId, userId: sofieD.id, projectId: hvf.id, startDate: dataStart, endDate: addWeeks(today, 6), hoursPerDay: 5, status: "confirmed" },
+
+      // ── Oliver (20h/wk, Tue-Fri, hourly) ──
+      // Early (dataStart→wk8): HVF 5h
+      { companyId, userId: oliver.id, projectId: hvf.id, startDate: dataStart, endDate: wk8, hoursPerDay: 5, status: "confirmed" },
+      // Main (wk8→today+8): KHV 3h + KON 2h = 5h
+      { companyId, userId: oliver.id, projectId: khv.id, startDate: wk8, endDate: addWeeks(today, 8), hoursPerDay: 3, status: "confirmed" },
+      { companyId, userId: oliver.id, projectId: kon.id, startDate: wk8, endDate: addWeeks(today, 4), hoursPerDay: 2, status: "confirmed" },
     ],
   });
 
