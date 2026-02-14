@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { format, isWeekend, isSameDay, isToday, isSameMonth, startOfMonth, startOfWeek, endOfWeek, getISOWeek } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useDateLocale, useLocale, useTranslations } from "@/lib/i18n";
+import { getToday } from "@/lib/demo-date";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { isCompanyHoliday, getCompanyHolidayName, type CustomHoliday } from "@/lib/holidays";
 import { getDailyTarget, getEffectiveWeeklyCapacity } from "@/lib/calculations";
@@ -95,8 +96,7 @@ export function ResourceGrid({
   const { locale } = useLocale();
   const t = useTranslations("resourcePlanner");
   const tc = useTranslations("common");
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = getToday();
 
   const isMonthView = viewMode === "month";
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { getToday } from "@/lib/demo-date";
 import {
   startOfWeek,
   endOfWeek,
@@ -168,7 +169,7 @@ export default function DashboardPage() {
     presales: tc("preSales"),
   };
 
-  const [currentWeek, setCurrentWeek] = useState(new Date());
+  const [currentWeek, setCurrentWeek] = useState(getToday());
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -192,12 +193,12 @@ export default function DashboardPage() {
   const [isHourly, setIsHourly] = useState(false);
   const [vacationTrackingUnit, setVacationTrackingUnit] = useState("days");
   const [vacationHoursPerYear, setVacationHoursPerYear] = useState<number | null>(null);
-  const vacationDaysTotal = isHourly ? 0 : Math.round((2.08 * (new Date().getMonth() + 1) + bonusVacationDays) * 100) / 100;
+  const vacationDaysTotal = isHourly ? 0 : Math.round((2.08 * (getToday().getMonth() + 1) + bonusVacationDays) * 100) / 100;
   const [weeklyTarget, setWeeklyTarget] = useState(40);
   const isVacationHours = vacationTrackingUnit === "hours";
   const vacationHoursUsed = isVacationHours ? Math.round(vacationDaysUsed * (weeklyTarget / 5) * 100) / 100 : 0;
   const vacationHoursTotal = isVacationHours
-    ? Math.round(((vacationHoursPerYear ?? 0) / 12 * (new Date().getMonth() + 1) + bonusVacationDays) * 100) / 100
+    ? Math.round(((vacationHoursPerYear ?? 0) / 12 * (getToday().getMonth() + 1) + bonusVacationDays) * 100) / 100
     : 0;
   const [priorFlexBalance, setPriorFlexBalance] = useState(0);
   const [weekNote, setWeekNote] = useState<{ action: string; reason: string | null; createdAt: string } | null>(null);
@@ -868,7 +869,7 @@ export default function DashboardPage() {
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setCurrentWeek(new Date())}>
+          <Button variant="outline" size="sm" onClick={() => setCurrentWeek(getToday())}>
             {tc("today")}
           </Button>
           <Button variant="ghost" size="icon" onClick={() => fetchData(true)} className="ml-1">

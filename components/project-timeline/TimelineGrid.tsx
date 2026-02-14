@@ -4,6 +4,7 @@ import { useMemo, useState, useCallback, useRef, Fragment } from "react";
 import { format, isSameMonth } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useDateLocale, useTranslations } from "@/lib/i18n";
+import { getToday } from "@/lib/demo-date";
 import { Button } from "@/components/ui/button";
 import { Plus, Diamond, CheckCircle, ChevronRight, ChevronDown, Flag, Handshake, Rocket, Eye, CalendarDays } from "lucide-react";
 import { ProjectBar } from "./ProjectBar";
@@ -605,7 +606,7 @@ export function TimelineGrid({
                             };
 
                             const dueDate = new Date(ms.dueDate + "T00:00:00");
-                            const today = new Date(); today.setHours(0,0,0,0);
+                            const today = getToday(); today.setHours(0,0,0,0);
                             const isOverdue = dueDate < today && !ms.completed;
 
                             return (

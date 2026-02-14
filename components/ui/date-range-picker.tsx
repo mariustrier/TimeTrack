@@ -16,6 +16,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useTranslations } from "@/lib/i18n";
+import { getToday } from "@/lib/demo-date";
 
 export interface DateRange {
   from: Date;
@@ -41,32 +42,32 @@ export function DateRangePicker({
   const [customTo, setCustomTo] = useState(format(value.to, "yyyy-MM-dd"));
 
   const presets = [
-    { label: t("last7Days"), from: subDays(new Date(), 7), to: new Date() },
-    { label: t("last30Days"), from: subDays(new Date(), 30), to: new Date() },
+    { label: t("last7Days"), from: subDays(getToday(), 7), to: getToday() },
+    { label: t("last30Days"), from: subDays(getToday(), 30), to: getToday() },
     {
       label: t("thisMonth"),
-      from: startOfMonth(new Date()),
-      to: new Date(),
+      from: startOfMonth(getToday()),
+      to: getToday(),
     },
     {
       label: t("last3Months"),
-      from: subMonths(new Date(), 3),
-      to: new Date(),
+      from: subMonths(getToday(), 3),
+      to: getToday(),
     },
     {
       label: t("last6Months"),
-      from: subMonths(new Date(), 6),
-      to: new Date(),
+      from: subMonths(getToday(), 6),
+      to: getToday(),
     },
     {
       label: t("last12Months"),
-      from: subMonths(new Date(), 12),
-      to: new Date(),
+      from: subMonths(getToday(), 12),
+      to: getToday(),
     },
     {
       label: t("yearToDate"),
-      from: startOfYear(new Date()),
-      to: new Date(),
+      from: startOfYear(getToday()),
+      to: getToday(),
     },
   ];
 

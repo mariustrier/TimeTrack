@@ -16,14 +16,15 @@ import { TeamInsights } from "@/components/analytics/team-insights";
 import { ProjectInsights } from "@/components/analytics/project-insights";
 import { CompanyInsights } from "@/components/analytics/company-insights";
 import { useTranslations } from "@/lib/i18n";
+import { getToday } from "@/lib/demo-date";
 import { PageGuide } from "@/components/ui/page-guide";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 
 export default function AnalyticsPage() {
   const t = useTranslations("analytics");
   const [dateRange, setDateRange] = useState<DateRange>({
-    from: subMonths(new Date(), 3),
-    to: new Date(),
+    from: subMonths(getToday(), 3),
+    to: getToday(),
   });
   const [approvalFilter, setApprovalFilter] = useState("approved_only");
   const [granularity, setGranularity] = useState<"monthly" | "weekly">(

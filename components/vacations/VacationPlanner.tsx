@@ -5,6 +5,7 @@ import { differenceInBusinessDays, startOfMonth, endOfMonth, format } from "date
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useTranslations, useDateLocale } from "@/lib/i18n";
+import { getToday } from "@/lib/demo-date";
 
 const MONTHLY_ACCRUAL = 2.08;
 
@@ -53,8 +54,8 @@ export function VacationPlanner({ requests, bonusDays, isHourly, vacationTrackin
   const t = useTranslations("vacations");
   const dateLocale = useDateLocale();
 
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth(); // 0-indexed
+  const currentYear = getToday().getFullYear();
+  const currentMonth = getToday().getMonth(); // 0-indexed
   const isHoursMode = vacationTrackingUnit === "hours";
   const dailyTarget = (weeklyTarget ?? 37) / 5;
   const monthlyHoursAccrual = isHoursMode ? (vacationHoursPerYear ?? 0) / 12 : 0;

@@ -20,6 +20,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useTranslations } from "@/lib/i18n";
+import { getToday } from "@/lib/demo-date";
 import type {
   TimelineProject,
   TimelineActivity,
@@ -285,11 +286,11 @@ export function ProjectTimeline() {
 
   /* ─── Anchor / date helpers ─── */
   const WEEK_ANCHOR = useMemo(
-    () => startOfWeek(addWeeks(new Date(), -8), { weekStartsOn: 1 }),
+    () => startOfWeek(addWeeks(getToday(), -8), { weekStartsOn: 1 }),
     []
   );
   const DAY_ANCHOR = useMemo(
-    () => startOfDay(addDays(new Date(), -56)),
+    () => startOfDay(addDays(getToday(), -56)),
     []
   );
 
@@ -298,8 +299,8 @@ export function ProjectTimeline() {
   const TODAY_WEEK = useMemo(
     () =>
       viewScale === "day"
-        ? differenceInCalendarDays(new Date(), DAY_ANCHOR)
-        : differenceInCalendarWeeks(new Date(), WEEK_ANCHOR, { weekStartsOn: 1 }),
+        ? differenceInCalendarDays(getToday(), DAY_ANCHOR)
+        : differenceInCalendarWeeks(getToday(), WEEK_ANCHOR, { weekStartsOn: 1 }),
     [viewScale, DAY_ANCHOR, WEEK_ANCHOR]
   );
 

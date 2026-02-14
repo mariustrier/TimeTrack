@@ -68,6 +68,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { formatHours, formatPercentage } from "@/lib/calculations";
+import { getToday } from "@/lib/demo-date";
 import { SUPPORTED_CURRENCIES, convertAndFormat, convertAndFormatBudget } from "@/lib/currency";
 import { useTranslations, useDateLocale, useLocale } from "@/lib/i18n";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
@@ -138,7 +139,7 @@ export function AdminOverview() {
   const dateLocale = useDateLocale();
   const formatOpts = dateLocale ? { locale: dateLocale } : undefined;
 
-  const [currentWeek, setCurrentWeek] = useState(new Date());
+  const [currentWeek, setCurrentWeek] = useState(getToday());
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -773,7 +774,7 @@ export function AdminOverview() {
           <Button variant="outline" size="icon" onClick={() => setCurrentWeek(subWeeks(currentWeek, 1))}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="outline" onClick={() => setCurrentWeek(new Date())}>
+          <Button variant="outline" onClick={() => setCurrentWeek(getToday())}>
             {t("thisWeek")}
           </Button>
           <Button variant="outline" size="icon" onClick={() => setCurrentWeek(addWeeks(currentWeek, 1))}>

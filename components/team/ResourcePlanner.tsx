@@ -23,6 +23,7 @@ import { BulkActionToolbar } from "@/components/resource-planner/BulkActionToolb
 import { getDailyTarget, getEffectiveWeeklyCapacity } from "@/lib/calculations";
 import { isCompanyHoliday, type CustomHoliday } from "@/lib/holidays";
 import { isWeekend } from "date-fns";
+import { getToday } from "@/lib/demo-date";
 
 export interface Employee {
   id: string;
@@ -97,7 +98,7 @@ export function ResourcePlanner() {
   const t = useTranslations("resourcePlanner");
 
   const [viewMode, setViewMode] = useState<ViewMode>("twoWeeks");
-  const [currentDate, setCurrentDate] = useState(() => new Date());
+  const [currentDate, setCurrentDate] = useState(() => getToday());
   const [spans, setSpans] = useState<Record<ViewMode, number>>({
     week: 1,
     twoWeeks: 2,
@@ -248,7 +249,7 @@ export function ResourcePlanner() {
     }
   };
 
-  const goToToday = () => setCurrentDate(new Date());
+  const goToToday = () => setCurrentDate(getToday());
 
   // ── Popover handlers ──
 

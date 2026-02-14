@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { Flag, Handshake, Rocket, Eye, CalendarDays, AlertTriangle, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getToday } from "@/lib/demo-date";
 import type { TimelineMilestone, DeadlineIcon } from "./types";
 import type { LucideIcon } from "lucide-react";
 
@@ -22,7 +23,7 @@ interface DeadlineMarkerProps {
 
 export function DeadlineMarker({ milestone, projectColor, onClick }: DeadlineMarkerProps) {
   const today = useMemo(() => {
-    const d = new Date();
+    const d = getToday();
     d.setHours(0, 0, 0, 0);
     return d;
   }, []);

@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "@/lib/i18n";
+import { getToday } from "@/lib/demo-date";
 import { InlineEditCell } from "./InlineEditCell";
 import { ActivityBlock } from "./ActivityBlock";
 import type { TimelineActivity, TimelineColumn, DragState } from "./types";
@@ -68,7 +69,7 @@ export function ActivityRow({
   const endDate = isBeingDragged && dragPreview ? dragPreview.end : rawEndDate;
 
   const today = useMemo(() => {
-    const d = new Date();
+    const d = getToday();
     d.setHours(0, 0, 0, 0);
     return d;
   }, []);
