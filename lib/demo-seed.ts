@@ -949,17 +949,15 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
   const febStart = new Date(2026, 1, 1, 12, 0, 0);
   const submittedWeekStart = addWeeks(thisMonday, -1);
 
-  // Only Jonas and Erik submitted last week — keeps admin badge at ~20 instead of 156
-  const submittedUserIds = new Set([jonas.id, erik.id]);
-
+  // Only Jonas submitted last Friday — keeps admin badge at ~4
   function getApproval(d: Date, userId: string): { approvalStatus: string; approvedAt: Date | null; approvedBy: string | null; submittedAt: Date | null } {
     const dk = dateKey(d);
     const febKey = dateKey(febStart);
     const subKey = dateKey(submittedWeekStart);
 
     if (dk >= febKey) {
-      if (dk >= subKey && submittedUserIds.has(userId)) {
-        // Last week, submitted employees only
+      if (dk >= subKey && userId === jonas.id && d.getDay() === 5) {
+        // Jonas's Friday only — just enough to show the approval feature
         return { approvalStatus: "submitted", approvedAt: null, approvedBy: null, submittedAt: addDays(d, 2) };
       }
       // Feb: draft (not yet submitted)
@@ -999,6 +997,15 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
         const approval = getApproval(day, pattern.userId);
 
         const dayEntries = pattern.getEntries(day, monthIdx);
+
+        // Ensure salaried employees hit ~100% utilization (bump primary project if under target)
+        if (!pattern.isHourly) {
+          const totalH = dayEntries.reduce((s, e) => s + e.hours, 0);
+          const dailyTarget = pattern.weeklyTarget / 5;
+          if (totalH < dailyTarget - 0.5) {
+            dayEntries[0].hours = snap(dayEntries[0].hours + (dailyTarget - totalH));
+          }
+        }
 
         for (const entry of dayEntries) {
           const descs = entry.billingStatus === "billable"
@@ -1322,9 +1329,8 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
       { companyId, entityType: "TimeEntry", entityId: "batch-jan-approve-2", action: "APPROVE", fromStatus: "submitted", toStatus: "approved", actorId: adminUserId, createdAt: new Date(2026, 0, 15, 10, 30) },
       { companyId, entityType: "TimeEntry", entityId: "batch-jan-approve-3", action: "APPROVE", fromStatus: "submitted", toStatus: "approved", actorId: adminUserId, createdAt: new Date(2026, 0, 22, 14, 0) },
       { companyId, entityType: "TimeEntry", entityId: "batch-jan-approve-4", action: "APPROVE", fromStatus: "submitted", toStatus: "approved", actorId: adminUserId, createdAt: new Date(2026, 0, 29, 11, 45) },
-      // Weekly submissions (only Jonas + Erik submitted last week)
+      // Weekly submissions (only Jonas submitted Friday)
       { companyId, entityType: "TimeEntry", entityId: "batch-submit-jonas", action: "SUBMIT", fromStatus: "draft", toStatus: "submitted", actorId: jonas.id, createdAt: addDays(today, -8) },
-      { companyId, entityType: "TimeEntry", entityId: "batch-submit-erik", action: "SUBMIT", fromStatus: "draft", toStatus: "submitted", actorId: erik.id, createdAt: addDays(today, -7) },
       // Billing edits
       { companyId, entityType: "TimeEntry", entityId: "billing-edit-1", action: "EDIT_BILLING", actorId: adminUserId, metadata: JSON.stringify({ project: "Villa Hansen Tilbygning", change: "billable → non_billable", hours: 2.5 }), createdAt: new Date(2025, 11, 12, 16, 0) },
       // Phase changes

@@ -40,7 +40,31 @@ export function ChartCard({
     const svgElement = container.querySelector("svg");
     if (!svgElement) return;
 
-    const svgData = new XMLSerializer().serializeToString(svgElement);
+    const { width, height } = svgElement.getBoundingClientRect();
+    if (!width || !height) return;
+
+    // Clone SVG and inline computed styles (CSS classes won't survive serialization)
+    const clone = svgElement.cloneNode(true) as SVGSVGElement;
+    clone.setAttribute("width", String(width));
+    clone.setAttribute("height", String(height));
+    clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+
+    const origEls = svgElement.querySelectorAll("*");
+    const cloneEls = clone.querySelectorAll("*");
+    const styleProps = ["fill", "stroke", "stroke-width", "stroke-dasharray", "opacity", "font-size", "font-family", "font-weight", "text-anchor", "dominant-baseline", "color"];
+    cloneEls.forEach((el, i) => {
+      const orig = origEls[i];
+      if (!orig) return;
+      const cs = window.getComputedStyle(orig);
+      styleProps.forEach((p) => {
+        const v = cs.getPropertyValue(p);
+        if (v && v !== "none" && v !== "normal" && v !== "0") {
+          (el as HTMLElement).style.setProperty(p, v);
+        }
+      });
+    });
+
+    const svgData = new XMLSerializer().serializeToString(clone);
     const svgBlob = new Blob([svgData], {
       type: "image/svg+xml;charset=utf-8",
     });
@@ -48,15 +72,16 @@ export function ChartCard({
 
     const img = document.createElement("img");
     img.onload = () => {
+      const scale = 2;
       const canvas = document.createElement("canvas");
-      canvas.width = svgElement.clientWidth * 2;
-      canvas.height = svgElement.clientHeight * 2;
+      canvas.width = width * scale;
+      canvas.height = height * scale;
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
-      ctx.scale(2, 2);
+      ctx.scale(scale, scale);
       ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
+      ctx.fillRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
       URL.revokeObjectURL(url);
       canvas.toBlob((blob) => {
         if (!blob) return;
