@@ -441,15 +441,16 @@ export function ProjectInsights({
           height={300}
         >
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={billableMix} margin={{ top: 10, right: 10, bottom: 40, left: 10 }}>
+            <BarChart data={billableMix} margin={{ top: 10, right: 10, bottom: 60, left: 10 }}>
               <CartesianGrid {...GRID_STYLE} />
               <XAxis
                 dataKey="name"
                 tick={{ ...AXIS_STYLE, fontSize: 9 }}
                 tickLine={false}
-                angle={-35}
+                angle={-45}
                 textAnchor="end"
                 interval={0}
+                height={70}
               />
               <YAxis tick={AXIS_STYLE} tickLine={false} />
               <Tooltip

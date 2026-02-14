@@ -1030,6 +1030,7 @@ export function aggregateRedList(
 
   return projects
     .filter((p) => {
+      if (!p.billable) return false; // Only billable projects can be at risk
       const data = projectData[p.id];
       if (!data) return false;
       const budgetPct = p.budgetHours && p.budgetHours > 0
