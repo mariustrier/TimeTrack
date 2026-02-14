@@ -1,107 +1,449 @@
 "use client";
 
-import { useState } from "react";
-import { subMonths } from "date-fns";
+import { useState, useEffect, useMemo } from "react";
+import { subMonths, format } from "date-fns";
+import { getToday } from "@/lib/demo-date";
+import { useTranslations } from "@/lib/i18n";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
+  KpiCard,
+  FontLoader,
+  AnalyticsKeyframes,
+  fmtCurrency,
+  fmt,
+} from "@/components/analytics/analytics-shared";
 import { EmployeeInsights } from "@/components/analytics/employee-insights";
 import { TeamInsights } from "@/components/analytics/team-insights";
 import { ProjectInsights } from "@/components/analytics/project-insights";
 import { CompanyInsights } from "@/components/analytics/company-insights";
-import { useTranslations } from "@/lib/i18n";
-import { getToday } from "@/lib/demo-date";
-import { PageGuide } from "@/components/ui/page-guide";
-import { InfoTooltip } from "@/components/ui/info-tooltip";
+
+// ---------------------------------------------------------------------------
+// TabBtn — inline tab button component
+// ---------------------------------------------------------------------------
+
+function TabBtn({
+  label,
+  active,
+  onClick,
+  count,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  count?: number | null;
+}) {
+  const [hover, setHover] = useState(false);
+
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        padding: "5px 12px",
+        borderRadius: 4,
+        border: "none",
+        cursor: "pointer",
+        fontSize: 12,
+        fontFamily: "'DM Sans', sans-serif",
+        fontWeight: 600,
+        background: active ? "#1F2937" : hover ? "rgba(0,0,0,0.04)" : "transparent",
+        color: active ? "#FFFFFF" : "#6B7280",
+        transition: "all 0.15s ease",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {label}
+      {count != null && count > 0 && (
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minWidth: 16,
+            height: 16,
+            padding: "0 5px",
+            borderRadius: 8,
+            fontSize: 10,
+            fontFamily: "'JetBrains Mono', monospace",
+            fontWeight: 700,
+            background: "#EF4444",
+            color: "#FFFFFF",
+            lineHeight: 1,
+          }}
+        >
+          {count}
+        </span>
+      )}
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ToggleBtn — inline toggle button for granularity / approval
+// ---------------------------------------------------------------------------
+
+function ToggleBtn({
+  label,
+  active,
+  onClick,
+  position,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  position: "left" | "right";
+}) {
+  const [hover, setHover] = useState(false);
+
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        padding: "4px 10px",
+        border: "none",
+        cursor: "pointer",
+        fontSize: 11,
+        fontFamily: "'DM Sans', sans-serif",
+        fontWeight: 600,
+        background: active ? "#1F2937" : hover ? "#F9FAFB" : "#FFFFFF",
+        color: active ? "#FFFFFF" : "#6B7280",
+        borderRadius:
+          position === "left" ? "4px 0 0 4px" : "0 4px 4px 0",
+        transition: "all 0.15s ease",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main Page
+// ---------------------------------------------------------------------------
 
 export default function AnalyticsPage() {
   const t = useTranslations("analytics");
-  const [dateRange, setDateRange] = useState<DateRange>({
-    from: subMonths(getToday(), 3),
-    to: getToday(),
-  });
-  const [approvalFilter, setApprovalFilter] = useState("approved_only");
+
+  const [activeTab, setActiveTab] = useState("employee");
   const [granularity, setGranularity] = useState<"monthly" | "weekly">(
     "monthly"
   );
+  const [approvalFilter, setApprovalFilter] = useState("approved_only");
+  const today = getToday();
+  const dateRange = useMemo(
+    () => ({ from: subMonths(today, 3), to: today }),
+    []
+  );
+  const [kpis, setKpis] = useState<any>(null);
+  const [redListCount, setRedListCount] = useState(0);
+
+  // -------------------------------------------------------------------------
+  // KPI fetch
+  // -------------------------------------------------------------------------
+  useEffect(() => {
+    const params = new URLSearchParams({
+      type: "kpis",
+      startDate: format(dateRange.from, "yyyy-MM-dd"),
+      endDate: format(dateRange.to, "yyyy-MM-dd"),
+      approvalFilter,
+    });
+    fetch(`/api/analytics?${params}`)
+      .then((r) => r.json())
+      .then((data) => setKpis(data))
+      .catch(() => {});
+  }, [dateRange, approvalFilter]);
+
+  // -------------------------------------------------------------------------
+  // Red list count — projects over 90% budget
+  // -------------------------------------------------------------------------
+  useEffect(() => {
+    const params = new URLSearchParams({
+      type: "project",
+      startDate: format(dateRange.from, "yyyy-MM-dd"),
+      endDate: format(dateRange.to, "yyyy-MM-dd"),
+      approvalFilter,
+    });
+    fetch(`/api/analytics?${params}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.projects && Array.isArray(data.projects)) {
+          const atRisk = data.projects.filter(
+            (p: any) =>
+              p.budgetHours &&
+              p.budgetHours > 0 &&
+              p.totalHours / p.budgetHours >= 0.9
+          );
+          setRedListCount(atRisk.length);
+        }
+      })
+      .catch(() => {});
+  }, [dateRange, approvalFilter]);
+
+  // -------------------------------------------------------------------------
+  // Tabs config
+  // -------------------------------------------------------------------------
+  const tabs = [
+    { key: "employee", label: t("employee") },
+    { key: "team", label: t("team") },
+    { key: "project", label: t("project"), count: redListCount },
+    { key: "company", label: t("company") },
+  ];
 
   return (
-    <div className="space-y-6">
-      <PageGuide pageId="analytics" titleKey="analyticsTitle" descKey="analyticsDesc" tips={["analyticsTip1", "analyticsTip2", "analyticsTip3"]} />
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-        <div className="flex flex-wrap items-center gap-3">
-          <Select value={granularity} onValueChange={(v) => setGranularity(v as "monthly" | "weekly")}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="monthly">{t("monthly")}</SelectItem>
-              <SelectItem value="weekly">{t("weekly")}</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={approvalFilter} onValueChange={setApprovalFilter}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="approved_only">{t("approvedOnly")}</SelectItem>
-              <SelectItem value="all">{t("allEntries")}</SelectItem>
-            </SelectContent>
-          </Select>
-          <InfoTooltip textKey="approvedOnlyFilter" size={13} />
-          <DateRangePicker value={dateRange} onChange={setDateRange} />
+    <div
+      style={{
+        fontFamily: "'DM Sans', sans-serif",
+        background: "#FAFAF9",
+        minHeight: "100vh",
+        color: "#1F2937",
+      }}
+    >
+      <FontLoader />
+      <AnalyticsKeyframes />
+
+      {/* ----------------------------------------------------------------- */}
+      {/* Header — sticky                                                    */}
+      {/* ----------------------------------------------------------------- */}
+      <div
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 40,
+          background: "#FFFFFF",
+          borderBottom: "1px solid #E5E7EB",
+          padding: "14px 28px",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 12,
+          }}
+        >
+          {/* Left side: title + tabs */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 16,
+            }}
+          >
+            <h1
+              style={{
+                fontSize: 15,
+                fontWeight: 700,
+                margin: 0,
+                fontFamily: "'DM Sans', sans-serif",
+                color: "#1F2937",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {t("title")}
+            </h1>
+
+            {/* Tab pills container */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                background: "#F3F4F6",
+                borderRadius: 6,
+                padding: 2,
+                gap: 1,
+              }}
+            >
+              {tabs.map((tab) => (
+                <TabBtn
+                  key={tab.key}
+                  label={tab.label}
+                  active={activeTab === tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  count={tab.count}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Right side: granularity toggle, approval toggle, date range */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            {/* Granularity toggle */}
+            <div
+              style={{
+                display: "flex",
+                border: "1px solid #E5E7EB",
+                borderRadius: 4,
+                overflow: "hidden",
+              }}
+            >
+              <ToggleBtn
+                label={t("monthly")}
+                active={granularity === "monthly"}
+                onClick={() => setGranularity("monthly")}
+                position="left"
+              />
+              <ToggleBtn
+                label={t("weekly")}
+                active={granularity === "weekly"}
+                onClick={() => setGranularity("weekly")}
+                position="right"
+              />
+            </div>
+
+            {/* Approval filter toggle */}
+            <div
+              style={{
+                display: "flex",
+                border: "1px solid #E5E7EB",
+                borderRadius: 4,
+                overflow: "hidden",
+              }}
+            >
+              <ToggleBtn
+                label={t("approvedOnly")}
+                active={approvalFilter === "approved_only"}
+                onClick={() => setApprovalFilter("approved_only")}
+                position="left"
+              />
+              <ToggleBtn
+                label={t("allEntries")}
+                active={approvalFilter === "all"}
+                onClick={() => setApprovalFilter("all")}
+                position="right"
+              />
+            </div>
+
+            {/* Date range display */}
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                padding: "4px 12px",
+                border: "1px solid #E5E7EB",
+                borderRadius: 4,
+                fontSize: 11,
+                fontFamily: "'JetBrains Mono', monospace",
+                fontWeight: 500,
+                color: "#6B7280",
+                background: "#FFFFFF",
+                whiteSpace: "nowrap",
+                userSelect: "none",
+              }}
+            >
+              {format(dateRange.from, "d. MMM")} {"\u2014"}{" "}
+              {format(dateRange.to, "d. MMM")}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="employee">
-        <TabsList>
-          <TabsTrigger value="employee">{t("employee")}</TabsTrigger>
-          <TabsTrigger value="team">{t("team")}</TabsTrigger>
-          <TabsTrigger value="project">{t("project")}</TabsTrigger>
-          <TabsTrigger value="company">{t("company")}</TabsTrigger>
-        </TabsList>
+      {/* ----------------------------------------------------------------- */}
+      {/* KPI Bar                                                            */}
+      {/* ----------------------------------------------------------------- */}
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          padding: "16px 28px",
+          overflowX: "auto",
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <KpiCard
+            label="Revenue Forecast (30d)"
+            value={kpis?.revenueForecast30d != null ? fmtCurrency(kpis.revenueForecast30d) : "\u2014"}
+            sub="fra planner-allokeringer"
+            color="#10B981"
+            trend="up"
+            help="Forventet omsætning de næste 30 dage beregnet ud fra ressourceallokeringer. Bekræftede = 100%, tentative = 50%."
+          />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <KpiCard
+            label="EBITDA Est."
+            value={kpis?.ebitda != null ? fmtCurrency(kpis.ebitda) : "\u2014"}
+            sub="revenue − cost − overhead"
+            color="#6366F1"
+            trend="up"
+            help="Estimeret driftsresultat for perioden. Viser om virksomheden er profitabel før skat og afskrivninger."
+          />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <KpiCard
+            label="Avg. Effective Rate"
+            value={kpis?.avgEffectiveRate != null ? `${kpis.avgEffectiveRate} kr./t` : "\u2014"}
+            sub="revenue ÷ total timer"
+            help="Den reelle gennemsnitlige timepris — samlet omsætning divideret med samlede timer."
+          />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <KpiCard
+            label="Unbilled Revenue"
+            value={kpis?.unbilledRevenue != null ? fmtCurrency(kpis.unbilledRevenue) : "\u2014"}
+            sub={kpis?.unbilledAvgAgeDays != null ? `gns. ${kpis.unbilledAvgAgeDays} dage aging` : undefined}
+            color="#F59E0B"
+            warn
+            help="Godkendte timer der endnu ikke er faktureret. Jo ældre, jo større risiko."
+          />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <KpiCard
+            label="Leave Liability"
+            value={kpis?.leaveLiability != null ? fmtCurrency(kpis.leaveLiability) : "\u2014"}
+            sub="optjent ferie × kostrate"
+            color="#9CA3AF"
+            help="Økonomisk forpligtelse fra optjent men ikke-afholdt ferie."
+          />
+        </div>
+      </div>
 
-        <TabsContent value="employee">
+      {/* ----------------------------------------------------------------- */}
+      {/* Tab Content                                                        */}
+      {/* ----------------------------------------------------------------- */}
+      <div style={{ padding: "0 28px 40px" }}>
+        {activeTab === "employee" && (
           <EmployeeInsights
             dateRange={dateRange}
             approvalFilter={approvalFilter}
             granularity={granularity}
           />
-        </TabsContent>
-
-        <TabsContent value="team">
+        )}
+        {activeTab === "team" && (
           <TeamInsights
             dateRange={dateRange}
             approvalFilter={approvalFilter}
             granularity={granularity}
           />
-        </TabsContent>
-
-        <TabsContent value="project">
+        )}
+        {activeTab === "project" && (
           <ProjectInsights
             dateRange={dateRange}
             approvalFilter={approvalFilter}
             granularity={granularity}
           />
-        </TabsContent>
-
-        <TabsContent value="company">
+        )}
+        {activeTab === "company" && (
           <CompanyInsights
             dateRange={dateRange}
             approvalFilter={approvalFilter}
             granularity={granularity}
           />
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
     </div>
   );
 }

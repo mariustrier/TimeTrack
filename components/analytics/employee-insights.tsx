@@ -1,38 +1,46 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { format } from "date-fns";
 import {
   PieChart,
   Pie,
   Cell,
-  Tooltip,
-  Legend,
+  BarChart,
+  Bar,
   LineChart,
   Line,
+  ComposedChart,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
+  Tooltip,
+  Legend,
   ReferenceLine,
-  ComposedChart,
-  Bar,
-  Line as Line2,
   ReferenceArea,
+  ResponsiveContainer,
 } from "recharts";
-import { useTranslations } from "@/lib/i18n";
-import { useChartTheme } from "@/lib/chart-theme";
-import { BILLING_COLORS, METRIC_COLORS } from "@/lib/chart-colors";
-import { ChartCard } from "@/components/analytics/chart-card";
 import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
-import { formatCurrency } from "@/lib/calculations";
+  KpiCard,
+  ChartCard,
+  MiniSelect,
+  ChartTooltip,
+  InfoTip,
+  BILLING_COLORS,
+  METRIC,
+  AXIS_STYLE,
+  GRID_STYLE,
+  fmt,
+  fmtCurrency,
+} from "@/components/analytics/analytics-shared";
 import { withProjection } from "@/lib/analytics-utils";
 import { getToday } from "@/lib/demo-date";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 interface EmployeeInsightsProps {
   dateRange: { from: Date; to: Date };
@@ -45,15 +53,30 @@ interface Member {
   name: string;
 }
 
+interface Kpis {
+  billableUtil: number;
+  totalHours: number;
+  flexBalance: number;
+  absenceDays: number;
+}
+
 interface TimeDistributionEntry {
   status: string;
   hours: number;
+  fill: string;
+}
+
+interface PhaseBreakdownEntry {
+  name: string;
+  hours: number;
+  color: string;
 }
 
 interface UtilizationTrendEntry {
   period: string;
   billableUtil: number;
   totalUtil: number;
+  plannedUtil?: number;
 }
 
 interface ProfitabilityEntry {
@@ -63,24 +86,36 @@ interface ProfitabilityEntry {
   profit: number;
 }
 
-const STATUS_LABEL_KEYS: Record<string, string> = {
-  billable: "billable",
-  included: "included",
-  non_billable: "nonBillable",
-  internal: "internal",
-  presales: "preSales",
+interface FlexTrendEntry {
+  period: string;
+  flex: number;
+}
+
+// ---------------------------------------------------------------------------
+// Status display labels
+// ---------------------------------------------------------------------------
+
+const STATUS_LABELS: Record<string, string> = {
+  billable: "Fakturerbar",
+  included: "Inkluderet",
+  nonBillable: "Ikke-fakturerbar",
+  non_billable: "Ikke-fakturerbar",
+  internal: "Intern",
+  presales: "Pre-sales",
 };
+
+// ---------------------------------------------------------------------------
+// Pie label renderer
+// ---------------------------------------------------------------------------
 
 const RADIAN = Math.PI / 180;
 
-function renderCustomLabel(props: any) {
+function renderPieLabel(props: any) {
   const { cx, cy, midAngle, innerRadius, outerRadius, percent } = props;
+  if (percent < 0.05) return null;
   const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
   const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
-  if (percent < 0.05) return null;
-
   return (
     <text
       x={x}
@@ -88,41 +123,56 @@ function renderCustomLabel(props: any) {
       fill="#fff"
       textAnchor="middle"
       dominantBaseline="central"
-      fontSize={12}
-      fontWeight={600}
+      style={{ fontSize: 12, fontWeight: 600 }}
     >
       {`${(percent * 100).toFixed(0)}%`}
     </text>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Util color helper
+// ---------------------------------------------------------------------------
+
+function utilColor(pct: number): string {
+  if (pct >= 70) return "#10B981";
+  if (pct >= 55) return "#F59E0B";
+  return "#EF4444";
+}
+
+function flexColor(val: number): string {
+  const abs = Math.abs(val);
+  if (abs > 30) return "#EF4444";
+  if (abs > 15) return "#F59E0B";
+  return "#10B981";
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export function EmployeeInsights({
   dateRange,
   approvalFilter,
   granularity,
 }: EmployeeInsightsProps) {
-  const t = useTranslations("analytics");
-  const tc = useTranslations("common");
-  const theme = useChartTheme();
-
   const [members, setMembers] = useState<Member[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
-  const [currency, setCurrency] = useState("USD");
   const [loading, setLoading] = useState(false);
   const [membersLoading, setMembersLoading] = useState(true);
 
-  const [timeDistribution, setTimeDistribution] = useState<
-    TimeDistributionEntry[]
-  >([]);
-  const [utilizationTrend, setUtilizationTrend] = useState<
-    UtilizationTrendEntry[]
-  >([]);
+  const [kpis, setKpis] = useState<Kpis | null>(null);
+  const [timeDistribution, setTimeDistribution] = useState<TimeDistributionEntry[]>([]);
+  const [phaseBreakdown, setPhaseBreakdown] = useState<PhaseBreakdownEntry[]>([]);
+  const [utilizationTrend, setUtilizationTrend] = useState<UtilizationTrendEntry[]>([]);
   const [profitability, setProfitability] = useState<ProfitabilityEntry[]>([]);
+  const [flexTrend, setFlexTrend] = useState<FlexTrendEntry[]>([]);
+  const [currency, setCurrency] = useState("DKK");
 
   const startDate = format(dateRange.from, "yyyy-MM-dd");
   const endDate = format(dateRange.to, "yyyy-MM-dd");
 
-  // Fetch members list
+  // ---- Fetch members list ------------------------------------------------
   useEffect(() => {
     setMembersLoading(true);
     const params = new URLSearchParams({
@@ -132,34 +182,27 @@ export function EmployeeInsights({
       granularity,
       approvalFilter,
     });
-
     fetch(`/api/analytics?${params}`)
-      .then((res) => res.json())
+      .then((r) => r.json())
       .then((data) => {
-        if (data.members) {
-          setMembers(data.members);
-        }
-        if (data.currency) {
-          setCurrency(data.currency);
-        }
+        if (data.members) setMembers(data.members);
+        if (data.currency) setCurrency(data.currency);
       })
-      .catch(() => {
-        setMembers([]);
-      })
-      .finally(() => {
-        setMembersLoading(false);
-      });
+      .catch(() => setMembers([]))
+      .finally(() => setMembersLoading(false));
   }, [startDate, endDate, granularity, approvalFilter]);
 
-  // Fetch employee data
+  // ---- Fetch employee data -----------------------------------------------
   const fetchEmployeeData = useCallback(() => {
     if (!selectedEmployeeId) {
+      setKpis(null);
       setTimeDistribution([]);
+      setPhaseBreakdown([]);
       setUtilizationTrend([]);
       setProfitability([]);
+      setFlexTrend([]);
       return;
     }
-
     setLoading(true);
     const params = new URLSearchParams({
       type: "employee",
@@ -169,295 +212,590 @@ export function EmployeeInsights({
       granularity,
       approvalFilter,
     });
-
     fetch(`/api/analytics?${params}`)
-      .then((res) => res.json())
+      .then((r) => r.json())
       .then((data) => {
-        setTimeDistribution(data.timeDistribution || []);
-        setUtilizationTrend(data.utilizationTrend || []);
-        setProfitability(data.profitability || []);
-        if (data.currency) {
-          setCurrency(data.currency);
-        }
+        setKpis(data.kpis ?? null);
+        setTimeDistribution(data.timeDistribution ?? []);
+        setPhaseBreakdown(data.phaseBreakdown ?? []);
+        setUtilizationTrend(data.utilizationTrend ?? []);
+        setProfitability(data.profitability ?? []);
+        setFlexTrend(data.flexTrend ?? []);
+        if (data.currency) setCurrency(data.currency);
       })
       .catch(() => {
+        setKpis(null);
         setTimeDistribution([]);
+        setPhaseBreakdown([]);
         setUtilizationTrend([]);
         setProfitability([]);
+        setFlexTrend([]);
       })
-      .finally(() => {
-        setLoading(false);
-      });
+      .finally(() => setLoading(false));
   }, [selectedEmployeeId, startDate, endDate, granularity, approvalFilter]);
 
   useEffect(() => {
     fetchEmployeeData();
   }, [fetchEmployeeData]);
 
-  const tooltipStyle = {
-    contentStyle: {
-      backgroundColor: theme.tooltipBg,
-      border: `1px solid ${theme.tooltipBorder}`,
-      borderRadius: 8,
-    },
-    itemStyle: { color: theme.tooltipText },
-    labelStyle: { color: theme.tooltipText },
-  };
+  // ---- Projected chart data ----------------------------------------------
+  const projectedUtilization = useMemo(
+    () =>
+      withProjection(utilizationTrend, getToday(), granularity, [
+        "billableUtil",
+        "totalUtil",
+      ]),
+    [utilizationTrend, granularity]
+  );
 
-  const pieData = timeDistribution.map((entry) => ({
-    ...entry,
-    label: tc(STATUS_LABEL_KEYS[entry.status] || entry.status),
-    color: BILLING_COLORS[entry.status] || "#94A3B8",
-  }));
+  const projectedProfitability = useMemo(
+    () =>
+      withProjection(profitability, getToday(), granularity, [
+        "revenue",
+        "cost",
+        "profit",
+      ]),
+    [profitability, granularity]
+  );
 
-  const hasTimeData = pieData.some((d) => d.hours > 0);
-  const hasUtilizationData = utilizationTrend.length > 0;
-  const hasProfitabilityData = profitability.length > 0;
+  const projectedFlex = useMemo(
+    () => withProjection(flexTrend, getToday(), granularity, ["flex"]),
+    [flexTrend, granularity]
+  );
 
+  // ---- Derived -----------------------------------------------------------
+  const hasTimeData = timeDistribution.some((d) => d.hours > 0);
+  const hasPhaseData = phaseBreakdown.length > 0;
+  const hasUtilData = utilizationTrend.length > 0;
+  const hasProfitData = profitability.length > 0;
+  const hasFlexData = flexTrend.length > 0;
+
+  const billableHours = useMemo(() => {
+    const b = timeDistribution.find((d) => d.status === "billable");
+    return b ? b.hours : 0;
+  }, [timeDistribution]);
+
+  const totalDistHours = useMemo(
+    () => timeDistribution.reduce((s, d) => s + d.hours, 0),
+    [timeDistribution]
+  );
+
+  const billablePct = totalDistHours > 0 ? Math.round((billableHours / totalDistHours) * 100) : 0;
+
+  // ---- Member select options ---------------------------------------------
+  const memberOptions = useMemo(
+    () => [
+      { value: "", label: "Vaelg medarbejder..." },
+      ...members.map((m) => ({ value: m.id, label: m.name })),
+    ],
+    [members]
+  );
+
+  // ---- Render ------------------------------------------------------------
   return (
-    <div className="space-y-6">
+    <div>
       {/* Employee selector */}
-      <div className="flex items-center gap-3">
-        <Select
+      <div style={{ marginBottom: 16 }}>
+        <MiniSelect
           value={selectedEmployeeId}
-          onValueChange={setSelectedEmployeeId}
-        >
-          <SelectTrigger className="w-[280px]">
-            <SelectValue placeholder={t("selectEmployee")} />
-          </SelectTrigger>
-          <SelectContent>
-            {members.map((member) => (
-              <SelectItem key={member.id} value={member.id}>
-                {member.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          onChange={setSelectedEmployeeId}
+          options={memberOptions}
+          width={220}
+        />
       </div>
 
-      {/* Empty state when no employee is selected */}
+      {/* Empty state */}
       {!selectedEmployeeId && !membersLoading && (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-sm text-muted-foreground">
-            {t("selectEmployee")}
-          </p>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "64px 0",
+            color: "#9CA3AF",
+            fontSize: 13,
+            fontFamily: "'DM Sans', sans-serif",
+          }}
+        >
+          Vaelg en medarbejder for at se indsigter
         </div>
       )}
 
-      {/* Charts */}
-      {selectedEmployeeId && (
-        <div className="space-y-6">
-          {/* Time Distribution - Full width */}
-          <ChartCard
-            title={t("timeDistribution")}
-            loading={loading}
-            isEmpty={!hasTimeData}
-            chartHeight={350}
-            exportData={pieData}
-            exportFilename="time-distribution"
-          >
-            <PieChart>
-              <Pie
-                data={pieData}
-                dataKey="hours"
-                nameKey="label"
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={100}
-                labelLine={false}
-                label={renderCustomLabel}
-              >
-                {pieData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={tooltipStyle.contentStyle}
-                itemStyle={tooltipStyle.itemStyle}
-                labelStyle={tooltipStyle.labelStyle}
-                formatter={(value: any, name: any) => [
-                  `${value.toFixed(1)}${tc("hourAbbrev")}`,
-                  name,
-                ]}
-              />
-              <Legend />
-            </PieChart>
-          </ChartCard>
+      {/* Loading */}
+      {selectedEmployeeId && loading && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "64px 0",
+            color: "#9CA3AF",
+            fontSize: 13,
+            fontFamily: "'DM Sans', sans-serif",
+          }}
+        >
+          Indlaeser data...
+        </div>
+      )}
 
-          {/* Utilization Trend + Profitability - Side by side */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Monthly Utilization Trend */}
+      {/* Content */}
+      {selectedEmployeeId && !loading && kpis && (
+        <>
+          {/* KPI row */}
+          <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+            <div style={{ flex: "1 1 0", minWidth: 160 }}>
+              <KpiCard
+                label="Gns. Udnyttelse"
+                value={`${kpis.billableUtil}%`}
+                color={utilColor(kpis.billableUtil)}
+                sub={`mod ${kpis.billableUtil >= 70 ? "80" : "70"}% gennemsnit`}
+                help="Andel af kapacitet brugt pa fakturerbart arbejde i perioden"
+              />
+            </div>
+            <div style={{ flex: "1 1 0", minWidth: 160 }}>
+              <KpiCard
+                label="Total Timer"
+                value={`${kpis.totalHours}t`}
+                sub={`${billablePct}% fakturerbar`}
+                help="Samlet antal registrerede timer i perioden"
+              />
+            </div>
+            <div style={{ flex: "1 1 0", minWidth: 160 }}>
+              <KpiCard
+                label="Flex Saldo"
+                value={`${kpis.flexBalance > 0 ? "+" : ""}${kpis.flexBalance}t`}
+                color={flexColor(kpis.flexBalance)}
+                sub="akkumuleret flex"
+                warn={Math.abs(kpis.flexBalance) > 30}
+                help="Akkumuleret fleksbalance — positiv = overarbejde, negativ = undertid"
+              />
+            </div>
+            <div style={{ flex: "1 1 0", minWidth: 160 }}>
+              <KpiCard
+                label="Fravaersdage"
+                value={`${kpis.absenceDays}`}
+                sub="ferie + sygdom"
+                help="Antal fravaersdage (ferie, sygdom, personlig) i perioden"
+              />
+            </div>
+          </div>
+
+          {/* Row: Time Distribution + Phase Breakdown */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+            {/* Time Distribution - Pie */}
             <ChartCard
-              title={t("utilizationTrend")}
-              loading={loading}
-              isEmpty={!hasUtilizationData}
-              chartHeight={300}
-              exportData={utilizationTrend}
-              exportFilename="utilization-trend"
+              title="Tidsfordeling"
+              height={300}
+              help="Fordeling af timer efter faktureringsstatus"
             >
-              <LineChart data={withProjection(utilizationTrend, getToday(), granularity, ["billableUtil", "totalUtil"])}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke={theme.grid}
-                />
-                <ReferenceArea y1={70} y2={85} fill="#10B981" fillOpacity={0.08} />
-                <XAxis
-                  dataKey="period"
-                  tick={{ fill: theme.textMuted, fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={{ stroke: theme.grid }}
-                />
-                <YAxis
-                  tick={{ fill: theme.textMuted, fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={{ stroke: theme.grid }}
-                  tickFormatter={(v) => `${v}%`}
-                />
-                <Tooltip
-                  contentStyle={tooltipStyle.contentStyle}
-                  itemStyle={tooltipStyle.itemStyle}
-                  labelStyle={tooltipStyle.labelStyle}
-                  formatter={(value: any) => [`${Number(value).toFixed(1)}%`]}
-                />
-                <Legend />
-                <ReferenceLine
-                  y={100}
-                  stroke={METRIC_COLORS.target}
-                  strokeDasharray="3 3"
-                  label={{
-                    value: t("targetLine"),
-                    fill: theme.textMuted,
-                    fontSize: 11,
+              {hasTimeData ? (
+                <ResponsiveContainer width="100%" height={280}>
+                  <PieChart>
+                    <Pie
+                      data={timeDistribution}
+                      dataKey="hours"
+                      nameKey="status"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={55}
+                      outerRadius={90}
+                      labelLine={false}
+                      label={renderPieLabel}
+                    >
+                      {timeDistribution.map((entry, i) => (
+                        <Cell key={i} fill={entry.fill} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      content={
+                        <ChartTooltip
+                          formatter={(v, k) =>
+                            `${v.toFixed(1)}t`
+                          }
+                        />
+                      }
+                    />
+                    <Legend
+                      formatter={(value: string) =>
+                        STATUS_LABELS[value] || value
+                      }
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: 280,
+                    color: "#9CA3AF",
+                    fontSize: 12,
+                    fontFamily: "'DM Sans', sans-serif",
                   }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="billableUtil"
-                  name={t("billableUtilization")}
-                  stroke={METRIC_COLORS.billableUtil}
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="totalUtil"
-                  name={t("totalUtilization")}
-                  stroke={METRIC_COLORS.totalUtil}
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="proj_billableUtil"
-                  stroke={METRIC_COLORS.billableUtil}
-                  strokeWidth={2}
-                  strokeDasharray="6 3"
-                  dot={false}
-                  legendType="none"
-                />
-                <Line
-                  type="monotone"
-                  dataKey="proj_totalUtil"
-                  stroke={METRIC_COLORS.totalUtil}
-                  strokeWidth={2}
-                  strokeDasharray="6 3"
-                  dot={false}
-                  legendType="none"
-                />
-              </LineChart>
+                >
+                  Ingen tidsdata
+                </div>
+              )}
             </ChartCard>
 
-            {/* Profitability Over Time */}
+            {/* Phase Breakdown - Horizontal bar */}
             <ChartCard
-              title={t("profitabilityOverTime")}
-              loading={loading}
-              isEmpty={!hasProfitabilityData}
-              chartHeight={300}
-              exportData={profitability}
-              exportFilename="profitability"
+              title="Fasefordeling"
+              height={300}
+              help="Timer fordelt pa projektfaser"
             >
-              <ComposedChart data={withProjection(profitability, getToday(), granularity, ["revenue", "cost", "profit"])}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke={theme.grid}
-                />
-                <XAxis
-                  dataKey="period"
-                  tick={{ fill: theme.textMuted, fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={{ stroke: theme.grid }}
-                />
-                <YAxis
-                  tick={{ fill: theme.textMuted, fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={{ stroke: theme.grid }}
-                  tickFormatter={(v) => formatCurrency(v, currency)}
-                />
-                <Tooltip
-                  contentStyle={tooltipStyle.contentStyle}
-                  itemStyle={tooltipStyle.itemStyle}
-                  labelStyle={tooltipStyle.labelStyle}
-                  formatter={(value: any, name: any) => [
-                    formatCurrency(value, currency),
-                    name,
-                  ]}
-                />
-                <Legend />
-                <Bar
-                  dataKey="revenue"
-                  name={t("revenue")}
-                  fill={METRIC_COLORS.revenue}
-                  radius={[4, 4, 0, 0]}
-                />
-                <Bar
-                  dataKey="cost"
-                  name={t("cost")}
-                  fill={METRIC_COLORS.cost}
-                  radius={[4, 4, 0, 0]}
-                />
-                <Line2
-                  type="monotone"
-                  dataKey="profit"
-                  name={t("profit")}
-                  stroke={METRIC_COLORS.profit}
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-                <Line2
-                  type="monotone"
-                  dataKey="proj_revenue"
-                  stroke={METRIC_COLORS.revenue}
-                  strokeWidth={2}
-                  strokeDasharray="6 3"
-                  dot={false}
-                  legendType="none"
-                />
-                <Line2
-                  type="monotone"
-                  dataKey="proj_cost"
-                  stroke={METRIC_COLORS.cost}
-                  strokeWidth={2}
-                  strokeDasharray="6 3"
-                  dot={false}
-                  legendType="none"
-                />
-                <Line2
-                  type="monotone"
-                  dataKey="proj_profit"
-                  stroke={METRIC_COLORS.profit}
-                  strokeWidth={2}
-                  strokeDasharray="6 3"
-                  dot={false}
-                  legendType="none"
-                />
-              </ComposedChart>
+              {hasPhaseData ? (
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={phaseBreakdown} layout="vertical">
+                    <CartesianGrid {...GRID_STYLE} />
+                    <XAxis
+                      type="number"
+                      tick={AXIS_STYLE}
+                      tickLine={false}
+                      axisLine={{ stroke: GRID_STYLE.stroke }}
+                      tickFormatter={(v: number) => `${v}t`}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      tick={AXIS_STYLE}
+                      tickLine={false}
+                      axisLine={{ stroke: GRID_STYLE.stroke }}
+                      width={120}
+                    />
+                    <Tooltip
+                      content={
+                        <ChartTooltip
+                          formatter={(v) => `${v.toFixed(1)}t`}
+                        />
+                      }
+                    />
+                    <Bar dataKey="hours" name="Timer" radius={[0, 4, 4, 0]}>
+                      {phaseBreakdown.map((entry, i) => (
+                        <Cell key={i} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: 280,
+                    color: "#9CA3AF",
+                    fontSize: 12,
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  Ingen fasedata
+                </div>
+              )}
             </ChartCard>
           </div>
-        </div>
+
+          {/* Full-width: Utilization Trend */}
+          <div style={{ marginBottom: 12 }}>
+            <ChartCard
+              title="Udnyttelsestrend"
+              height={260}
+              help="Fakturerbar og samlet udnyttelse over tid med planlagt maal"
+            >
+              {hasUtilData ? (
+                <ResponsiveContainer width="100%" height={260}>
+                  <LineChart data={projectedUtilization}>
+                    <CartesianGrid {...GRID_STYLE} />
+                    <ReferenceArea
+                      y1={70}
+                      y2={85}
+                      fill="#10B981"
+                      fillOpacity={0.08}
+                    />
+                    <ReferenceLine
+                      y={100}
+                      stroke="#9CA3AF"
+                      strokeDasharray="3 3"
+                      label={{
+                        value: "100%",
+                        fill: "#9CA3AF",
+                        fontSize: 10,
+                        position: "right",
+                      }}
+                    />
+                    <XAxis
+                      dataKey="period"
+                      tick={AXIS_STYLE}
+                      tickLine={false}
+                      axisLine={{ stroke: GRID_STYLE.stroke }}
+                    />
+                    <YAxis
+                      tick={AXIS_STYLE}
+                      tickLine={false}
+                      axisLine={{ stroke: GRID_STYLE.stroke }}
+                      tickFormatter={(v: number) => `${v}%`}
+                    />
+                    <Tooltip
+                      content={
+                        <ChartTooltip
+                          formatter={(v) => `${v.toFixed(1)}%`}
+                        />
+                      }
+                    />
+                    <Legend />
+                    {/* Planned (gray dashed) */}
+                    <Line
+                      type="monotone"
+                      dataKey="plannedUtil"
+                      name="Planlagt"
+                      stroke="#9CA3AF"
+                      strokeWidth={2}
+                      strokeDasharray="6 3"
+                      dot={false}
+                    />
+                    {/* Billable (green solid) */}
+                    <Line
+                      type="monotone"
+                      dataKey="billableUtil"
+                      name="Fakturerbar"
+                      stroke="#10B981"
+                      strokeWidth={2}
+                      dot={{ r: 3, fill: "#10B981" }}
+                      activeDot={{ r: 5 }}
+                    />
+                    {/* Total (indigo solid) */}
+                    <Line
+                      type="monotone"
+                      dataKey="totalUtil"
+                      name="Total"
+                      stroke="#6366F1"
+                      strokeWidth={2}
+                      dot={{ r: 3, fill: "#6366F1" }}
+                      activeDot={{ r: 5 }}
+                    />
+                    {/* Projections (dashed) */}
+                    <Line
+                      type="monotone"
+                      dataKey="proj_billableUtil"
+                      stroke="#10B981"
+                      strokeWidth={2}
+                      strokeDasharray="6 3"
+                      dot={false}
+                      legendType="none"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="proj_totalUtil"
+                      stroke="#6366F1"
+                      strokeWidth={2}
+                      strokeDasharray="6 3"
+                      dot={false}
+                      legendType="none"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: 260,
+                    color: "#9CA3AF",
+                    fontSize: 12,
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  Ingen udnyttelsesdata
+                </div>
+              )}
+            </ChartCard>
+          </div>
+
+          {/* Row: Profitability + Flex Balance Trend */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            {/* Profitability */}
+            <ChartCard
+              title="Rentabilitet"
+              height={300}
+              help="Omsaetning, omkostninger og profit over tid"
+            >
+              {hasProfitData ? (
+                <ResponsiveContainer width="100%" height={280}>
+                  <ComposedChart data={projectedProfitability}>
+                    <CartesianGrid {...GRID_STYLE} />
+                    <XAxis
+                      dataKey="period"
+                      tick={AXIS_STYLE}
+                      tickLine={false}
+                      axisLine={{ stroke: GRID_STYLE.stroke }}
+                    />
+                    <YAxis
+                      tick={AXIS_STYLE}
+                      tickLine={false}
+                      axisLine={{ stroke: GRID_STYLE.stroke }}
+                      tickFormatter={(v: number) => fmtCurrency(v)}
+                    />
+                    <Tooltip
+                      content={
+                        <ChartTooltip
+                          formatter={(v) => fmtCurrency(v)}
+                        />
+                      }
+                    />
+                    <Legend />
+                    <Bar
+                      dataKey="revenue"
+                      name="Omsaetning"
+                      fill={METRIC.revenue}
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Bar
+                      dataKey="cost"
+                      name="Omkostning"
+                      fill={METRIC.cost}
+                      radius={[4, 4, 0, 0]}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="profit"
+                      name="Profit"
+                      stroke={METRIC.profit}
+                      strokeWidth={2}
+                      dot={{ r: 3, fill: METRIC.profit }}
+                      activeDot={{ r: 5 }}
+                    />
+                    {/* Projections */}
+                    <Line
+                      type="monotone"
+                      dataKey="proj_revenue"
+                      stroke={METRIC.revenue}
+                      strokeWidth={2}
+                      strokeDasharray="6 3"
+                      dot={false}
+                      legendType="none"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="proj_cost"
+                      stroke={METRIC.cost}
+                      strokeWidth={2}
+                      strokeDasharray="6 3"
+                      dot={false}
+                      legendType="none"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="proj_profit"
+                      stroke={METRIC.profit}
+                      strokeWidth={2}
+                      strokeDasharray="6 3"
+                      dot={false}
+                      legendType="none"
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              ) : (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: 280,
+                    color: "#9CA3AF",
+                    fontSize: 12,
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  Ingen rentabilitetsdata
+                </div>
+              )}
+            </ChartCard>
+
+            {/* Flex Balance Trend */}
+            <ChartCard
+              title="Flex Saldo Trend"
+              height={300}
+              help="Fleksbalance over tid — groen zone er +/-5 timer"
+            >
+              {hasFlexData ? (
+                <ResponsiveContainer width="100%" height={280}>
+                  <AreaChart data={projectedFlex}>
+                    <CartesianGrid {...GRID_STYLE} />
+                    <ReferenceArea
+                      y1={-5}
+                      y2={5}
+                      fill="#10B981"
+                      fillOpacity={0.08}
+                    />
+                    <ReferenceLine
+                      y={0}
+                      stroke="#9CA3AF"
+                      strokeDasharray="3 3"
+                    />
+                    <XAxis
+                      dataKey="period"
+                      tick={AXIS_STYLE}
+                      tickLine={false}
+                      axisLine={{ stroke: GRID_STYLE.stroke }}
+                    />
+                    <YAxis
+                      tick={AXIS_STYLE}
+                      tickLine={false}
+                      axisLine={{ stroke: GRID_STYLE.stroke }}
+                      tickFormatter={(v: number) => `${v}t`}
+                    />
+                    <Tooltip
+                      content={
+                        <ChartTooltip
+                          formatter={(v) =>
+                            `${v > 0 ? "+" : ""}${v.toFixed(1)}t`
+                          }
+                        />
+                      }
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="flex"
+                      name="Flex"
+                      stroke="#6366F1"
+                      strokeWidth={2}
+                      fill="#6366F1"
+                      fillOpacity={0.15}
+                      dot={{ r: 3, fill: "#6366F1" }}
+                      activeDot={{ r: 5 }}
+                    />
+                    {/* Projection */}
+                    <Line
+                      type="monotone"
+                      dataKey="proj_flex"
+                      stroke="#6366F1"
+                      strokeWidth={2}
+                      strokeDasharray="6 3"
+                      dot={false}
+                      legendType="none"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: 280,
+                    color: "#9CA3AF",
+                    fontSize: 12,
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}
+                >
+                  Ingen flexdata
+                </div>
+              )}
+            </ChartCard>
+          </div>
+        </>
       )}
     </div>
   );

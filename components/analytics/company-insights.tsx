@@ -1,29 +1,47 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { format, parse, addMonths } from "date-fns";
-import { withProjection } from "@/lib/analytics-utils";
-import { getToday } from "@/lib/demo-date";
+import { useState, useEffect, useMemo } from "react";
+import { format } from "date-fns";
 import {
+  ResponsiveContainer,
   ComposedChart,
-  Area,
+  BarChart,
   Bar,
   Line,
   LineChart,
-  BarChart,
+  PieChart,
+  Pie,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
+  ReferenceLine,
+  ReferenceArea,
   Tooltip,
   Legend,
-  ReferenceArea,
 } from "recharts";
-import { useTranslations } from "@/lib/i18n";
-import { useChartTheme } from "@/lib/chart-theme";
-import { METRIC_COLORS, BILLING_COLORS, SERIES_COLORS } from "@/lib/chart-colors";
-import { ChartCard } from "@/components/analytics/chart-card";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatCurrency } from "@/lib/calculations";
+import {
+  KpiCard,
+  ChartCard,
+  MiniSelect,
+  ChartTooltip,
+  StatusDot,
+  BudgetBar,
+  BILLING_COLORS,
+  METRIC,
+  PIE_TEAM,
+  AXIS_STYLE,
+  GRID_STYLE,
+  fmt,
+  fmtCurrency,
+  ageColor,
+} from "@/components/analytics/analytics-shared";
+import { withProjection } from "@/lib/analytics-utils";
+import { getToday } from "@/lib/demo-date";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 interface CompanyInsightsProps {
   dateRange: { from: Date; to: Date };
@@ -31,67 +49,109 @@ interface CompanyInsightsProps {
   granularity: "monthly" | "weekly";
 }
 
-interface RevenueOverheadEntry {
+interface RevenueBridgeEntry {
   period: string;
+  actual: number | null;
+  forecast: number | null;
+  breakeven: number;
+}
+
+interface ClientConcentrationEntry {
+  name: string;
   revenue: number;
-  overhead: number;
-  contributionMargin: number;
-  projectExpenses?: number;
-  companyExpenses?: number;
+  pct: number;
+}
+
+interface InvoicePipelineEntry {
+  period: string;
+  draft: number;
+  sent: number;
+  paid: number;
+}
+
+interface BillingVelocityData {
+  avgDays: number;
+  buckets: { label: string; value: string; color: string }[];
+}
+
+interface CollectionSummaryData {
+  invoiced: number;
+  paid: number;
+  outstanding: number;
 }
 
 interface ExpenseBreakdownEntry {
   period: string;
-  travel: number;
-  materials: number;
-  software: number;
-  meals: number;
+  salaries: number;
   rent: number;
+  software: number;
   insurance: number;
   utilities: number;
-  salaries: number;
+  travel: number;
   other: number;
 }
 
 interface NonBillableTrendEntry {
   period: string;
-  totalPercent: number;
+  totalNB: number;
   internal: number;
   presales: number;
   nonBillable: number;
 }
 
-interface UnbilledWorkEntry {
-  projectName: string;
+interface UnbilledAgingEntry {
+  name: string;
+  revenue: number;
+  age: number;
   hours: number;
-  estimatedRevenue: number;
-  oldestEntryDate: string;
-  ageInDays: number;
-  entryCount: number;
 }
+
+// ---------------------------------------------------------------------------
+// Expense category colors
+// ---------------------------------------------------------------------------
+
+const EXPENSE_COLORS: Record<string, string> = {
+  salaries: "#10B981",
+  rent: "#6366F1",
+  insurance: "#F59E0B",
+  software: "#8B5CF6",
+  utilities: "#EF4444",
+  travel: "#3B82F6",
+  other: "#F97316",
+};
+
+const EXPENSE_LABELS: Record<string, string> = {
+  salaries: "Lønninger",
+  rent: "Husleje",
+  insurance: "Forsikring",
+  software: "Software",
+  utilities: "Forsyning",
+  travel: "Rejser",
+  other: "Andet",
+};
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 
 export function CompanyInsights({
   dateRange,
   approvalFilter,
   granularity,
 }: CompanyInsightsProps) {
-  const t = useTranslations("analytics");
-  const tc = useTranslations("common");
-  const theme = useChartTheme();
-
   const [loading, setLoading] = useState(true);
-  const [revenueOverhead, setRevenueOverhead] = useState<
-    RevenueOverheadEntry[]
-  >([]);
-  const [nonBillableTrend, setNonBillableTrend] = useState<
-    NonBillableTrendEntry[]
-  >([]);
-  const [unbilledWork, setUnbilledWork] = useState<UnbilledWorkEntry[]>([]);
+  const [revenueBridge, setRevenueBridge] = useState<RevenueBridgeEntry[]>([]);
+  const [clientConcentration, setClientConcentration] = useState<ClientConcentrationEntry[]>([]);
+  const [invoicePipeline, setInvoicePipeline] = useState<InvoicePipelineEntry[]>([]);
+  const [billingVelocity, setBillingVelocity] = useState<BillingVelocityData>({ avgDays: 0, buckets: [] });
+  const [collectionSummary, setCollectionSummary] = useState<CollectionSummaryData>({ invoiced: 0, paid: 0, outstanding: 0 });
   const [expenseBreakdown, setExpenseBreakdown] = useState<ExpenseBreakdownEntry[]>([]);
-  const [currency, setCurrency] = useState("USD");
+  const [nonBillableTrend, setNonBillableTrend] = useState<NonBillableTrendEntry[]>([]);
+  const [unbilledAging, setUnbilledAging] = useState<UnbilledAgingEntry[]>([]);
+  const [currency, setCurrency] = useState("DKK");
 
   useEffect(() => {
-    async function fetchData() {
+    const fetchData = async () => {
       setLoading(true);
       try {
         const params = new URLSearchParams({
@@ -101,414 +161,643 @@ export function CompanyInsights({
           granularity,
           approvalFilter,
         });
-
-        const res = await fetch(`/api/analytics?${params.toString()}`);
+        const res = await fetch(`/api/analytics?${params}`);
         if (!res.ok) throw new Error("Failed to fetch company analytics");
-
         const data = await res.json();
-        setRevenueOverhead(data.revenueOverhead ?? []);
-        setNonBillableTrend(data.nonBillableTrend ?? []);
-        setUnbilledWork(data.unbilledWork ?? []);
+        setRevenueBridge(data.revenueBridge ?? []);
+        setClientConcentration(data.clientConcentration ?? []);
+        setInvoicePipeline(data.invoicePipeline ?? []);
+        setBillingVelocity(data.billingVelocity ?? { avgDays: 0, buckets: [] });
+        setCollectionSummary(data.collectionSummary ?? { invoiced: 0, paid: 0, outstanding: 0 });
         setExpenseBreakdown(data.expenseBreakdown ?? []);
-        setCurrency(data.currency ?? "USD");
+        setNonBillableTrend(data.nonBillableTrend ?? []);
+        setUnbilledAging(data.unbilledAging ?? []);
+        setCurrency(data.currency ?? "DKK");
       } catch (err) {
         console.error("[CompanyInsights]", err);
-        setRevenueOverhead([]);
-        setNonBillableTrend([]);
-        setUnbilledWork([]);
+        setRevenueBridge([]);
+        setClientConcentration([]);
+        setInvoicePipeline([]);
         setExpenseBreakdown([]);
+        setNonBillableTrend([]);
+        setUnbilledAging([]);
       } finally {
         setLoading(false);
       }
-    }
-
+    };
     fetchData();
   }, [dateRange.from, dateRange.to, granularity, approvalFilter]);
 
-  const tooltipStyle = {
-    contentStyle: {
-      backgroundColor: theme.tooltipBg,
-      border: `1px solid ${theme.tooltipBorder}`,
-      borderRadius: 8,
-    },
-    itemStyle: { color: theme.tooltipText },
-    labelStyle: { color: theme.tooltipText },
-  };
-
-  // Project current incomplete period for revenue/overhead chart
-  const projectedRevenueOverhead = useMemo(
-    () =>
-      withProjection(revenueOverhead, getToday(), granularity, [
-        "revenue",
-        "overhead",
-        "contributionMargin",
-      ]),
-    [revenueOverhead, granularity]
-  );
-
-  const forecastResult = useMemo(() => {
-    if (granularity !== "monthly" || projectedRevenueOverhead.length < 3) {
-      return { data: projectedRevenueOverhead as any[], hasForecast: false };
-    }
-
-    const last3 = revenueOverhead.slice(-3);
-    const avgRevenue = Math.round(
-      last3.reduce((s, d) => s + d.revenue, 0) / 3
-    );
-    const avgMargin = Math.round(
-      last3.reduce((s, d) => s + d.contributionMargin, 0) / 3
-    );
-
-    const lastPeriod = revenueOverhead[revenueOverhead.length - 1].period;
-    const lastDate = parse(lastPeriod, "MMM yyyy", new Date());
-
-    const combined: any[] = projectedRevenueOverhead.map((d) => ({ ...d }));
-    combined[combined.length - 1].forecastRevenue =
-      combined[combined.length - 1].revenue;
-    combined[combined.length - 1].forecastMargin =
-      combined[combined.length - 1].contributionMargin;
-
-    for (let i = 1; i <= 3; i++) {
-      const d = addMonths(lastDate, i);
-      combined.push({
-        period: format(d, "MMM yyyy"),
-        forecastRevenue: avgRevenue,
-        forecastMargin: avgMargin,
-      });
-    }
-
-    return { data: combined, hasForecast: true };
-  }, [revenueOverhead, projectedRevenueOverhead, granularity]);
-
-  // Project current incomplete period for non-billable trend
-  const projectedNonBillableTrend = useMemo(
-    () =>
-      withProjection(nonBillableTrend, getToday(), granularity, [
-        "totalPercent",
-        "internal",
-        "presales",
-        "nonBillable",
-      ]),
+  // ---- Derived ----
+  const projectedNonBillable = useMemo(
+    () => withProjection(nonBillableTrend, getToday(), granularity, ["totalNB", "internal", "presales", "nonBillable"]),
     [nonBillableTrend, granularity]
   );
 
-  // Project current incomplete period for expense breakdown (bars show projected height)
-  const projectedExpenseBreakdown = useMemo(
-    () =>
-      withProjection(expenseBreakdown, getToday(), granularity, [
-        "travel",
-        "materials",
-        "software",
-        "meals",
-        "rent",
-        "insurance",
-        "utilities",
-        "salaries",
-        "other",
-      ]),
-    [expenseBreakdown, granularity]
-  );
+  const topClientPct = useMemo(() => {
+    if (clientConcentration.length === 0) return 0;
+    return clientConcentration[0].pct;
+  }, [clientConcentration]);
 
+  const maxUnbilledRevenue = useMemo(() => {
+    if (unbilledAging.length === 0) return 1;
+    return Math.max(...unbilledAging.map((u) => u.revenue));
+  }, [unbilledAging]);
+
+  // Breakeven value from first entry that has it
+  const breakevenValue = useMemo(() => {
+    const entry = revenueBridge.find((e) => e.breakeven > 0);
+    return entry?.breakeven ?? 0;
+  }, [revenueBridge]);
+
+  // ---- Render ----
   return (
-    <div className="space-y-6">
-      {/* Revenue vs Overhead */}
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* ============================================================
+          1. REVENUE BRIDGE (full-width)
+         ============================================================ */}
       <ChartCard
-        title={t("revenueVsOverhead")}
-        description={
-          forecastResult.hasForecast
-            ? `${t("revenueVsOverheadDesc")} · ${t("forecastBased")}`
-            : t("revenueVsOverheadDesc")
-        }
-        loading={loading}
-        isEmpty={revenueOverhead.length === 0}
-        chartHeight={350}
-        exportData={revenueOverhead}
-        exportFilename="revenue-vs-overhead"
+        title="Revenue Bridge"
+        badge={{ label: "FORECAST", bg: "#EEF2FF", fg: "#4338CA" }}
+        help="Faktisk omsætning vs. forecast med break-even reference"
+        height={320}
       >
-        <ComposedChart data={forecastResult.data}>
-          <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
-          <XAxis
-            dataKey="period"
-            tick={{ fill: theme.textMuted, fontSize: 12 }}
-            tickLine={false}
-            axisLine={{ stroke: theme.grid }}
-          />
-          <YAxis
-            tick={{ fill: theme.textMuted, fontSize: 12 }}
-            tickLine={false}
-            axisLine={{ stroke: theme.grid }}
-            tickFormatter={(v: number) => formatCurrency(v, currency)}
-          />
-          <Tooltip
-            {...tooltipStyle}
-            formatter={(value: any, name: any) => [
-              formatCurrency(value, currency),
-              name,
-            ]}
-          />
-          <Legend />
-          <Area
-            type="monotone"
-            dataKey="revenue"
-            name={t("revenue")}
-            fill="#10B981"
-            fillOpacity={0.15}
-            stroke="#10B981"
-          />
-          <Bar
-            dataKey="overhead"
-            name={t("overhead")}
-            fill="#F97316"
-            radius={[4, 4, 0, 0]}
-          />
-          <Line
-            type="monotone"
-            dataKey="contributionMargin"
-            name={t("contributionMargin")}
-            stroke="#6366F1"
-            strokeWidth={2}
-            dot={{ fill: "#6366F1", r: 4 }}
-          />
-          {forecastResult.hasForecast && (
-            <>
-              <Line
-                type="monotone"
-                dataKey="forecastRevenue"
-                stroke="#10B981"
-                strokeWidth={2}
-                strokeDasharray="6 3"
-                dot={false}
-                legendType="none"
+        {revenueBridge.length === 0 && !loading ? (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 320, color: "#9CA3AF", fontSize: 12, fontFamily: "'DM Sans', sans-serif" }}>
+            Ingen omsætningsdata
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={320}>
+            <ComposedChart data={revenueBridge} margin={{ top: 10, right: 120, bottom: 10, left: 10 }}>
+              <CartesianGrid {...GRID_STYLE} />
+              <XAxis dataKey="period" tick={AXIS_STYLE} tickLine={false} />
+              <YAxis tick={AXIS_STYLE} tickLine={false} tickFormatter={(v: number) => fmtCurrency(v)} />
+              <Tooltip
+                content={
+                  <ChartTooltip
+                    formatter={(v, k) => {
+                      if (k === "actual") return fmtCurrency(v);
+                      if (k === "forecast") return fmtCurrency(v);
+                      return fmtCurrency(v);
+                    }}
+                  />
+                }
               />
-              <Line
-                type="monotone"
-                dataKey="forecastMargin"
+              <Legend
+                formatter={(value: string) => {
+                  if (value === "actual") return "Faktisk";
+                  if (value === "forecast") return "Forecast";
+                  return value;
+                }}
+                wrapperStyle={{ fontSize: 10, fontFamily: "'DM Sans', sans-serif" }}
+              />
+              {/* Actual revenue bar */}
+              <Bar
+                dataKey="actual"
+                fill={METRIC.revenue}
+                name="actual"
+                radius={[2, 2, 0, 0]}
+              />
+              {/* Forecast bar — indigo, 40% opacity, dashed stroke */}
+              <Bar
+                dataKey="forecast"
+                fill="#6366F1"
+                fillOpacity={0.4}
                 stroke="#6366F1"
-                strokeWidth={2}
-                strokeDasharray="6 3"
-                dot={false}
-                legendType="none"
+                strokeDasharray="4 4"
+                name="forecast"
+                radius={[2, 2, 0, 0]}
               />
-            </>
-          )}
-          {/* Current-period projection lines */}
-          <Line type="monotone" dataKey="proj_revenue" stroke="#10B981" strokeWidth={2} strokeDasharray="6 3" dot={false} legendType="none" />
-          <Line type="monotone" dataKey="proj_contributionMargin" stroke="#6366F1" strokeWidth={2} strokeDasharray="6 3" dot={false} legendType="none" />
-        </ComposedChart>
-      </ChartCard>
-
-      {/* Expense Breakdown */}
-      <ChartCard
-        title={t("expenseBreakdown")}
-        description={t("expenseBreakdownDesc")}
-        loading={loading}
-        isEmpty={expenseBreakdown.every(
-          (d) =>
-            d.travel + d.materials + d.software + d.meals + d.rent + d.insurance + d.utilities + d.salaries + d.other ===
-            0
+              {/* Break-even line */}
+              {breakevenValue > 0 && (
+                <ReferenceLine
+                  y={breakevenValue}
+                  stroke="#EF4444"
+                  strokeDasharray="6 3"
+                  strokeWidth={1.5}
+                  label={{
+                    value: `Break-even ${fmtCurrency(breakevenValue)}`,
+                    position: "right",
+                    style: {
+                      fontSize: 10,
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fill: "#EF4444",
+                      fontWeight: 600,
+                    },
+                  }}
+                />
+              )}
+            </ComposedChart>
+          </ResponsiveContainer>
         )}
-        chartHeight={350}
-        exportData={expenseBreakdown}
-        exportFilename="expense-breakdown"
-      >
-        <BarChart data={projectedExpenseBreakdown}>
-          <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
-          <XAxis
-            dataKey="period"
-            tick={{ fill: theme.textMuted, fontSize: 12 }}
-            tickLine={false}
-            axisLine={{ stroke: theme.grid }}
-          />
-          <YAxis
-            tick={{ fill: theme.textMuted, fontSize: 12 }}
-            tickLine={false}
-            axisLine={{ stroke: theme.grid }}
-            tickFormatter={(v: number) => formatCurrency(v, currency)}
-          />
-          <Tooltip
-            {...tooltipStyle}
-            formatter={(value: any, name: any) => [
-              formatCurrency(value, currency),
-              name,
-            ]}
-          />
-          <Legend />
-          <Bar dataKey="rent" name={t("catRent")} stackId="a" fill={SERIES_COLORS[0]} />
-          <Bar dataKey="salaries" name={t("catSalaries")} stackId="a" fill={SERIES_COLORS[1]} />
-          <Bar dataKey="insurance" name={t("catInsurance")} stackId="a" fill={SERIES_COLORS[2]} />
-          <Bar dataKey="utilities" name={t("catUtilities")} stackId="a" fill={SERIES_COLORS[3]} />
-          <Bar dataKey="software" name={t("catSoftware")} stackId="a" fill={SERIES_COLORS[4]} />
-          <Bar dataKey="travel" name={t("catTravel")} stackId="a" fill={SERIES_COLORS[5]} />
-          <Bar dataKey="materials" name={t("catMaterials")} stackId="a" fill={SERIES_COLORS[6]} />
-          <Bar dataKey="meals" name={t("catMeals")} stackId="a" fill={SERIES_COLORS[7]} />
-          <Bar dataKey="other" name={t("catOther")} stackId="a" fill={SERIES_COLORS[8]} radius={[4, 4, 0, 0]} />
-        </BarChart>
       </ChartCard>
 
-      {/* Non-Billable Trend */}
-      <ChartCard
-        title={t("nonBillableTrend")}
-        description={t("nonBillableTrendDesc")}
-        loading={loading}
-        isEmpty={nonBillableTrend.length === 0}
-        chartHeight={350}
-        exportData={nonBillableTrend}
-        exportFilename="non-billable-trend"
-      >
-        <LineChart data={projectedNonBillableTrend}>
-          <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
-          <ReferenceArea y1={0} y2={15} fill="#10B981" fillOpacity={0.06} />
-          <ReferenceArea y1={15} y2={25} fill="#F59E0B" fillOpacity={0.06} />
-          <XAxis
-            dataKey="period"
-            tick={{ fill: theme.textMuted, fontSize: 12 }}
-            tickLine={false}
-            axisLine={{ stroke: theme.grid }}
-          />
-          <YAxis
-            tick={{ fill: theme.textMuted, fontSize: 12 }}
-            tickLine={false}
-            axisLine={{ stroke: theme.grid }}
-            tickFormatter={(v: number) => `${v}%`}
-          />
-          <Tooltip
-            {...tooltipStyle}
-            formatter={(value: any, name: any) => [
-              `${value.toFixed(1)}%`,
-              name,
-            ]}
-          />
-          <Legend />
-          <Line
-            type="monotone"
-            dataKey="totalPercent"
-            name={t("totalNonBillable")}
-            stroke="#9CA3AF"
-            strokeWidth={2}
-            strokeDasharray="6 3"
-            dot={{ fill: "#9CA3AF", r: 4 }}
-            activeDot={{ r: 6 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="internal"
-            name={tc("internal")}
-            stroke={BILLING_COLORS.internal}
-            strokeWidth={2}
-            dot={{ fill: BILLING_COLORS.internal, r: 4 }}
-            activeDot={{ r: 6 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="presales"
-            name={tc("preSales")}
-            stroke={BILLING_COLORS.presales}
-            strokeWidth={2}
-            dot={{ fill: BILLING_COLORS.presales, r: 4 }}
-            activeDot={{ r: 6 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="nonBillable"
-            name={tc("nonBillable")}
-            stroke={BILLING_COLORS.non_billable}
-            strokeWidth={2}
-            dot={{ fill: BILLING_COLORS.non_billable, r: 4 }}
-            activeDot={{ r: 6 }}
-          />
-          {/* Current-period projection lines */}
-          <Line type="monotone" dataKey="proj_totalPercent" stroke="#9CA3AF" strokeWidth={2} strokeDasharray="6 3" dot={false} legendType="none" />
-          <Line type="monotone" dataKey="proj_internal" stroke={BILLING_COLORS.internal} strokeWidth={2} strokeDasharray="6 3" dot={false} legendType="none" />
-          <Line type="monotone" dataKey="proj_presales" stroke={BILLING_COLORS.presales} strokeWidth={2} strokeDasharray="6 3" dot={false} legendType="none" />
-          <Line type="monotone" dataKey="proj_nonBillable" stroke={BILLING_COLORS.non_billable} strokeWidth={2} strokeDasharray="6 3" dot={false} legendType="none" />
-        </LineChart>
-      </ChartCard>
-
-      {/* Unbilled Work Aging */}
-      <ChartCard
-        title={t("unbilledWorkAging")}
-        description={t("unbilledWorkAgingDesc")}
-        loading={loading}
-        isEmpty={unbilledWork.length === 0}
-        chartHeight={Math.max(300, unbilledWork.length * 40 + 60)}
-        exportData={unbilledWork}
-        exportFilename="unbilled-work"
-      >
-        <BarChart data={unbilledWork} layout="vertical">
-          <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
-          <XAxis
-            type="number"
-            tick={{ fill: theme.textMuted, fontSize: 12 }}
-            tickLine={false}
-            axisLine={{ stroke: theme.grid }}
-            tickFormatter={(v: number) => formatCurrency(v, currency)}
-          />
-          <YAxis
-            type="category"
-            dataKey="projectName"
-            tick={{ fill: theme.textMuted, fontSize: 12 }}
-            tickLine={false}
-            axisLine={{ stroke: theme.grid }}
-            width={140}
-          />
-          <Tooltip
-            {...tooltipStyle}
-            formatter={(value: any, name: any) => [
-              formatCurrency(value, currency),
-              name,
-            ]}
-          />
-          <Bar
-            dataKey="estimatedRevenue"
-            name={t("estimatedRevenue")}
-            fill={METRIC_COLORS.revenue}
-            radius={[0, 4, 4, 0]}
-          />
-        </BarChart>
-      </ChartCard>
-
-      {/* Unbilled Work Detail Table */}
-      {!loading && unbilledWork.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold">
-              {t("unbilledWorkDetails")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-muted-foreground">
-                    <th className="px-4 py-2 font-medium">{t("project")}</th>
-                    <th className="px-4 py-2 font-medium">{t("hours")}</th>
-                    <th className="px-4 py-2 font-medium">
-                      {t("estimatedRevenue")}
-                    </th>
-                    <th className="px-4 py-2 font-medium">
-                      {t("oldestEntry")}
-                    </th>
-                    <th className="px-4 py-2 font-medium">{t("ageDays")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {unbilledWork.map((row, idx) => (
-                    <tr key={idx} className="border-b">
-                      <td className="px-4 py-2">{row.projectName}</td>
-                      <td className="px-4 py-2">{row.hours.toFixed(1)}</td>
-                      <td className="px-4 py-2">
-                        {formatCurrency(row.estimatedRevenue, currency)}
-                      </td>
-                      <td className="px-4 py-2">{row.oldestEntryDate}</td>
-                      <td className="px-4 py-2">{row.ageInDays}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      {/* ============================================================
+          2. CLIENT CONCENTRATION + INVOICE PIPELINE (2-col)
+         ============================================================ */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+        {/* Client Concentration — donut Pie */}
+        <ChartCard
+          title="Kundekoncentration"
+          badge={topClientPct > 40 ? { label: "MONITOR", bg: "#FFFBEB", fg: "#D97706" } : undefined}
+          help="Omsætningsfordeling pr. kunde"
+          height={300}
+        >
+          {clientConcentration.length === 0 && !loading ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300, color: "#9CA3AF", fontSize: 12, fontFamily: "'DM Sans', sans-serif" }}>
+              Ingen kundedata
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={clientConcentration}
+                  dataKey="revenue"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={105}
+                  paddingAngle={2}
+                  label={({ pct, cx, cy, midAngle, innerRadius, outerRadius }: any) => {
+                    if (pct < 5) return null;
+                    const RADIAN = Math.PI / 180;
+                    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                    return (
+                      <text
+                        x={x}
+                        y={y}
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        style={{
+                          fontSize: 11,
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontWeight: 600,
+                          fill: "#FFFFFF",
+                        }}
+                      >
+                        {pct}%
+                      </text>
+                    );
+                  }}
+                >
+                  {clientConcentration.map((_, i) => (
+                    <Cell key={i} fill={PIE_TEAM[i % PIE_TEAM.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  content={
+                    <ChartTooltip formatter={(v) => fmtCurrency(v)} />
+                  }
+                />
+                <Legend
+                  wrapperStyle={{ fontSize: 10, fontFamily: "'DM Sans', sans-serif" }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </ChartCard>
+
+        {/* Invoice Pipeline — stacked Bar */}
+        <ChartCard
+          title="Faktura-pipeline"
+          help="Fakturastatus over tid: betalt, sendt og kladde"
+          height={300}
+        >
+          {invoicePipeline.length === 0 && !loading ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300, color: "#9CA3AF", fontSize: 12, fontFamily: "'DM Sans', sans-serif" }}>
+              Ingen fakturadata
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={invoicePipeline} margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+                <CartesianGrid {...GRID_STYLE} />
+                <XAxis dataKey="period" tick={AXIS_STYLE} tickLine={false} />
+                <YAxis tick={AXIS_STYLE} tickLine={false} tickFormatter={(v: number) => fmtCurrency(v)} />
+                <Tooltip
+                  content={
+                    <ChartTooltip formatter={(v) => fmtCurrency(v)} />
+                  }
+                />
+                <Legend
+                  formatter={(value: string) => {
+                    if (value === "paid") return "Betalt";
+                    if (value === "sent") return "Sendt";
+                    if (value === "draft") return "Kladde";
+                    return value;
+                  }}
+                  wrapperStyle={{ fontSize: 10, fontFamily: "'DM Sans', sans-serif" }}
+                />
+                <Bar dataKey="paid" stackId="pipeline" fill="#10B981" name="paid" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="sent" stackId="pipeline" fill="#3B82F6" name="sent" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="draft" stackId="pipeline" fill="#F59E0B" name="draft" radius={[2, 2, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </ChartCard>
+      </div>
+
+      {/* ============================================================
+          3. BILLING VELOCITY + COLLECTION + EXPENSE BREAKDOWN (1fr + 2fr)
+         ============================================================ */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12, marginBottom: 12 }}>
+        {/* Left column: Billing Velocity + Collection Summary */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {/* Billing Velocity — manual card */}
+          <div
+            style={{
+              background: "#FFFFFF",
+              border: "1px solid #E5E7EB",
+              borderRadius: 8,
+              padding: "16px 18px",
+              transition: "box-shadow 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.boxShadow = "none";
+            }}
+          >
+            <div
+              style={{
+                fontSize: 13,
+                fontFamily: "'DM Sans', sans-serif",
+                fontWeight: 600,
+                color: "#1F2937",
+                marginBottom: 12,
+              }}
+            >
+              Faktureringshastighed
+            </div>
+            {/* Big number */}
+            <div
+              style={{
+                fontSize: 36,
+                fontFamily: "'JetBrains Mono', monospace",
+                fontWeight: 700,
+                color: "#1F2937",
+                lineHeight: 1.1,
+              }}
+            >
+              {billingVelocity.avgDays.toFixed(1)}
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                fontFamily: "'DM Sans', sans-serif",
+                color: "#9CA3AF",
+                marginTop: 4,
+                marginBottom: 14,
+              }}
+            >
+              gns. dage fra registrering til faktura
+            </div>
+            {/* Bucket pills */}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {billingVelocity.buckets.map((bucket, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "4px 10px",
+                    borderRadius: 20,
+                    background: `${bucket.color}14`,
+                    border: `1px solid ${bucket.color}33`,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontWeight: 600,
+                      color: bucket.color,
+                    }}
+                  >
+                    {bucket.value}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontFamily: "'DM Sans', sans-serif",
+                      color: "#6B7280",
+                    }}
+                  >
+                    {bucket.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Collection Summary — manual card */}
+          <div
+            style={{
+              background: "#FFFFFF",
+              border: "1px solid #E5E7EB",
+              borderRadius: 8,
+              padding: "16px 18px",
+              transition: "box-shadow 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.boxShadow = "0 2px 8px rgba(0,0,0,0.06)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.boxShadow = "none";
+            }}
+          >
+            <div
+              style={{
+                fontSize: 13,
+                fontFamily: "'DM Sans', sans-serif",
+                fontWeight: 600,
+                color: "#1F2937",
+                marginBottom: 12,
+              }}
+            >
+              Indsamlingsoversigt
+            </div>
+            {/* Rows */}
+            {[
+              { label: "Total faktureret", value: collectionSummary.invoiced, color: "#1F2937" },
+              { label: "Betalt", value: collectionSummary.paid, color: "#10B981" },
+              { label: "Udestående", value: collectionSummary.outstanding, color: "#F59E0B" },
+            ].map((row, i) => (
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "6px 0",
+                  borderBottom: i < 2 ? "1px solid #F3F4F6" : undefined,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 12,
+                    fontFamily: "'DM Sans', sans-serif",
+                    color: "#6B7280",
+                  }}
+                >
+                  {row.label}
+                </span>
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontWeight: 600,
+                    color: row.color,
+                  }}
+                >
+                  {fmtCurrency(row.value)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right column: Expense Breakdown */}
+        <ChartCard
+          title="Udgiftsfordeling"
+          help="Månedlig fordeling af virksomhedsudgifter"
+          height={290}
+        >
+          {expenseBreakdown.length === 0 && !loading ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 290, color: "#9CA3AF", fontSize: 12, fontFamily: "'DM Sans', sans-serif" }}>
+              Ingen udgiftsdata
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={290}>
+              <BarChart data={expenseBreakdown} margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+                <CartesianGrid {...GRID_STYLE} />
+                <XAxis dataKey="period" tick={AXIS_STYLE} tickLine={false} />
+                <YAxis tick={AXIS_STYLE} tickLine={false} tickFormatter={(v: number) => fmtCurrency(v)} />
+                <Tooltip
+                  content={
+                    <ChartTooltip
+                      formatter={(v, k) => fmtCurrency(v)}
+                    />
+                  }
+                />
+                <Legend
+                  formatter={(value: string) => EXPENSE_LABELS[value] || value}
+                  wrapperStyle={{ fontSize: 10, fontFamily: "'DM Sans', sans-serif" }}
+                />
+                <Bar dataKey="salaries" stackId="exp" fill={EXPENSE_COLORS.salaries} name="salaries" />
+                <Bar dataKey="rent" stackId="exp" fill={EXPENSE_COLORS.rent} name="rent" />
+                <Bar dataKey="insurance" stackId="exp" fill={EXPENSE_COLORS.insurance} name="insurance" />
+                <Bar dataKey="software" stackId="exp" fill={EXPENSE_COLORS.software} name="software" />
+                <Bar dataKey="utilities" stackId="exp" fill={EXPENSE_COLORS.utilities} name="utilities" />
+                <Bar dataKey="travel" stackId="exp" fill={EXPENSE_COLORS.travel} name="travel" />
+                <Bar dataKey="other" stackId="exp" fill={EXPENSE_COLORS.other} name="other" radius={[2, 2, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </ChartCard>
+      </div>
+
+      {/* ============================================================
+          4. NON-BILLABLE TREND + UNBILLED WORK AGING (2-col)
+         ============================================================ */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        {/* Non-Billable Trend — LineChart */}
+        <ChartCard
+          title="Ikke-fakturerbar trend"
+          help="Procentdel ikke-fakturerbare timer over tid"
+          height={280}
+        >
+          {nonBillableTrend.length === 0 && !loading ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 280, color: "#9CA3AF", fontSize: 12, fontFamily: "'DM Sans', sans-serif" }}>
+              Ingen trenddata
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={projectedNonBillable} margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+                <CartesianGrid {...GRID_STYLE} />
+                {/* Green zone 0-15% */}
+                <ReferenceArea y1={0} y2={15} fill="#10B981" fillOpacity={0.06} />
+                {/* Amber zone 15-25% */}
+                <ReferenceArea y1={15} y2={25} fill="#F59E0B" fillOpacity={0.06} />
+                <XAxis dataKey="period" tick={AXIS_STYLE} tickLine={false} />
+                <YAxis tick={AXIS_STYLE} tickLine={false} tickFormatter={(v: number) => `${v}%`} />
+                <Tooltip
+                  content={
+                    <ChartTooltip formatter={(v) => `${v.toFixed(1)}%`} />
+                  }
+                />
+                <Legend
+                  formatter={(value: string) => {
+                    if (value === "totalNB") return "Total ikke-fakt.";
+                    if (value === "internal") return "Intern";
+                    if (value === "presales") return "Presales";
+                    if (value === "nonBillable") return "Ikke-fakt.";
+                    return value;
+                  }}
+                  wrapperStyle={{ fontSize: 10, fontFamily: "'DM Sans', sans-serif" }}
+                />
+                {/* Total NB — gray dashed */}
+                <Line
+                  type="monotone"
+                  dataKey="totalNB"
+                  stroke="#9CA3AF"
+                  strokeWidth={2}
+                  strokeDasharray="6 3"
+                  dot={{ fill: "#9CA3AF", r: 3 }}
+                  activeDot={{ r: 5 }}
+                  name="totalNB"
+                />
+                {/* Internal — purple */}
+                <Line
+                  type="monotone"
+                  dataKey="internal"
+                  stroke="#8B5CF6"
+                  strokeWidth={2}
+                  dot={{ fill: "#8B5CF6", r: 3 }}
+                  activeDot={{ r: 5 }}
+                  name="internal"
+                />
+                {/* Presales — blue */}
+                <Line
+                  type="monotone"
+                  dataKey="presales"
+                  stroke="#3B82F6"
+                  strokeWidth={2}
+                  dot={{ fill: "#3B82F6", r: 3 }}
+                  activeDot={{ r: 5 }}
+                  name="presales"
+                />
+                {/* Non-billable — amber */}
+                <Line
+                  type="monotone"
+                  dataKey="nonBillable"
+                  stroke="#F59E0B"
+                  strokeWidth={2}
+                  dot={{ fill: "#F59E0B", r: 3 }}
+                  activeDot={{ r: 5 }}
+                  name="nonBillable"
+                />
+                {/* Projection lines */}
+                <Line dataKey="proj_totalNB" stroke="#9CA3AF" strokeWidth={2} strokeDasharray="6 3" dot={false} legendType="none" />
+                <Line dataKey="proj_internal" stroke="#8B5CF6" strokeWidth={2} strokeDasharray="6 3" dot={false} legendType="none" />
+                <Line dataKey="proj_presales" stroke="#3B82F6" strokeWidth={2} strokeDasharray="6 3" dot={false} legendType="none" />
+                <Line dataKey="proj_nonBillable" stroke="#F59E0B" strokeWidth={2} strokeDasharray="6 3" dot={false} legendType="none" />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </ChartCard>
+
+        {/* Unbilled Work Aging — list layout */}
+        <ChartCard
+          title="Ufaktureret arbejde"
+          help="Projekter med ufakturerede timer sorteret efter omsætning"
+          height={280}
+        >
+          {unbilledAging.length === 0 && !loading ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 280, color: "#9CA3AF", fontSize: 12, fontFamily: "'DM Sans', sans-serif" }}>
+              Ingen ufakturerede poster
+            </div>
+          ) : (
+            <div
+              style={{
+                height: 280,
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+                padding: "4px 0",
+              }}
+            >
+              {[...unbilledAging]
+                .sort((a, b) => b.revenue - a.revenue)
+                .map((item, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "6px 8px",
+                      borderRadius: 6,
+                      background: "#FAFAFA",
+                      border: "1px solid #F3F4F6",
+                    }}
+                  >
+                    {/* Status dot */}
+                    <StatusDot color={ageColor(item.age)} pulse={item.age >= 61} />
+
+                    {/* Project name + hours/age */}
+                    <div style={{ flex: "0 0 auto", minWidth: 100, maxWidth: 140 }}>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          fontFamily: "'DM Sans', sans-serif",
+                          fontWeight: 500,
+                          color: "#1F2937",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {item.name}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 10,
+                          fontFamily: "'JetBrains Mono', monospace",
+                          color: "#9CA3AF",
+                        }}
+                      >
+                        {item.hours.toFixed(0)}t / {item.age}d
+                      </div>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div style={{ flex: 1, minWidth: 60 }}>
+                      <div
+                        style={{
+                          height: 5,
+                          background: "#F3F4F6",
+                          borderRadius: 3,
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: "100%",
+                            width: `${Math.min((item.revenue / maxUnbilledRevenue) * 100, 100)}%`,
+                            background: ageColor(item.age),
+                            borderRadius: 3,
+                            transition: "width 0.3s ease",
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Revenue amount */}
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontWeight: 600,
+                        color: "#1F2937",
+                        whiteSpace: "nowrap",
+                        minWidth: 70,
+                        textAlign: "right",
+                      }}
+                    >
+                      {fmtCurrency(item.revenue)}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          )}
+        </ChartCard>
+      </div>
     </div>
   );
 }

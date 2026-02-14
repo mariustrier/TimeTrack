@@ -1,5 +1,6 @@
-import { format, startOfMonth, eachMonthOfInterval, eachWeekOfInterval, startOfWeek, differenceInDays } from "date-fns";
+import { format, startOfMonth, eachMonthOfInterval, eachWeekOfInterval, startOfWeek, differenceInDays, eachDayOfInterval, isWeekend, addWeeks } from "date-fns";
 import { getEffectiveWeeklyCapacity } from "@/lib/calculations";
+import { getToday } from "@/lib/demo-date";
 
 // --- Types ---
 
@@ -605,7 +606,7 @@ export function aggregateNonBillableTrend(
   });
 }
 
-export function aggregateUnbilledWork(entries: Entry[]) {
+export function aggregateUnbilledWork(entries: Entry[], today?: Date) {
   // Approved + billable but NOT locked = not yet invoiced
   const unbilled = entries.filter(
     (e) => e.billingStatus === "billable" && e.approvalStatus === "approved"
@@ -623,6 +624,8 @@ export function aggregateUnbilledWork(entries: Entry[]) {
     byProject[e.projectId].entries.push(e);
   }
 
+  const now = today || getToday();
+
   return Object.values(byProject).map((group) => {
     const hours = group.entries.reduce((s, e) => s + e.hours, 0);
     const estimatedRevenue = group.entries.reduce(
@@ -631,7 +634,7 @@ export function aggregateUnbilledWork(entries: Entry[]) {
     );
     const dates = group.entries.map((e) => new Date(e.date).getTime());
     const oldestDate = new Date(Math.min(...dates));
-    const ageInDays = differenceInDays(new Date(), oldestDate);
+    const ageInDays = differenceInDays(now, oldestDate);
 
     return {
       projectName: group.projectName,
@@ -729,4 +732,502 @@ export function withProjection<T extends object>(
     }
     return item;
   });
+}
+
+// --- Extended Types for New Functions ---
+
+interface MemberFull extends Member {
+  isHourly: boolean;
+  vacationDays: number;
+  vacationTrackingUnit: string;
+  vacationHoursPerYear: number | null;
+}
+
+interface ResourceAlloc {
+  userId: string;
+  startDate: Date;
+  endDate: Date;
+  hoursPerDay: number;
+  status: string;
+}
+
+interface ProjectFull extends Project {
+  startDate?: string | null;
+  endDate?: string | null;
+  rateMode: string;
+  projectRate: number | null;
+}
+
+interface InvoiceData {
+  status: string;
+  totalAmount: number;
+  invoiceDate: string;
+}
+
+interface InvoicedEntry {
+  date: string;
+  invoicedAt: string;
+}
+
+// --- Phase Color Map ---
+
+const PHASE_COLORS: Record<string, string> = {
+  "Design Development": "#FCD34D",
+  "Schematic": "#93C5FD",
+  "Construction Docs": "#FBBF24",
+  "Pre-Design": "#A7F3D0",
+};
+const DEFAULT_PHASE_COLOR = "#94A3B8";
+
+// --- Helper: working days in an interval ---
+
+function workingDaysInInterval(start: Date, end: Date): number {
+  if (start > end) return 0;
+  const days = eachDayOfInterval({ start, end });
+  return days.filter((d) => !isWeekend(d)).length;
+}
+
+// --- 1. Employee Phase Breakdown ---
+
+export function aggregateEmployeePhaseBreakdown(entries: (Entry & { phaseName?: string | null })[]) {
+  const groups: Record<string, number> = {};
+  for (const e of entries) {
+    const key = e.phaseName || "Unassigned";
+    groups[key] = (groups[key] || 0) + e.hours;
+  }
+  return Object.entries(groups).map(([name, hours]) => ({
+    name,
+    hours: Math.round(hours * 10) / 10,
+    color: PHASE_COLORS[name] || DEFAULT_PHASE_COLOR,
+  }));
+}
+
+// --- 2. Employee Flex Trend ---
+
+export function aggregateEmployeeFlexTrend(
+  entries: Entry[],
+  member: Member,
+  from: Date,
+  to: Date,
+  granularity: "monthly" | "weekly"
+) {
+  const periods = getPeriodKeys(from, to, granularity);
+  const grouped: Record<string, Entry[]> = {};
+  for (const e of entries) {
+    const key = periodKey(e.date, granularity);
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(e);
+  }
+
+  const weeklyTarget = getEffectiveWeeklyCapacity(member);
+  let cumulativeFlex = 0;
+
+  return periods.map((key) => {
+    const periodEntries = grouped[key] || [];
+    const totalHours = periodEntries.reduce((s, e) => s + e.hours, 0);
+    const weeks = weeksInPeriod(key, granularity);
+    const expected = weeklyTarget * weeks;
+    const flex = totalHours - expected;
+    cumulativeFlex += flex;
+
+    return {
+      period: periodLabel(key, granularity),
+      flex: Math.round(cumulativeFlex * 10) / 10,
+    };
+  });
+}
+
+// --- 3. Capacity Detail ---
+
+export function aggregateCapacityDetail(
+  entries: Entry[],
+  members: MemberFull[],
+  resourceAllocations: ResourceAlloc[],
+  vacationDays: Record<string, number>,
+  from: Date,
+  to: Date,
+  granularity: "monthly" | "weekly"
+) {
+  const periods = getPeriodKeys(from, to, granularity);
+  const totalWeeks = periods.reduce((s, k) => s + weeksInPeriod(k, granularity), 0);
+  const today = getToday();
+  const next4wEnd = addWeeks(today, 4);
+
+  return members.map((member) => {
+    const memberEntries = entries.filter((e) => e.userId === member.id);
+    const weeklyTarget = getEffectiveWeeklyCapacity(member);
+    const capacity = weeklyTarget * totalWeeks;
+
+    const billableHours = memberEntries
+      .filter((e) => e.billingStatus === "billable")
+      .reduce((s, e) => s + e.hours, 0);
+
+    const internalHours = memberEntries
+      .filter((e) =>
+        e.billingStatus === "non_billable" ||
+        e.billingStatus === "internal" ||
+        e.billingStatus === "presales"
+      )
+      .reduce((s, e) => s + e.hours, 0);
+
+    const vacDays = vacationDays[member.id] || 0;
+    const vacationHours = vacDays * 7.5;
+
+    const totalUsed = billableHours + internalHours + vacationHours;
+    const available = Math.max(0, capacity - totalUsed);
+    const utilPct = capacity > 0 ? Math.round((billableHours / capacity) * 1000) / 10 : 0;
+
+    // Compute allocNext4w: sum hoursPerDay x working days in next 4 weeks
+    const memberAllocs = resourceAllocations.filter((a) => a.userId === member.id);
+    let allocNext4w = 0;
+    for (const a of memberAllocs) {
+      const aStart = new Date(a.startDate) > today ? new Date(a.startDate) : today;
+      const aEnd = new Date(a.endDate) < next4wEnd ? new Date(a.endDate) : next4wEnd;
+      const wd = workingDaysInInterval(aStart, aEnd);
+      if (wd > 0) {
+        allocNext4w += a.hoursPerDay * wd;
+      }
+    }
+
+    const next4wCapacity = weeklyTarget * 4;
+    const allocPct = next4wCapacity > 0
+      ? Math.round((allocNext4w / next4wCapacity) * 1000) / 10
+      : 0;
+
+    // Accrued vacation hours
+    const accruedVacationHrs = member.vacationTrackingUnit === "hours" && member.vacationHoursPerYear
+      ? Math.round((member.vacationHoursPerYear / 12) * (today.getMonth() + 1) * 10) / 10
+      : Math.round(2.08 * (today.getMonth() + 1) * 7.5 * 10) / 10;
+
+    return {
+      name: memberName(member),
+      fullName: `${member.firstName || ""} ${member.lastName || ""}`.trim() || member.email,
+      billable: Math.round(billableHours * 10) / 10,
+      internal: Math.round(internalHours * 10) / 10,
+      vacation: Math.round(vacationHours * 10) / 10,
+      available: Math.round(available * 10) / 10,
+      capacity: Math.round(capacity * 10) / 10,
+      utilPct,
+      allocNext4w: Math.round(allocNext4w * 10) / 10,
+      allocPct,
+      accruedVacationHrs,
+      costRate: member.costRate,
+    };
+  });
+}
+
+// --- 4. Effective Rate ---
+
+export function aggregateEffectiveRate(
+  entries: Entry[],
+  projects: ProjectFull[]
+) {
+  const projectMap: Record<string, ProjectFull> = {};
+  for (const p of projects) {
+    projectMap[p.id] = p;
+  }
+
+  const grouped: Record<string, { hours: number; revenue: number }> = {};
+  for (const e of entries) {
+    if (e.billingStatus !== "billable") continue;
+    if (!grouped[e.projectId]) grouped[e.projectId] = { hours: 0, revenue: 0 };
+    grouped[e.projectId].hours += e.hours;
+    grouped[e.projectId].revenue += e.hours * e.user.hourlyRate;
+  }
+
+  return Object.entries(grouped)
+    .map(([projectId, data]) => {
+      const project = projectMap[projectId];
+      if (!project) return null;
+      const effectiveRate = data.hours > 0 ? Math.round((data.revenue / data.hours) * 100) / 100 : 0;
+      return {
+        name: project.name,
+        effectiveRate,
+        billRate: project.projectRate || 0,
+        color: project.color,
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null)
+    .sort((a, b) => b.effectiveRate - a.effectiveRate);
+}
+
+// --- 5. Budget Velocity ---
+
+export function aggregateBudgetVelocity(
+  entries: Entry[],
+  projects: ProjectFull[],
+  today?: Date
+) {
+  const now = today || getToday();
+
+  const hoursByProject: Record<string, number> = {};
+  for (const e of entries) {
+    if (e.billingStatus === "billable" || e.billingStatus === "included") {
+      hoursByProject[e.projectId] = (hoursByProject[e.projectId] || 0) + e.hours;
+    }
+  }
+
+  return projects
+    .filter((p) => p.budgetHours && p.budgetHours > 0 && p.startDate && p.endDate)
+    .map((p) => {
+      const start = new Date(p.startDate!);
+      const end = new Date(p.endDate!);
+      const totalDuration = end.getTime() - start.getTime();
+      const elapsed = now.getTime() - start.getTime();
+      const timeElapsed = totalDuration > 0
+        ? Math.min(100, Math.max(0, Math.round((elapsed / totalDuration) * 1000) / 10))
+        : 0;
+
+      const usedHours = hoursByProject[p.id] || 0;
+      const budgetConsumed = p.budgetHours! > 0
+        ? Math.round((usedHours / p.budgetHours!) * 1000) / 10
+        : 0;
+
+      return {
+        name: p.name,
+        timeElapsed,
+        budgetConsumed,
+        color: p.color,
+        hours: Math.round(usedHours * 10) / 10,
+      };
+    });
+}
+
+// --- 6. Red List ---
+
+export function aggregateRedList(
+  entries: Entry[],
+  projects: ProjectFull[],
+  members: Member[],
+  today?: Date
+) {
+  const now = today || getToday();
+
+  const projectData: Record<string, { hours: number; revenue: number; cost: number }> = {};
+  for (const e of entries) {
+    if (!projectData[e.projectId]) projectData[e.projectId] = { hours: 0, revenue: 0, cost: 0 };
+    if (e.billingStatus === "billable" || e.billingStatus === "included") {
+      projectData[e.projectId].hours += e.hours;
+    }
+    if (e.billingStatus === "billable") {
+      projectData[e.projectId].revenue += e.hours * e.user.hourlyRate;
+    }
+    projectData[e.projectId].cost += e.hours * e.user.costRate;
+  }
+
+  return projects
+    .filter((p) => {
+      const data = projectData[p.id];
+      if (!data) return false;
+      const budgetPct = p.budgetHours && p.budgetHours > 0
+        ? data.hours / p.budgetHours
+        : 0;
+      const margin = data.revenue > 0
+        ? ((data.revenue - data.cost) / data.revenue) * 100
+        : 0;
+      return budgetPct > 0.85 || margin < 20;
+    })
+    .map((p) => {
+      const data = projectData[p.id] || { hours: 0, revenue: 0, cost: 0 };
+      const budgetPct = p.budgetHours && p.budgetHours > 0
+        ? Math.round((data.hours / p.budgetHours) * 1000) / 10
+        : 0;
+
+      // Time percentage
+      let timePct = 0;
+      if (p.startDate && p.endDate) {
+        const start = new Date(p.startDate);
+        const end = new Date(p.endDate);
+        const totalDuration = end.getTime() - start.getTime();
+        const elapsed = now.getTime() - start.getTime();
+        timePct = totalDuration > 0
+          ? Math.min(100, Math.max(0, Math.round((elapsed / totalDuration) * 1000) / 10))
+          : 0;
+      }
+
+      const overrun = budgetPct > 100 ? Math.round((data.hours - (p.budgetHours || 0)) * 10) / 10 : 0;
+      const margin = data.revenue > 0
+        ? Math.round(((data.revenue - data.cost) / data.revenue) * 1000) / 10
+        : 0;
+
+      return {
+        name: p.name,
+        client: p.client || "",
+        color: p.color,
+        pm: "", // Project manager not directly available, leave empty
+        budgetHours: p.budgetHours || 0,
+        usedHours: Math.round(data.hours * 10) / 10,
+        budgetPct,
+        timePct,
+        overrun,
+        margin,
+      };
+    });
+}
+
+// --- 7. Team Contribution ---
+
+export function aggregateTeamContribution(entries: Entry[]) {
+  const grouped: Record<string, { name: string; hours: number }> = {};
+  for (const e of entries) {
+    if (!grouped[e.userId]) {
+      grouped[e.userId] = { name: memberName(e.user), hours: 0 };
+    }
+    grouped[e.userId].hours += e.hours;
+  }
+
+  const results = Object.values(grouped).sort((a, b) => b.hours - a.hours);
+  const totalHours = results.reduce((s, r) => s + r.hours, 0);
+
+  return results.map((r) => ({
+    name: r.name,
+    hours: Math.round(r.hours * 10) / 10,
+    pct: totalHours > 0 ? Math.round((r.hours / totalHours) * 1000) / 10 : 0,
+  }));
+}
+
+// --- 8. Client Concentration ---
+
+export function aggregateClientConcentration(entries: Entry[]) {
+  const grouped: Record<string, number> = {};
+  for (const e of entries) {
+    if (e.billingStatus !== "billable") continue;
+    const client = e.project.client || "No Client";
+    const revenue = e.hours * e.user.hourlyRate;
+    grouped[client] = (grouped[client] || 0) + revenue;
+  }
+
+  const results = Object.entries(grouped)
+    .map(([name, revenue]) => ({ name, revenue: Math.round(revenue) }))
+    .sort((a, b) => b.revenue - a.revenue);
+
+  const totalRevenue = results.reduce((s, r) => s + r.revenue, 0);
+
+  return results.map((r) => ({
+    name: r.name,
+    revenue: r.revenue,
+    pct: totalRevenue > 0 ? Math.round((r.revenue / totalRevenue) * 1000) / 10 : 0,
+  }));
+}
+
+// --- 9. Invoice Pipeline ---
+
+export function aggregateInvoicePipeline(
+  invoices: InvoiceData[],
+  from: Date,
+  to: Date,
+  granularity: "monthly" | "weekly"
+) {
+  const periods = getPeriodKeys(from, to, granularity);
+  const grouped: Record<string, { draft: number; sent: number; paid: number }> = {};
+  for (const key of periods) {
+    grouped[key] = { draft: 0, sent: 0, paid: 0 };
+  }
+
+  for (const inv of invoices) {
+    const key = periodKey(inv.invoiceDate, granularity);
+    if (!grouped[key]) continue;
+    const status = inv.status as "draft" | "sent" | "paid";
+    if (status === "draft" || status === "sent" || status === "paid") {
+      grouped[key][status] += inv.totalAmount;
+    }
+  }
+
+  return periods.map((key) => ({
+    period: periodLabel(key, granularity),
+    draft: Math.round((grouped[key]?.draft || 0) * 100) / 100,
+    sent: Math.round((grouped[key]?.sent || 0) * 100) / 100,
+    paid: Math.round((grouped[key]?.paid || 0) * 100) / 100,
+  }));
+}
+
+// --- 10. Billing Velocity ---
+
+export function aggregateBillingVelocity(
+  entries: Entry[],
+  invoicedEntries: InvoicedEntry[]
+) {
+  const daysList: number[] = [];
+  for (const ie of invoicedEntries) {
+    const entryDate = new Date(ie.date);
+    const invoicedDate = new Date(ie.invoicedAt);
+    const days = differenceInDays(invoicedDate, entryDate);
+    if (days >= 0) daysList.push(days);
+  }
+
+  const avgDays = daysList.length > 0
+    ? Math.round((daysList.reduce((s, d) => s + d, 0) / daysList.length) * 10) / 10
+    : 0;
+
+  const under7 = daysList.filter((d) => d < 7).length;
+  const between7and14 = daysList.filter((d) => d >= 7 && d <= 14).length;
+  const over14 = daysList.filter((d) => d > 14).length;
+
+  return {
+    avgDays,
+    buckets: [
+      { label: "<7d", value: under7, color: "#22C55E" },
+      { label: "7-14d", value: between7and14, color: "#F59E0B" },
+      { label: ">14d", value: over14, color: "#EF4444" },
+    ],
+  };
+}
+
+// --- 11. Collection Summary ---
+
+export function aggregateCollectionSummary(invoices: InvoiceData[]) {
+  let invoiced = 0;
+  let paid = 0;
+  let outstanding = 0;
+
+  for (const inv of invoices) {
+    const amount = inv.totalAmount;
+    if (inv.status === "paid") {
+      paid += amount;
+      invoiced += amount;
+    } else if (inv.status === "sent") {
+      outstanding += amount;
+      invoiced += amount;
+    } else if (inv.status === "draft") {
+      invoiced += amount;
+    }
+  }
+
+  return {
+    invoiced: Math.round(invoiced * 100) / 100,
+    paid: Math.round(paid * 100) / 100,
+    outstanding: Math.round(outstanding * 100) / 100,
+  };
+}
+
+// --- 12. Unbilled Aging (simpler shape) ---
+
+export function aggregateUnbilledAging(entries: Entry[], today?: Date) {
+  const now = today || getToday();
+  const unbilled = entries.filter(
+    (e) => e.billingStatus === "billable" && e.approvalStatus === "approved"
+  );
+
+  const byProject: Record<string, { name: string; entries: Entry[] }> = {};
+  for (const e of unbilled) {
+    if (!byProject[e.projectId]) {
+      byProject[e.projectId] = { name: e.project.name, entries: [] };
+    }
+    byProject[e.projectId].entries.push(e);
+  }
+
+  return Object.values(byProject).map((group) => {
+    const hours = group.entries.reduce((s, e) => s + e.hours, 0);
+    const revenue = group.entries.reduce((s, e) => s + e.hours * e.user.hourlyRate, 0);
+    const dates = group.entries.map((e) => new Date(e.date).getTime());
+    const oldestDate = new Date(Math.min(...dates));
+    const age = differenceInDays(now, oldestDate);
+
+    return {
+      name: group.name,
+      revenue: Math.round(revenue),
+      age,
+      hours: Math.round(hours * 10) / 10,
+    };
+  }).sort((a, b) => b.revenue - a.revenue);
 }

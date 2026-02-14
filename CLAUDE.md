@@ -45,7 +45,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 ### Components
 - `components/admin/` - AdminOverview, AdminApprovals, AdminVacations, AdminBackups, AdminAuditLog, TeamUtilizationBars, PhaseMigrationDialog
 - `components/approvals/` - TimeEntryApprovals, ExpenseApprovals (nested tabs within admin)
-- `components/analytics/` - EmployeeInsights, TeamInsights, ProjectInsights, CompanyInsights
+- `components/analytics/` - EmployeeInsights, TeamInsights, ProjectInsights, CompanyInsights, analytics-shared (KpiCard, ChartCard with expand/export, MiniSelect, StatusDot, InfoTip, ChartTooltip, BudgetBar, FontLoader, AnalyticsKeyframes, color/style constants)
 - `components/billing/` - UninvoicedTab, InvoicesTab, InvoiceCreateDialog, InvoiceDetailDialog, BillingSettings
 - `components/contracts/` - ContractSection (upload, AI extraction, manual entry)
 - `components/projects/` - ProjectsList, ProjectTimeline (self-contained ~2900-line inline-styled Gantt), PhaseProgress
@@ -68,12 +68,14 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `lib/week-helpers.ts` - Week date utilities
 - `lib/calculations.ts` - Flex balance, daily target calculations (getDailyTarget)
 - `lib/holidays.ts` - Danish holidays, company holidays, isCompanyHoliday/isDanishHoliday
-- `lib/demo-date.ts` - `getToday()` — returns pinned demo date (from `NEXT_PUBLIC_DEMO_DATE` env) or real `new Date()`. Used by 12+ components.
-- `lib/demo-seed.ts` - Deterministic demo data seeder (seed 42 LCG PRNG). Pinned to Feb 12, 2026. Generates 27 weeks of time entries for 12 employees at 97% utilization across 8 projects. Includes sick days, vacations, invoices, resource allocations, and project allocations with realistic budget bars.
+- `lib/demo-date.ts` - `getToday()` returns pinned demo date from committed `lib/demo-date-generated.json` (or real `new Date()` if `{"date":null}`). Also exports custom `isToday()` that checks against `getToday()` — **must be used instead of `date-fns isToday`** which always uses the real system date. Used by 12+ components.
+- `lib/demo-date-generated.json` - Committed JSON file with `{"date":"2026-02-12"}` (or `{"date":null}` for production). Imported by `demo-date.ts`. Using a committed file avoids webpack `DefinePlugin` issues with `NEXT_PUBLIC_*` env vars on Vercel.
+- `lib/demo-seed.ts` - Deterministic demo data seeder (seed 42 LCG PRNG). Pinned to Feb 12, 2026. Generates 27 weeks of time entries for 12 employees at 97% utilization across 8 projects. Skips entries for days after the pinned date. Includes sick days, vacations (including Martha's 3-day Nov vacation), invoices, resource allocations, and project allocations with tightly budgeted remaining hours (~30-40h above actual usage).
 - `lib/seed-holidays.ts` - ensureHolidayAbsenceReason helper
 - `lib/email.ts` - Resend email client (lazy-init), sendInvitationEmail
 - `lib/expense-utils.ts` - Expense formatting helpers
-- `lib/analytics-utils.ts` - Analytics data processing
+- `lib/analytics-utils.ts` - Analytics data processing (28+ functions): aggregation for employee, team, project, company views. Key additions: `aggregateEmployeePhaseBreakdown`, `aggregateEmployeeFlexTrend`, `aggregateCapacityDetail`, `aggregateEffectiveRate`, `aggregateBudgetVelocity`, `aggregateRedList`, `aggregateTeamContribution`, `aggregateClientConcentration`, `aggregateInvoicePipeline`, `aggregateBillingVelocity`, `aggregateCollectionSummary`, `aggregateUnbilledAging`. `withProjection()` adds dashed projection lines for incomplete current periods.
+- `lib/analytics-forecast.ts` - Revenue bridge forecast engine: `computeRevenueBridge()` (historical actuals + future forecast), `compute30DayForecast()`. Uses ResourceAllocations with confirmed=100%, tentative=50% weighting.
 - `lib/economic-import.ts` - e-conomic Projektkort XLSX parser
 - `lib/vacation-entries.ts` - createVacationEntries/deleteVacationEntries (shared by vacation routes)
 - `lib/invoice-pdf.ts` - Server-side A4 invoice PDF generation (pdf-lib), multi-page support, Danish formatting
@@ -94,9 +96,9 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
 
 ### Time Tracking (Dashboard)
 - Weekly timesheet grid with per-cell time entry creation/editing
-- 6 stat cards: Target, Billable Hours, Vacation Used, Total Hours, Flex Balance, Remaining Vacation (all numeric values use `.toFixed(1)` for clean display)
+- 6 stat cards: Target, Billable Hours, Vacation Used, Total Hours, Flex Balance (Flexsaldo), Remaining Vacation (all numeric values use `.toFixed(1)` for clean display)
 - **Hourly employees** (`isHourly`): Reduced to 3 stat cards (Total, Billable, Hourly indicator). Flex balance row, "Full Day" button, and vacation accrual hidden.
-- **Cumulative flex balance**: Carries over from all prior weeks since user creation (not just current week). Skipped entirely for hourly employees.
+- **Cumulative flex balance**: Carries over from all prior weeks since user creation (not just current week). Skipped entirely for hourly employees. **Only accumulates targets up to and including today** — future days in the current week don't penalize the balance (e.g., Friday's target isn't counted when it's Thursday). Future days show "—" instead of a balance value.
 - Daily flex balance row showing running overtime/undertime (hidden for hourly employees)
 - Per-day submit buttons + bulk "Submit Week"
 - Flex calculation: Mon-Thu get rounded daily target, Friday gets remainder (e.g., 37h → 9.25×4 + 0h Fri... actually Mon-Thu=9.5, Fri=7 for 45h)
@@ -248,10 +250,16 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
 - **Audit Log tab**: Paginated viewer of all audit events (submit, approve, reject, lock, reopen, billing edits, expense amend/void, member removal) with action/entity/actor filters and color-coded badges
 
 ### Analytics
-- 4 tabs: Employee, Team, Project, Company insights
-- Date range picker, granularity toggle (weekly/monthly), approval filter
-- Contract burn-down charts (actual vs ideal)
-- Revenue/cost trends, utilization rates, billable breakdowns
+- **Architecture**: Fully inline-styled (no Tailwind/shadcn), DM Sans + JetBrains Mono fonts, warm stone palette (#FAFAF9 bg, #E5E7EB borders, #1F2937 text). All charts via Recharts with `ResponsiveContainer`. Shared components in `analytics-shared.tsx`.
+- **Sticky header**: Tab pills (Employee/Team/Project/Company), granularity toggle (monthly/weekly), approval filter (approved only/all), date range display (last 3 months)
+- **5 global KPI cards**: Revenue Forecast (30d), EBITDA Est., Avg. Effective Rate, Unbilled Revenue, Leave Liability — fetched via `type=kpis`
+- **Employee tab**: Employee selector → 4 KPIs (utilization color-coded, total hours, flex balance, absence days) → Time Distribution donut + Phase Breakdown horizontal bar → Utilization Trend with planned line + green zone (70-85%) → Profitability composed chart + Flex Balance Trend area
+- **Team tab**: Capacity & Health stacked bar (billable/internal/vacation/available with burnout 115% line) → Bench list (employees <50% allocation) + Effective Hourly Rate ranking → Utilization Comparison + Time Mix stacked bars
+- **Project tab**: Red List table (>85% budget or <20% margin, badge count on tab) → Budget Velocity scatter (time vs budget with diagonal reference) + Billable Mix → Contract Burn-down area + Profitability composed → Phase Distribution + Team Contribution pie
+- **Company tab**: Revenue Bridge composed chart (actual bars + forecast bars + break-even line) → Client Concentration pie + Invoice Pipeline stacked → Billing Velocity card + Collection Summary + Expense Breakdown → Non-Billable Trend lines (with zones) + Unbilled Work Aging list
+- **ChartCard features**: Expand to fullscreen modal, PNG export (html2canvas), CSV data export
+- **Projection lines**: `withProjection()` utility adds dashed lines for incomplete current periods on trend charts
+- **API**: Single `GET /api/analytics` endpoint with `type` param (employee/team/project/company/kpis). Revenue forecast uses `lib/analytics-forecast.ts` with ResourceAllocation data.
 - Estimated non-billable hours from project percentages factored into profitability, billable mix, and overhead calculations
 
 ### AI Assistant
@@ -294,7 +302,8 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
 - **Map/Set iteration**: `for...of` on `Map` or `Set` objects fails in production builds (`--downlevelIteration` not enabled). Use `Record<string, T>` with `Object.values().forEach()` / `Object.keys().forEach()` for Maps. Use `Array.from(set).forEach()` for Sets.
 - **Uint8Array as response body**: `new NextResponse(uint8Array)` fails type check. Wrap with `Buffer.from(uint8Array)`.
 - **Prisma uses `db push`**: Schema changes use `npx prisma db push` (NOT migrations). No migration history.
-- **Demo date convention**: Dashboard components must use `getToday()` from `lib/demo-date.ts` instead of `new Date()` for determining "today" / current week / current month. This allows the demo deployment to be pinned to a specific date via `NEXT_PUBLIC_DEMO_DATE` env var. Applies to initial state, "Today" buttons, vacation accrual calculations, analytics date ranges, and timeline anchors.
+- **Demo date convention**: Dashboard components must use `getToday()` from `lib/demo-date.ts` instead of `new Date()` for determining "today" / current week / current month. The pinned date is stored in the committed file `lib/demo-date-generated.json` (`{"date":"2026-02-12"}` for demo, `{"date":null}` for production). **Critical**: Never use `date-fns isToday()` — it always checks against the real system date. Import `isToday` from `@/lib/demo-date` instead. Components that highlight "today" (dashboard, resource planner cells, vacation calendar) all use this custom version. Applies to initial state, "Today" buttons, vacation accrual calculations, analytics date ranges, timeline anchors, and flex balance calculations.
+- **Vacation counting (admin users)**: `/api/vacations` returns ALL company vacations for admin users. Dashboard must filter by the current user's ID (from `/api/user/me`) before counting used vacation days, otherwise admins see the sum of all employees' vacation days.
 
 ## Validation & Rate Limiting
 
@@ -322,7 +331,7 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
 - `ACCOUNTING_ENCRYPTION_KEY` - Hex-encoded 32-byte key for AES-256-GCM encryption of accounting credentials
 - `ECONOMIC_APP_SECRET_TOKEN` / `ECONOMIC_APP_PUBLIC_TOKEN` - e-conomic developer app credentials (for OAuth grant flow)
 - `DINERO_CLIENT_ID` / `DINERO_CLIENT_SECRET` - Visma Connect OAuth2 credentials (for Dinero integration)
-- `NEXT_PUBLIC_DEMO_DATE` - Pins the app's concept of "today" (e.g., `2026-02-12`). When set, all dashboard/planner/analytics components use this date instead of `new Date()`. Used on the demo deployment to keep data consistent.
+- `NEXT_PUBLIC_DEMO_DATE` - Local dev fallback for demo date pinning (e.g., `2026-02-12`). **Production/Vercel uses `lib/demo-date-generated.json` instead** (committed to git) because `NEXT_PUBLIC_*` env vars were unreliable with webpack DefinePlugin on Vercel.
 
 ## Known Gaps (potential future work)
 
