@@ -87,6 +87,15 @@ const DESC_BILLABLE: Record<string, string[]> = {
     "Tegningsmateriale til udbud",
     "Koordinering med ingeniør",
     "Byggepladsmøde, uge-gennemgang",
+    "Brandteknisk dokumentation, etape 2",
+    "Trappekerne, detaljer og snit",
+    "Altanprojekt, konsol- og rækværk",
+    "Fugediagram og faseplan",
+    "Parkeringskælder, rampe og ventilation",
+    "Teknisk revision efter myndighedskommentarer",
+    "Protokol fra byggemøde",
+    "Indflytningsklar checkliste",
+    "Tagplan og afvanding",
   ],
   KHV: [
     "Skitseforslag, kultursal",
@@ -97,6 +106,14 @@ const DESC_BILLABLE: Record<string, string[]> = {
     "Præsentation for udvalg",
     "Akustisk studie",
     "Funktionsprogram, revision",
+    "Foyer og ankomstzone, koncept",
+    "Lysstudie, dagslys og kunstlys",
+    "Scenografi og fleksibelt rum",
+    "Udearealer, forbindelse til park",
+    "Materialekoncept, genanvendt tegl",
+    "Tilgængelighedsanalyse, adgangsveje",
+    "Konstruktionsprincip, spænd og søjler",
+    "Opsamling fra borgermøde",
   ],
   SBK: [
     "Plantegning, kontorlandskab",
@@ -107,6 +124,14 @@ const DESC_BILLABLE: Record<string, string[]> = {
     "Konstruktionsprojekt, review",
     "Dagslysberegning",
     "Interiørkoncept, fællesarealer",
+    "Ventilationsprojekt, kanaltracé",
+    "Akustik, åbent kontorlandskab",
+    "Møblering og inventarplan",
+    "El- og IT-føringsveje",
+    "Trapperum og flugtveje",
+    "Facadedetalje, aluminium og glas",
+    "Loftplan og belysning",
+    "Terrasse og tagterrasse",
   ],
   VHT: [
     "Opmåling og registrering",
@@ -117,6 +142,13 @@ const DESC_BILLABLE: Record<string, string[]> = {
     "Myndighedsansøgning, tegninger",
     "Møde med bygherre om ændringer",
     "Revision efter myndighedskrav",
+    "Eksisterende konstruktion, vurdering",
+    "Tagkonstruktion, isolering og opbygning",
+    "Installationskoordinering, VVS og EL",
+    "Vinduestegninger, profiler og glas",
+    "Udbudstegninger, snedkerentreprise",
+    "Tilbudsevaluering med bygherre",
+    "Afløbsplan, eksisterende + nyt",
   ],
   ELM: [
     "Bebyggelsesplan, revision 2",
@@ -127,6 +159,14 @@ const DESC_BILLABLE: Record<string, string[]> = {
     "Tegningsmateriale, hovedprojekt",
     "Beplantningsplan",
     "Energiramme, dokumentation",
+    "Parkeringsprojekt, cykler og biler",
+    "Affaldsløsning og driftsplan",
+    "Terrænregulering og LAR",
+    "Altandetaljer, stål og træ",
+    "Trapperumskoncept, fællesindgang",
+    "Tagboliger, snit og plan",
+    "Brandstrategi og flugtveje",
+    "Kvalitetsplan, udførelsesdokumentation",
   ],
   KON: [
     "Konkurrenceoplæg, konceptudvikling",
@@ -135,6 +175,12 @@ const DESC_BILLABLE: Record<string, string[]> = {
     "Plancher, layout",
     "Bæredygtighedsstrategi",
     "Model, 3D-print forberedelse",
+    "Situationsplan og kontekstanalyse",
+    "Snit og rumlige studier",
+    "Referenceanalyse, lignende projekter",
+    "Tekst til konkurrencebesvarelse",
+    "Landskabskoncept, skolegård",
+    "Konstruktionsprincip, modulopbygning",
   ],
 };
 
@@ -146,18 +192,28 @@ const DESC_INTERN: Record<string, string[]> = {
     "HR-administration",
     "Strategiplanlægning",
     "Klientmøde, pipeline",
+    "Partnermøde, kvartalsstatus",
+    "Budgetopfølgning",
+    "Lønforhandling forberedelse",
   ],
   kvalitet: [
     "Kvalitetssikring, review",
     "Intern tegningsreview",
     "BIM-standarder, opdatering",
     "ISO-dokumentation",
+    "Tegningstjek, koordinering",
+    "Revit-familier, standardisering",
+    "Kvalitetsaudit, byggepladsdok.",
   ],
   kompetence: [
     "Kursus, brandkrav",
     "Faglig sparring",
     "Revit-workshop",
     "Bæredygtighedscertificering",
+    "DGNB-workshop",
+    "Efteruddannelse, bygningsreglement",
+    "Foredrag, arkitektforeningen",
+    "Mentor-session, juniorer",
   ],
   kontor: [
     "Kontordrift",
@@ -165,6 +221,20 @@ const DESC_INTERN: Record<string, string[]> = {
     "Fredagsmøde",
     "Intern koordinering",
     "Projektplanlægning",
+    "Mandagsmorgenmøde",
+    "Kontorindretning, ommøblering",
+    "Arkivering, digital oprydning",
+    "Tidsregistrering, opfølgning",
+  ],
+  management: [
+    "Projektleder-møde",
+    "Ressourceallokering, gennemgang",
+    "Onboarding, ny medarbejder",
+    "MUS-samtale forberedelse",
+    "Kundetilfredshedsopfølgning",
+    "Kontraktforhandling",
+    "Samarbejdsmøde med underleverandør",
+    "Sikkerhedsgennemgang, APV",
   ],
 };
 
@@ -618,9 +688,6 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
     return (m === 11 && day >= 22) || (m === 0 && day <= 2);
   }
 
-  // Non-billable ratio per month index (0 = Aug 2025, 6 = Feb 2026)
-  const nonBillableTarget = [0.38, 0.35, 0.31, 0.28, 0.26, 0.23, 0.21];
-
   // Employee work pattern definition
   interface WorkPattern {
     userId: string;
@@ -660,220 +727,292 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
     }
   }
 
-  // Adjust internal hours based on non-billable target
-  // Higher monthIdx = less internal time
-  function internHours(base: number, monthIdx: number): number {
-    const factor = 1 - (monthIdx * 0.08); // 1.0 at month 0, 0.52 at month 6
-    return jitter(Math.max(0.5, base * Math.max(0.5, factor)));
-  }
-
   const patterns: WorkPattern[] = [
-    // Marta (admin) — leadership heavy
+    // Marta (admin) — leadership heavy, 3-4 entries/day
     {
       userId: adminUserId, name: "Marta", weeklyTarget: 37, isHourly: false,
       workDays: [1, 2, 3, 4, 5],
       getEntries: (day, mi) => {
         const dow = day.getDay();
-        const entries = [];
-        // Billable: client meetings, design reviews
-        entries.push({ projectId: hvf.id, hours: jitter(dow === 1 ? 2 : 3.5), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
-        if (mi >= 2 && dow >= 3) {
-          entries.push({ projectId: khv.id, hours: jitter(1.5), projectCode: "KHV", phaseId: getPhaseForProject("KHV", mi).id, phaseName: getPhaseForProject("KHV", mi).name, billingStatus: "billable" });
+        const entries: { projectId: string; hours: number; projectCode: string; phaseId: string | null; phaseName: string | null; billingStatus: string }[] = [];
+        if (dow === 1) {
+          // Monday: INT 3h ledelse, HVF 2.5h, KHV 2h (if mi>=2, else INT 2h)
+          entries.push({ projectId: int.id, hours: jitter(3, 0.25), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
+          entries.push({ projectId: hvf.id, hours: jitter(2.5, 0.25), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
+          if (mi >= 2) {
+            entries.push({ projectId: khv.id, hours: jitter(2, 0.25), projectCode: "KHV", phaseId: getPhaseForProject("KHV", mi).id, phaseName: getPhaseForProject("KHV", mi).name, billingStatus: "billable" });
+          } else {
+            entries.push({ projectId: int.id, hours: jitter(2, 0.25), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
+          }
+        } else if (dow === 5) {
+          // Friday: INT 2.5h kontor, HVF 2.5h, KHV 2h (if mi>=2, else HVF 4.5h), INT 0.5h
+          entries.push({ projectId: int.id, hours: jitter(2.5, 0.25), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
+          if (mi >= 2) {
+            entries.push({ projectId: hvf.id, hours: jitter(2.5, 0.25), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
+            entries.push({ projectId: khv.id, hours: jitter(2, 0.25), projectCode: "KHV", phaseId: getPhaseForProject("KHV", mi).id, phaseName: getPhaseForProject("KHV", mi).name, billingStatus: "billable" });
+          } else {
+            entries.push({ projectId: hvf.id, hours: jitter(4.5, 0.25), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
+          }
+          entries.push({ projectId: int.id, hours: jitter(0.5, 0.25), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
+        } else {
+          // Tue-Thu: INT 2h, HVF 3h, KHV 2.5h (if mi>=2, else HVF 5h, INT 0.5h)
+          entries.push({ projectId: int.id, hours: jitter(2, 0.25), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
+          if (mi >= 2) {
+            entries.push({ projectId: hvf.id, hours: jitter(3, 0.25), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
+            entries.push({ projectId: khv.id, hours: jitter(2.5, 0.25), projectCode: "KHV", phaseId: getPhaseForProject("KHV", mi).id, phaseName: getPhaseForProject("KHV", mi).name, billingStatus: "billable" });
+          } else {
+            entries.push({ projectId: hvf.id, hours: jitter(5, 0.25), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
+            entries.push({ projectId: int.id, hours: jitter(0.5, 0.25), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
+          }
         }
-        // Internal: leadership
-        entries.push({ projectId: int.id, hours: internHours(dow === 1 ? 3 : 2, mi), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
         return entries;
       },
     },
-    // Anders — project leader
+    // Anders — the "machine", highest billable partner, 3-4 entries/day, often 38h weeks
     {
       userId: anders.id, name: "Anders", weeklyTarget: 37, isHourly: false,
       workDays: [1, 2, 3, 4, 5],
-      getEntries: (day, mi) => {
-        const entries = [];
-        entries.push({ projectId: hvf.id, hours: jitter(4.5), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
+      getEntries: (_day, mi) => {
+        const entries: { projectId: string; hours: number; projectCode: string; phaseId: string | null; phaseName: string | null; billingStatus: string }[] = [];
+        entries.push({ projectId: hvf.id, hours: jitter(4.5, 0.25), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
         if (mi >= 2) {
-          entries.push({ projectId: khv.id, hours: jitter(1.5), projectCode: "KHV", phaseId: getPhaseForProject("KHV", mi).id, phaseName: getPhaseForProject("KHV", mi).name, billingStatus: "billable" });
+          entries.push({ projectId: khv.id, hours: jitter(2, 0.25), projectCode: "KHV", phaseId: getPhaseForProject("KHV", mi).id, phaseName: getPhaseForProject("KHV", mi).name, billingStatus: "billable" });
         }
-        entries.push({ projectId: int.id, hours: internHours(1.5, mi), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
+        entries.push({ projectId: int.id, hours: jitter(1.5, 0.25), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
+        // Some days extra HVF 1h (rand()<0.3), pushing to 38h weeks → flex climbs to +11
+        if (rand() < 0.3) {
+          entries.push({ projectId: hvf.id, hours: jitter(1, 0.25), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
+        }
         return entries;
       },
     },
-    // Jonas — overworked senior
+    // Jonas — frantic, 3-4 entries/day (smaller blocks), logs 38-40h, flex growing to -12.5
     {
       userId: jonas.id, name: "Jonas", weeklyTarget: 37, isHourly: false,
       workDays: [1, 2, 3, 4, 5],
-      getEntries: (day, mi) => {
-        const entries = [];
-        entries.push({ projectId: hvf.id, hours: jitter(5), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
+      getEntries: (_day, mi) => {
+        const entries: { projectId: string; hours: number; projectCode: string; phaseId: string | null; phaseName: string | null; billingStatus: string }[] = [];
+        // HVF main: 3.5h + another HVF block 2h
+        entries.push({ projectId: hvf.id, hours: jitter(3.5, 0.25), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
+        entries.push({ projectId: hvf.id, hours: jitter(2, 0.25), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
+        // KON competition: 1.5h (if mi>=2)
         if (mi >= 2) {
-          entries.push({ projectId: kon.id, hours: jitter(1.5), projectCode: "KON", phaseId: null, phaseName: null, billingStatus: "non_billable" });
+          entries.push({ projectId: kon.id, hours: jitter(1.5, 0.25), projectCode: "KON", phaseId: null, phaseName: null, billingStatus: "non_billable" });
         }
-        // Jonas often overworks — add extra 0.5-1h
-        if (rand() > 0.4) {
-          entries.push({ projectId: hvf.id, hours: jitter(1), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
+        // Extra HVF 1h block if rand()<0.5 (push to 8-8.5h days)
+        if (rand() < 0.5) {
+          entries.push({ projectId: hvf.id, hours: jitter(1, 0.25), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
         }
-        entries.push({ projectId: int.id, hours: internHours(0.5, mi), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
+        // INT 0.5h only
+        entries.push({ projectId: int.id, hours: jitter(0.5, 0.25), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
         return entries;
       },
     },
-    // Amara — efficient, sustainability
+    // Amara — EXACTLY 2 entries most days (focused, deep work). Very consistent 7.5h days.
     {
       userId: amara.id, name: "Amara", weeklyTarget: 37, isHourly: false,
       workDays: [1, 2, 3, 4, 5],
-      getEntries: (_day, mi) => {
-        const entries = [];
-        if (mi < 4) {
-          entries.push({ projectId: hvf.id, hours: jitter(3), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
+      getEntries: (day, mi) => {
+        const dow = day.getDay();
+        const entries: { projectId: string; hours: number; projectCode: string; phaseId: string | null; phaseName: string | null; billingStatus: string }[] = [];
+        if (mi < 3) {
+          // Early: HVF 4h + SBK 3.5h
+          entries.push({ projectId: hvf.id, hours: jitter(4, 0.25), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
+          entries.push({ projectId: sbk.id, hours: jitter(3.5, 0.25), projectCode: "SBK", phaseId: getPhaseForProject("SBK", mi).id, phaseName: getPhaseForProject("SBK", mi).name, billingStatus: "billable" });
+        } else {
+          // Middle and Late (mi>=3): KHV 4h + SBK 3.5h
+          entries.push({ projectId: khv.id, hours: jitter(4, 0.25), projectCode: "KHV", phaseId: getPhaseForProject("KHV", mi).id, phaseName: getPhaseForProject("KHV", mi).name, billingStatus: "billable" });
+          entries.push({ projectId: sbk.id, hours: jitter(3.5, 0.25), projectCode: "SBK", phaseId: getPhaseForProject("SBK", mi).id, phaseName: getPhaseForProject("SBK", mi).name, billingStatus: "billable" });
         }
-        if (mi >= 2) {
-          entries.push({ projectId: khv.id, hours: jitter(3), projectCode: "KHV", phaseId: getPhaseForProject("KHV", mi).id, phaseName: getPhaseForProject("KHV", mi).name, billingStatus: "billable" });
+        // Minimal intern — only add INT 0.5h on Fridays
+        if (dow === 5) {
+          entries.push({ projectId: int.id, hours: jitter(0.5, 0.25), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
         }
-        if (mi >= 3) {
-          entries.push({ projectId: sbk.id, hours: jitter(2.5), projectCode: "SBK", phaseId: getPhaseForProject("SBK", mi).id, phaseName: getPhaseForProject("SBK", mi).name, billingStatus: "billable" });
-        }
-        entries.push({ projectId: int.id, hours: internHours(0.5, mi), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
         return entries;
       },
     },
-    // Katrine — renovation specialist, VHT budget warning story, sick leave from Jan
+    // Katrine — renovation specialist, VHT budget warning story (30h/wk now, was 37 pre-Jan)
     {
-      userId: katrine.id, name: "Katrine", weeklyTarget: 37, isHourly: false,
+      userId: katrine.id, name: "Katrine", weeklyTarget: 30, isHourly: false,
       workDays: [1, 2, 3, 4, 5],
       getEntries: (day, mi) => {
-        const reduced = mi >= 5; // sick leave from Jan → 30h/wk
-        const entries = [];
-        // VHT: V-shaped burn — escalates Aug→Nov, ~75% budget warning mid-Nov, sharp pullback
-        let vhtH: number;
-        if (mi === 0) vhtH = 1.0;
-        else if (mi === 1) vhtH = 1.5;
-        else if (mi === 2) vhtH = 1.5;
-        else if (mi === 3 && day.getDate() <= 14) vhtH = 2.5; // peak before warning
-        else if (mi <= 4) vhtH = 0.5; // sharp pullback after warning
-        else vhtH = rand() < 0.3 ? 0.5 : 0; // Jan/Feb: mostly done
-        if (vhtH > 0) {
-          entries.push({ projectId: vht.id, hours: jitter(vhtH), projectCode: "VHT", phaseId: getPhaseForProject("VHT", mi).id, phaseName: getPhaseForProject("VHT", mi).name, billingStatus: "billable" });
-        }
-        // ELM as main project + HVF/KHV support
+        const entries: { projectId: string; hours: number; projectCode: string; phaseId: string | null; phaseName: string | null; billingStatus: string }[] = [];
         if (mi < 5) {
-          entries.push({ projectId: elm.id, hours: jitter(2), projectCode: "ELM", phaseId: getPhaseForProject("ELM", mi).id, phaseName: getPhaseForProject("ELM", mi).name, billingStatus: "billable" });
+          // Pre-Jan (mi<5): 37h/wk = 7.4h/day
+          // VHT V-shaped
+          let vhtH: number;
+          if (mi === 0) vhtH = 1;
+          else if (mi === 1) vhtH = 1.5;
+          else if (mi === 2) vhtH = 2;
+          else if (mi === 3 && day.getDate() <= 14) vhtH = 2.5;
+          else if (mi === 3) vhtH = 0.5;
+          else vhtH = 0.5; // mi===4
+          entries.push({ projectId: vht.id, hours: jitter(vhtH, 0.25), projectCode: "VHT", phaseId: getPhaseForProject("VHT", mi).id, phaseName: getPhaseForProject("VHT", mi).name, billingStatus: "billable" });
+          // ELM 2h + HVF/KHV 2h + INT 1.5h (fills to ~7.4h)
+          entries.push({ projectId: elm.id, hours: jitter(2, 0.25), projectCode: "ELM", phaseId: getPhaseForProject("ELM", mi).id, phaseName: getPhaseForProject("ELM", mi).name, billingStatus: "billable" });
           if (mi < 2) {
-            entries.push({ projectId: hvf.id, hours: jitter(2.5), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
+            entries.push({ projectId: hvf.id, hours: jitter(2, 0.25), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
           } else {
-            entries.push({ projectId: khv.id, hours: jitter(2), projectCode: "KHV", phaseId: getPhaseForProject("KHV", mi).id, phaseName: getPhaseForProject("KHV", mi).name, billingStatus: "billable" });
+            entries.push({ projectId: khv.id, hours: jitter(2, 0.25), projectCode: "KHV", phaseId: getPhaseForProject("KHV", mi).id, phaseName: getPhaseForProject("KHV", mi).name, billingStatus: "billable" });
           }
+          entries.push({ projectId: int.id, hours: jitter(1.5, 0.25), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
         } else {
-          entries.push({ projectId: hvf.id, hours: jitter(5), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
+          // Post-Jan (mi>=5): 30h/wk = 6h/day
+          entries.push({ projectId: hvf.id, hours: jitter(4, 0.25), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
+          entries.push({ projectId: int.id, hours: jitter(2, 0.25), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
+          // VHT: rare 0.5h (rand()<0.2)
+          if (rand() < 0.2) {
+            entries.push({ projectId: vht.id, hours: jitter(0.5, 0.25), projectCode: "VHT", phaseId: getPhaseForProject("VHT", mi).id, phaseName: getPhaseForProject("VHT", mi).name, billingStatus: "billable" });
+          }
         }
-        entries.push({ projectId: int.id, hours: internHours(reduced ? 0.5 : 1, mi), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
         return entries;
       },
     },
-    // Erik — BIM specialist, multi-project
+    // Erik — BIM specialist, 2-3 entries/day
     {
       userId: erik.id, name: "Erik", weeklyTarget: 37, isHourly: false,
       workDays: [1, 2, 3, 4, 5],
       getEntries: (day, mi) => {
-        const dow = day.getDay();
-        const entries = [];
-        entries.push({ projectId: hvf.id, hours: jitter(mi >= 3 ? 5 : 4), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
-        // VHT: minor BIM support, phases out after budget warning mid-Nov
-        if (mi <= 2 || (mi === 3 && day.getDate() <= 14)) {
-          entries.push({ projectId: vht.id, hours: jitter(0.5), projectCode: "VHT", phaseId: getPhaseForProject("VHT", mi).id, phaseName: getPhaseForProject("VHT", mi).name, billingStatus: "billable" });
+        const entries: { projectId: string; hours: number; projectCode: string; phaseId: string | null; phaseName: string | null; billingStatus: string }[] = [];
+        // HVF BIM main: 4.5h
+        entries.push({ projectId: hvf.id, hours: jitter(4.5, 0.25), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
+        // VHT minor: 1h (mi<=2) or 0.5h (mi 3, day<=14), none after
+        if (mi <= 2) {
+          entries.push({ projectId: vht.id, hours: jitter(1, 0.25), projectCode: "VHT", phaseId: getPhaseForProject("VHT", mi).id, phaseName: getPhaseForProject("VHT", mi).name, billingStatus: "billable" });
+        } else if (mi === 3 && day.getDate() <= 14) {
+          entries.push({ projectId: vht.id, hours: jitter(0.5, 0.25), projectCode: "VHT", phaseId: getPhaseForProject("VHT", mi).id, phaseName: getPhaseForProject("VHT", mi).name, billingStatus: "billable" });
         }
-        if (dow === 5) {
-          entries.push({ projectId: int.id, hours: jitter(1), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
-        } else {
-          entries.push({ projectId: int.id, hours: internHours(0.5, mi), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
+        // ELM support: 1h (mi<=4)
+        if (mi <= 4) {
+          entries.push({ projectId: elm.id, hours: jitter(1, 0.25), projectCode: "ELM", phaseId: getPhaseForProject("ELM", mi).id, phaseName: getPhaseForProject("ELM", mi).name, billingStatus: "billable" });
         }
+        // INT 1h (QA/standards)
+        entries.push({ projectId: int.id, hours: jitter(1, 0.25), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
         return entries;
       },
     },
-    // Sofia — landscape, Elmegade lead
+    // Sofia — 2-3 entries/day, ELM lead
     {
       userId: sofia.id, name: "Sofia", weeklyTarget: 37, isHourly: false,
       workDays: [1, 2, 3, 4, 5],
       getEntries: (day, mi) => {
         const dow = day.getDay();
-        const entries = [];
-        entries.push({ projectId: elm.id, hours: jitter(4.5), projectCode: "ELM", phaseId: getPhaseForProject("ELM", mi).id, phaseName: getPhaseForProject("ELM", mi).name, billingStatus: "billable" });
+        const entries: { projectId: string; hours: number; projectCode: string; phaseId: string | null; phaseName: string | null; billingStatus: string }[] = [];
+        // ELM main: 4h
+        entries.push({ projectId: elm.id, hours: jitter(4, 0.25), projectCode: "ELM", phaseId: getPhaseForProject("ELM", mi).id, phaseName: getPhaseForProject("ELM", mi).name, billingStatus: "billable" });
+        // SBK: 1.5h (mi>=3)
         if (mi >= 3) {
-          entries.push({ projectId: sbk.id, hours: jitter(1.5), projectCode: "SBK", phaseId: getPhaseForProject("SBK", mi).id, phaseName: getPhaseForProject("SBK", mi).name, billingStatus: "billable" });
+          entries.push({ projectId: sbk.id, hours: jitter(1.5, 0.25), projectCode: "SBK", phaseId: getPhaseForProject("SBK", mi).id, phaseName: getPhaseForProject("SBK", mi).name, billingStatus: "billable" });
         }
+        // INT: 1h normally, Fri (dow===5): 2h kompetenceudvikling
         if (dow === 5) {
-          entries.push({ projectId: int.id, hours: jitter(1.5), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
+          entries.push({ projectId: int.id, hours: jitter(2, 0.25), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
         } else {
-          entries.push({ projectId: int.id, hours: internHours(0.5, mi), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
+          entries.push({ projectId: int.id, hours: jitter(1, 0.25), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
         }
         return entries;
       },
     },
-    // Marcus — interiors, detail
+    // Marcus — interiors, 2-3 entries/day
     {
       userId: marcus.id, name: "Marcus", weeklyTarget: 37, isHourly: false,
       workDays: [1, 2, 3, 4, 5],
       getEntries: (_day, mi) => {
-        const entries = [];
+        const entries: { projectId: string; hours: number; projectCode: string; phaseId: string | null; phaseName: string | null; billingStatus: string }[] = [];
         if (mi >= 3) {
-          entries.push({ projectId: sbk.id, hours: jitter(4), projectCode: "SBK", phaseId: getPhaseForProject("SBK", mi).id, phaseName: getPhaseForProject("SBK", mi).name, billingStatus: "billable" });
+          // SBK main: 4h, HVF: 2.5h
+          entries.push({ projectId: sbk.id, hours: jitter(4, 0.25), projectCode: "SBK", phaseId: getPhaseForProject("SBK", mi).id, phaseName: getPhaseForProject("SBK", mi).name, billingStatus: "billable" });
+          entries.push({ projectId: hvf.id, hours: jitter(2.5, 0.25), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
+        } else {
+          // Before mi>=3: HVF 4h + HVF extra 2.5h
+          entries.push({ projectId: hvf.id, hours: jitter(4, 0.25), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
+          entries.push({ projectId: hvf.id, hours: jitter(2.5, 0.25), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
         }
-        entries.push({ projectId: hvf.id, hours: jitter(mi >= 3 ? 2 : 5), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
-        entries.push({ projectId: int.id, hours: internHours(0.5, mi), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
+        // INT: 1h
+        entries.push({ projectId: int.id, hours: jitter(1, 0.25), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
         return entries;
       },
     },
-    // Lukas — junior, high billable
+    // Lukas — junior, very billable, 2 entries/day, starts weekOffset 8
     {
       userId: lukas.id, name: "Lukas", weeklyTarget: 37, isHourly: false,
       workDays: [1, 2, 3, 4, 5],
       getEntries: (_day, mi) => {
-        const entries = [];
-        entries.push({ projectId: hvf.id, hours: jitter(4), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
+        const entries: { projectId: string; hours: number; projectCode: string; phaseId: string | null; phaseName: string | null; billingStatus: string }[] = [];
+        // HVF: 4.5h
+        entries.push({ projectId: hvf.id, hours: jitter(4.5, 0.25), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
         if (mi >= 3) {
-          entries.push({ projectId: sbk.id, hours: jitter(2.5), projectCode: "SBK", phaseId: getPhaseForProject("SBK", mi).id, phaseName: getPhaseForProject("SBK", mi).name, billingStatus: "billable" });
+          // SBK: 2.5h
+          entries.push({ projectId: sbk.id, hours: jitter(2.5, 0.25), projectCode: "SBK", phaseId: getPhaseForProject("SBK", mi).id, phaseName: getPhaseForProject("SBK", mi).name, billingStatus: "billable" });
+        } else {
+          // HVF extra 2.5h
+          entries.push({ projectId: hvf.id, hours: jitter(2.5, 0.25), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
         }
-        entries.push({ projectId: int.id, hours: internHours(0.5, mi), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
+        // INT: 0.5h (only some days: rand()<0.4)
+        if (rand() < 0.4) {
+          entries.push({ projectId: int.id, hours: jitter(0.5, 0.25), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
+        }
         return entries;
       },
     },
-    // Nadia — research, competition
+    // Nadia — research + competition, 2-3 entries/day
     {
       userId: nadia.id, name: "Nadia", weeklyTarget: 37, isHourly: false,
       workDays: [1, 2, 3, 4, 5],
       getEntries: (_day, mi) => {
-        const entries = [];
-        if (mi >= 2) {
-          entries.push({ projectId: khv.id, hours: jitter(3), projectCode: "KHV", phaseId: getPhaseForProject("KHV", mi).id, phaseName: getPhaseForProject("KHV", mi).name, billingStatus: "billable" });
+        const entries: { projectId: string; hours: number; projectCode: string; phaseId: string | null; phaseName: string | null; billingStatus: string }[] = [];
+        // ELM: 2.5h (mi<5, else 1h)
+        if (mi < 5) {
+          entries.push({ projectId: elm.id, hours: jitter(2.5, 0.25), projectCode: "ELM", phaseId: getPhaseForProject("ELM", mi).id, phaseName: getPhaseForProject("ELM", mi).name, billingStatus: "billable" });
+        } else {
+          entries.push({ projectId: elm.id, hours: jitter(1, 0.25), projectCode: "ELM", phaseId: getPhaseForProject("ELM", mi).id, phaseName: getPhaseForProject("ELM", mi).name, billingStatus: "billable" });
         }
-        entries.push({ projectId: elm.id, hours: jitter(mi >= 2 ? 2 : 4), projectCode: "ELM", phaseId: getPhaseForProject("ELM", mi).id, phaseName: getPhaseForProject("ELM", mi).name, billingStatus: "billable" });
+        // KHV: 3h (mi>=2)
         if (mi >= 2) {
-          entries.push({ projectId: kon.id, hours: jitter(1), projectCode: "KON", phaseId: null, phaseName: null, billingStatus: "non_billable" });
+          entries.push({ projectId: khv.id, hours: jitter(3, 0.25), projectCode: "KHV", phaseId: getPhaseForProject("KHV", mi).id, phaseName: getPhaseForProject("KHV", mi).name, billingStatus: "billable" });
         }
-        entries.push({ projectId: int.id, hours: internHours(0.5, mi), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
+        // KON: 1h (mi>=2, non-billable)
+        if (mi >= 2) {
+          entries.push({ projectId: kon.id, hours: jitter(1, 0.25), projectCode: "KON", phaseId: null, phaseName: null, billingStatus: "non_billable" });
+        }
+        // INT: 1h
+        entries.push({ projectId: int.id, hours: jitter(1, 0.25), projectCode: "INT", phaseId: null, phaseName: null, billingStatus: "non_billable" });
         return entries;
       },
     },
-    // Sofie D. — student, Mon-Wed
+    // Sofie D. — student, Mon-Wed, 1-2 entries/day, all HVF BIM
     {
       userId: sofieD.id, name: "SofieD", weeklyTarget: 15, isHourly: true,
       workDays: [1, 2, 3],
-      getEntries: (_day, mi) => [
-        { projectId: hvf.id, hours: jitter(5), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" },
-      ],
+      getEntries: (_day, mi) => {
+        // Single 5h block, or sometimes split: HVF 3h + HVF 2h
+        if (rand() < 0.6) {
+          return [
+            { projectId: hvf.id, hours: jitter(5, 0.25), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" },
+          ];
+        }
+        return [
+          { projectId: hvf.id, hours: jitter(3, 0.25), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" },
+          { projectId: hvf.id, hours: jitter(2, 0.25), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" },
+        ];
+      },
     },
-    // Oliver — student, Tue-Fri
+    // Oliver — student, Tue-Fri, 1-2 entries/day
     {
       userId: oliver.id, name: "Oliver", weeklyTarget: 20, isHourly: true,
       workDays: [2, 3, 4, 5],
       getEntries: (_day, mi) => {
-        const entries = [];
-        if (mi >= 2) {
-          entries.push({ projectId: khv.id, hours: jitter(3), projectCode: "KHV", phaseId: getPhaseForProject("KHV", mi).id, phaseName: getPhaseForProject("KHV", mi).name, billingStatus: "billable" });
-          entries.push({ projectId: kon.id, hours: jitter(2), projectCode: "KON", phaseId: null, phaseName: null, billingStatus: "non_billable" });
-        } else {
-          entries.push({ projectId: hvf.id, hours: jitter(5), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" });
+        if (mi < 2) {
+          // mi<2: HVF 5h
+          return [
+            { projectId: hvf.id, hours: jitter(5, 0.25), projectCode: "HVF", phaseId: getPhaseForProject("HVF", mi).id, phaseName: getPhaseForProject("HVF", mi).name, billingStatus: "billable" },
+          ];
         }
-        return entries;
+        // mi>=2: KHV 3h + KON 2h (non-billable)
+        return [
+          { projectId: khv.id, hours: jitter(3, 0.25), projectCode: "KHV", phaseId: getPhaseForProject("KHV", mi).id, phaseName: getPhaseForProject("KHV", mi).name, billingStatus: "billable" },
+          { projectId: kon.id, hours: jitter(2, 0.25), projectCode: "KON", phaseId: null, phaseName: null, billingStatus: "non_billable" },
+        ];
       },
     },
   ];
@@ -925,6 +1064,108 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
     if (isWorkday(d)) vacationDates[marcus.id].add(dateKey(d));
   }
 
+  // ── SICK DAYS ──────────────────────────────────────────────
+
+  const sickDays = new Set<string>();
+
+  const addSick = (userId: string, weekOffset: number, ...dayIndexes: number[]) => {
+    const weekMon = addWeeks(dataStart, weekOffset);
+    for (const di of dayIndexes) {
+      const d = addDays(weekMon, di);
+      sickDays.add(`${userId}\t${dateKey(d)}`);
+    }
+  };
+
+  // Hard-coded sick events
+  addSick(jonas.id, 9, 0, 1);           // Mon-Tue Oct
+  addSick(jonas.id, 22, 4);             // Fri Jan
+  addSick(erik.id, 14, 0, 1, 2, 3);     // Mon-Thu Nov — flu
+  addSick(nadia.id, 17, 2, 3, 4);       // Wed-Fri Dec
+  addSick(sofia.id, 23, 0, 1);          // Mon-Tue Jan
+  if (26 <= 26) addSick(marcus.id, 26, 3, 4); // Thu-Fri Feb (cap check)
+  addSick(amara.id, 4, 2);              // Wed Sep
+  addSick(anders.id, 13, 3);            // Thu Nov
+  addSick(lukas.id, 22, 0, 1);          // Mon-Tue Jan
+  addSick(adminUserId, 16, 3, 4);       // Thu-Fri Dec
+  addSick(katrine.id, 18, 0, 1, 2, 3, 4); // Mon-Fri late Dec — 5 days
+  addSick(sofieD.id, 12, 2);            // Wed Nov
+  addSick(oliver.id, 21, 3);            // Thu Jan
+
+  // Track sick day counts per person for capping partners
+  const sickCounts: Record<string, number> = {};
+  Array.from(sickDays).forEach((key) => {
+    const uid = key.split("\t")[0];
+    sickCounts[uid] = (sickCounts[uid] || 0) + 1;
+  });
+
+  // Generate ~20 more random sick days
+  const allUserIds = [adminUserId, anders.id, jonas.id, amara.id, katrine.id, erik.id, sofia.id, marcus.id, lukas.id, nadia.id, sofieD.id, oliver.id];
+  const studentIds = new Set([sofieD.id, oliver.id]);
+  const partnerIds = new Set([adminUserId, anders.id]);
+  let randomSickAdded = 0;
+
+  while (randomSickAdded < 20) {
+    // Pick random employee (students less likely: 15% chance for student)
+    let uid: string;
+    if (rand() < 0.15) {
+      uid = pick([sofieD.id, oliver.id]);
+    } else {
+      uid = pick(allUserIds.filter(u => !studentIds.has(u)));
+    }
+
+    // Pick random weekOffset (65% chance for 12-26 = Nov-Feb)
+    let wo: number;
+    if (rand() < 0.65) {
+      wo = 12 + Math.floor(rand() * 15); // 12-26
+    } else {
+      wo = Math.floor(rand() * 27); // 0-26
+    }
+
+    // Lukas starts at week 8
+    if (uid === lukas.id && wo < 8) continue;
+
+    // Pick random weekday (0=Mon .. 4=Fri)
+    const di = Math.floor(rand() * 5);
+    const sickDate = addDays(addWeeks(dataStart, wo), di);
+    const dk = dateKey(sickDate);
+    const sickKey = `${uid}\t${dk}`;
+
+    // Skip if holiday, vacation, or already sick
+    if (!isWorkday(sickDate)) continue;
+    const empVac = vacationDates[uid];
+    if (empVac && empVac.has(dk)) continue;
+    if (sickDays.has(sickKey)) continue;
+
+    // Cap partners at 3 total sick days
+    if (partnerIds.has(uid) && (sickCounts[uid] || 0) >= 3) continue;
+
+    sickDays.add(sickKey);
+    sickCounts[uid] = (sickCounts[uid] || 0) + 1;
+    randomSickAdded++;
+
+    // 60% chance of clustering (if sick today, maybe sick tomorrow too)
+    if (rand() < 0.6 && di < 4) {
+      const nextDate = addDays(addWeeks(dataStart, wo), di + 1);
+      const ndk = dateKey(nextDate);
+      const nextKey = `${uid}\t${ndk}`;
+      if (isWorkday(nextDate) && !sickDays.has(nextKey)) {
+        const nextEmpVac = vacationDates[uid];
+        if (!(nextEmpVac && nextEmpVac.has(ndk))) {
+          if (!(partnerIds.has(uid) && (sickCounts[uid] || 0) >= 3)) {
+            sickDays.add(nextKey);
+            sickCounts[uid] = (sickCounts[uid] || 0) + 1;
+          }
+        }
+      }
+    }
+  }
+
+  function isSickDay(userId: string, date: Date): boolean {
+    return sickDays.has(`${userId}\t${dateKey(date)}`);
+  }
+
+  // ── ENTRY GENERATION ───────────────────────────────────────
+
   // Generate all entries
   interface TimeEntryInput {
     hours: number;
@@ -949,26 +1190,23 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
   const febStart = new Date(2026, 1, 1, 12, 0, 0);
   const submittedWeekStart = addWeeks(thisMonday, -1);
 
-  // Only Jonas submitted last Friday — keeps admin badge at ~4
+  // Exactly 2 admin notifications. Only Erik and Lukas get 1 submitted entry each on last Friday.
+  const submittedForApproval = new Set<string>();
+  const lastFridayKey = dateKey(addDays(submittedWeekStart, 4));
+
   function getApproval(d: Date, userId: string): { approvalStatus: string; approvedAt: Date | null; approvedBy: string | null; submittedAt: Date | null } {
     const dk = dateKey(d);
     const febKey = dateKey(febStart);
-    const subKey = dateKey(submittedWeekStart);
-
     if (dk >= febKey) {
-      const thisMondayKey = dateKey(thisMonday);
-      if (dk >= subKey && dk < thisMondayKey && userId === jonas.id && d.getDay() === 5) {
-        // Jonas's Friday last week only — just enough to show the approval feature
+      if (dk === lastFridayKey && (userId === erik.id || userId === lukas.id) && !submittedForApproval.has(userId)) {
+        submittedForApproval.add(userId);
         return { approvalStatus: "submitted", approvedAt: null, approvedBy: null, submittedAt: addDays(d, 2) };
       }
-      // Feb: draft (current week + not yet submitted)
       return { approvalStatus: "draft", approvedAt: null, approvedBy: null, submittedAt: null };
     }
     if (dk >= dateKey(janStart)) {
-      // January: approved but not invoiced
       return { approvalStatus: "approved", approvedAt: addDays(d, 7), approvedBy: adminUserId, submittedAt: addDays(d, 3) };
     }
-    // Before January: approved + invoiced (handled later)
     return { approvalStatus: "approved", approvedAt: addDays(d, 7), approvedBy: adminUserId, submittedAt: addDays(d, 3) };
   }
 
@@ -990,6 +1228,9 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
         // Check vacation
         const empVacDates = vacationDates[pattern.userId];
         if (empVacDates && empVacDates.has(dateKey(day))) continue;
+
+        // Check sick day
+        if (isSickDay(pattern.userId, day)) continue;
 
         // Skip Christmas period for most (reduced staffing)
         if (isChristmasPeriod(day) && rand() > 0.3) continue;
@@ -1330,8 +1571,8 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
       { companyId, entityType: "TimeEntry", entityId: "batch-jan-approve-2", action: "APPROVE", fromStatus: "submitted", toStatus: "approved", actorId: adminUserId, createdAt: new Date(2026, 0, 15, 10, 30) },
       { companyId, entityType: "TimeEntry", entityId: "batch-jan-approve-3", action: "APPROVE", fromStatus: "submitted", toStatus: "approved", actorId: adminUserId, createdAt: new Date(2026, 0, 22, 14, 0) },
       { companyId, entityType: "TimeEntry", entityId: "batch-jan-approve-4", action: "APPROVE", fromStatus: "submitted", toStatus: "approved", actorId: adminUserId, createdAt: new Date(2026, 0, 29, 11, 45) },
-      // Weekly submissions (only Jonas submitted Friday)
-      { companyId, entityType: "TimeEntry", entityId: "batch-submit-jonas", action: "SUBMIT", fromStatus: "draft", toStatus: "submitted", actorId: jonas.id, createdAt: addDays(today, -8) },
+      // Weekly submissions (only Erik submitted Friday)
+      { companyId, entityType: "TimeEntry", entityId: "batch-submit-erik", action: "SUBMIT", fromStatus: "draft", toStatus: "submitted", actorId: erik.id, createdAt: addDays(today, -8) },
       // Billing edits
       { companyId, entityType: "TimeEntry", entityId: "billing-edit-1", action: "EDIT_BILLING", actorId: adminUserId, metadata: JSON.stringify({ project: "Villa Hansen Tilbygning", change: "billable → non_billable", hours: 2.5 }), createdAt: new Date(2025, 11, 12, 16, 0) },
       // Phase changes
