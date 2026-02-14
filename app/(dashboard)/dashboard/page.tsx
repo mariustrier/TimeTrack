@@ -1234,10 +1234,10 @@ export default function DashboardPage() {
                           {(() => {
                             // Skip budget display for system-managed projects (Absence etc.)
                             if (project.systemManaged) return <div className="text-center text-muted-foreground">—</div>;
-                            // Use budgetTotalHours for all project types (hours for hourly, converted hours for fixed-price)
-                            const budget = project.myAllocation ?? project.budgetTotalHours;
+                            // Only show budget bar for the employee's personal allocation
+                            const budget = project.myAllocation;
                             if (budget == null) return <div className="text-center text-muted-foreground">—</div>;
-                            const used = project.myAllocation != null ? project.myHoursUsed : project.hoursUsed;
+                            const used = project.myHoursUsed;
                             const remaining = budget - used;
                             const percentUsed = (used / budget) * 100;
                             const percentRemaining = 100 - percentUsed;

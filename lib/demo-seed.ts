@@ -541,49 +541,49 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
     },
   });
 
-  // ── PROJECT ALLOCATIONS (team budget per project) ─────────
-  // Allocations = total hours budgeted for the FULL project duration.
-  // Since we're ~57% through most projects, employees should be ~40-60% used.
+  // ── PROJECT ALLOCATIONS (per-employee budget) ─────────────
+  // Each employee's total hours budget for the FULL project duration.
+  // These are what employees see in their weekly dashboard budget bars.
   // Color thresholds: GREEN (≥50% remaining), ORANGE (20-50%), RED (<20%)
-  // Target mix: mostly GREEN, some ORANGE for variety.
+  // Mix: some GREEN (early projects), ORANGE (mid-stage), RED (tight budgets).
 
   await db.projectAllocation.createMany({
     data: [
-      // Havnefronten (total budget: 4,800h)
-      { projectId: hvf.id, userId: adminUserId, hours: 950, companyId },   // Marta ~420h → 44% used → GREEN
-      { projectId: hvf.id, userId: anders.id, hours: 1300, companyId },    // ~575h → 44% → GREEN
-      { projectId: hvf.id, userId: jonas.id, hours: 1100, companyId },     // ~720h → 65% → ORANGE
-      { projectId: hvf.id, userId: amara.id, hours: 600, companyId },      // ~240h → 40% → GREEN
-      { projectId: hvf.id, userId: katrine.id, hours: 400, companyId },    // ~160h → 40% → GREEN
-      { projectId: hvf.id, userId: erik.id, hours: 1100, companyId },      // ~540h → 49% → GREEN
-      { projectId: hvf.id, userId: marcus.id, hours: 900, companyId },     // ~540h → 60% → ORANGE
-      { projectId: hvf.id, userId: lukas.id, hours: 800, companyId },      // ~464h → 58% → ORANGE
-      { projectId: hvf.id, userId: sofieD.id, hours: 700, companyId },     // ~370h → 53% → ORANGE
-      { projectId: hvf.id, userId: oliver.id, hours: 450, companyId },     // ~200h → 44% → GREEN
-      // Kulturhuset Vestby (total budget: 1,400h)
-      { projectId: khv.id, userId: adminUserId, hours: 550, companyId },   // Marta ~180h → 33% → GREEN
-      { projectId: khv.id, userId: anders.id, hours: 450, companyId },     // ~160h → 36% → GREEN
-      { projectId: khv.id, userId: amara.id, hours: 500, companyId },      // ~180h → 36% → GREEN
-      { projectId: khv.id, userId: katrine.id, hours: 300, companyId },    // ~120h → 40% → GREEN
-      { projectId: khv.id, userId: nadia.id, hours: 550, companyId },      // ~225h → 41% → GREEN
-      { projectId: khv.id, userId: oliver.id, hours: 450, companyId },     // ~204h → 45% → GREEN
-      // Søbredden Kontor (total budget: 1,100h)
-      { projectId: sbk.id, userId: amara.id, hours: 800, companyId },      // ~370h → 46% → GREEN
-      { projectId: sbk.id, userId: sofia.id, hours: 250, companyId },      // ~90h → 36% → GREEN
-      { projectId: sbk.id, userId: marcus.id, hours: 550, companyId },     // ~240h → 44% → GREEN
-      { projectId: sbk.id, userId: lukas.id, hours: 500, companyId },      // ~200h → 40% → GREEN
-      // Villa Hansen (total budget: 260h) — tighter budget story
-      { projectId: vht.id, userId: katrine.id, hours: 200, companyId },    // ~152h → 76% → ORANGE
-      { projectId: vht.id, userId: erik.id, hours: 130, companyId },       // ~65h → 50% → GREEN
-      // Elmegade Rækkehuse (total budget: 1,200h)
-      { projectId: elm.id, userId: katrine.id, hours: 500, companyId },    // ~200h → 40% → GREEN
-      { projectId: elm.id, userId: sofia.id, hours: 850, companyId },      // ~480h → 56% → ORANGE
-      { projectId: elm.id, userId: erik.id, hours: 250, companyId },       // ~100h → 40% → GREEN
-      { projectId: elm.id, userId: nadia.id, hours: 500, companyId },      // ~258h → 52% → ORANGE
-      // Arkitektkonkurrence (total budget: 400h)
-      { projectId: kon.id, userId: jonas.id, hours: 200, companyId },      // ~120h → 60% → ORANGE
-      { projectId: kon.id, userId: nadia.id, hours: 200, companyId },      // ~75h → 38% → GREEN
-      { projectId: kon.id, userId: oliver.id, hours: 300, companyId },     // ~136h → 45% → GREEN
+      // Havnefronten — large project, most employees mid-track
+      { projectId: hvf.id, userId: adminUserId, hours: 650, companyId },   // Marta ~420h used → 35% left → GREEN
+      { projectId: hvf.id, userId: anders.id, hours: 780, companyId },     // ~575h → 26% left → GREEN
+      { projectId: hvf.id, userId: jonas.id, hours: 850, companyId },      // ~720h → 15% left → RED
+      { projectId: hvf.id, userId: amara.id, hours: 320, companyId },      // ~240h → 25% left → GREEN
+      { projectId: hvf.id, userId: katrine.id, hours: 210, companyId },    // ~160h → 24% left → GREEN
+      { projectId: hvf.id, userId: erik.id, hours: 680, companyId },       // ~540h → 21% left → ORANGE
+      { projectId: hvf.id, userId: marcus.id, hours: 640, companyId },     // ~540h → 16% left → RED
+      { projectId: hvf.id, userId: lukas.id, hours: 560, companyId },      // ~464h → 17% left → RED
+      { projectId: hvf.id, userId: sofieD.id, hours: 500, companyId },     // ~370h → 26% left → GREEN
+      { projectId: hvf.id, userId: oliver.id, hours: 300, companyId },     // ~200h → 33% left → GREEN
+      // Kulturhuset Vestby — newer, more budget remaining
+      { projectId: khv.id, userId: adminUserId, hours: 350, companyId },   // Marta ~180h → 49% left → GREEN
+      { projectId: khv.id, userId: anders.id, hours: 280, companyId },     // ~160h → 43% left → GREEN
+      { projectId: khv.id, userId: amara.id, hours: 300, companyId },      // ~180h → 40% left → GREEN
+      { projectId: khv.id, userId: katrine.id, hours: 170, companyId },    // ~120h → 29% left → ORANGE
+      { projectId: khv.id, userId: nadia.id, hours: 340, companyId },      // ~225h → 34% left → GREEN
+      { projectId: khv.id, userId: oliver.id, hours: 280, companyId },     // ~204h → 27% left → ORANGE
+      // Søbredden Kontor
+      { projectId: sbk.id, userId: amara.id, hours: 480, companyId },      // ~370h → 23% left → ORANGE
+      { projectId: sbk.id, userId: sofia.id, hours: 130, companyId },      // ~90h → 31% left → GREEN
+      { projectId: sbk.id, userId: marcus.id, hours: 310, companyId },     // ~240h → 23% left → ORANGE
+      { projectId: sbk.id, userId: lukas.id, hours: 260, companyId },      // ~200h → 23% left → ORANGE
+      // Villa Hansen — tight budget, amber warning story
+      { projectId: vht.id, userId: katrine.id, hours: 165, companyId },    // ~152h → 8% left → RED
+      { projectId: vht.id, userId: erik.id, hours: 80, companyId },        // ~65h → 19% left → RED
+      // Elmegade Rækkehuse — winding down
+      { projectId: elm.id, userId: katrine.id, hours: 240, companyId },    // ~200h → 17% left → RED
+      { projectId: elm.id, userId: sofia.id, hours: 600, companyId },      // ~480h → 20% left → ORANGE
+      { projectId: elm.id, userId: erik.id, hours: 130, companyId },       // ~100h → 23% left → ORANGE
+      { projectId: elm.id, userId: nadia.id, hours: 340, companyId },      // ~258h → 24% left → ORANGE
+      // Arkitektkonkurrence — competition, tighter budgets
+      { projectId: kon.id, userId: jonas.id, hours: 150, companyId },      // ~120h → 20% left → ORANGE
+      { projectId: kon.id, userId: nadia.id, hours: 100, companyId },      // ~75h → 25% left → GREEN
+      { projectId: kon.id, userId: oliver.id, hours: 180, companyId },     // ~136h → 24% left → ORANGE
     ],
   });
 
