@@ -14,7 +14,7 @@ export function Hero() {
       </p>
       <div className="lp-hero-acts">
         <Link href="/sign-up" className="lp-btn lp-btn-p lp-btn-lg">
-          Prøv gratis i 14 dage
+          Kom i gang — gratis i beta
         </Link>
         <a href="#integrations" className="lp-btn lp-btn-s lp-btn-lg">
           Se integrationer
@@ -22,7 +22,7 @@ export function Hero() {
       </div>
       <LiveDemoButton />
       <p className="lp-hero-note">
-        14 dage gratis · Intet kreditkort · Dansk support
+        Gratis under beta · Intet kreditkort · Dansk support
       </p>
     </section>
   );

@@ -12,7 +12,7 @@ export function CtaSection() {
       </p>
       <div className="lp-cta-acts">
         <Link href="/sign-up" className="lp-btn lp-btn-p lp-btn-lg">
-          Prøv gratis i 14 dage
+          Kom i gang — gratis i beta
         </Link>
         <a href="#integrations" className="lp-btn lp-btn-s lp-btn-lg">
           Se integrationer
