@@ -61,17 +61,21 @@ export function InvoiceCreateDialog({
   const now = new Date();
   const lastMonth = subMonths(now, 1);
 
-  // Default period: from oldest uninvoiced entry (or start of last month) to end of last month
+  // Default period: from oldest uninvoiced entry (or start of last month) to today
+  // Using today ensures ALL uninvoiced entries are captured (not just last month)
   const defaultStart = oldestEntryDate
     ? format(startOfMonth(new Date(oldestEntryDate)), "yyyy-MM-dd")
     : format(startOfMonth(lastMonth), "yyyy-MM-dd");
+  const defaultEnd = oldestEntryDate
+    ? format(now, "yyyy-MM-dd")
+    : format(endOfMonth(lastMonth), "yyyy-MM-dd");
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
   // Step 1: Scope
   const [periodStart, setPeriodStart] = useState(defaultStart);
-  const [periodEnd, setPeriodEnd] = useState(format(endOfMonth(lastMonth), "yyyy-MM-dd"));
+  const [periodEnd, setPeriodEnd] = useState(defaultEnd);
   const [groupBy, setGroupBy] = useState<"employee" | "phase" | "description" | "flat">("employee");
   const [includeExpenses, setIncludeExpenses] = useState(true);
   const [phaseId, setPhaseId] = useState<string | null>(null);
