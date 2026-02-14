@@ -388,7 +388,10 @@ interface PhaseEntry extends Entry {
   phaseName?: string | null;
 }
 
-export function aggregatePhaseDistribution(entries: PhaseEntry[]) {
+export function aggregatePhaseDistribution(
+  entries: PhaseEntry[],
+  phaseColorMap?: Record<string, string>
+) {
   const groups: Record<string, { hours: number; revenue: number; cost: number }> = {};
   for (const e of entries) {
     const key = e.phaseName || "Unassigned";
@@ -400,11 +403,12 @@ export function aggregatePhaseDistribution(entries: PhaseEntry[]) {
     groups[key].cost += e.hours * e.user.costRate;
   }
   return Object.entries(groups).map(([phaseName, data]) => ({
-    phaseName,
+    name: phaseName,
     hours: Math.round(data.hours * 10) / 10,
     revenue: Math.round(data.revenue),
     cost: Math.round(data.cost),
     margin: data.revenue > 0 ? Math.round(((data.revenue - data.cost) / data.revenue) * 1000) / 10 : 0,
+    color: phaseColorMap?.[phaseName] || DEFAULT_PHASE_COLOR,
   }));
 }
 
@@ -722,7 +726,7 @@ export function withProjection<T extends object>(
 
   return data.map((item, i) => {
     if (i === lastIdx - 1) {
-      // Connection point: projected = actual
+      // Connection point: projected = actual (for dashed line start)
       const result = { ...item } as Record<string, unknown>;
       for (const key of numericKeys) {
         result[`proj_${key}`] = (item as Record<string, unknown>)[key];
@@ -730,12 +734,14 @@ export function withProjection<T extends object>(
       return result as T;
     }
     if (i === lastIdx) {
-      // Projected values = actual scaled up
+      // Scale up actual values to projected AND add proj_ keys
       const result = { ...item } as Record<string, unknown>;
       for (const key of numericKeys) {
         const val = (item as Record<string, unknown>)[key];
         if (typeof val === "number") {
-          result[`proj_${key}`] = Math.round((val / ratio) * 10) / 10;
+          const projected = Math.round((val / ratio) * 10) / 10;
+          result[key] = projected; // Scale up the actual value
+          result[`proj_${key}`] = projected; // Dashed line to same value
         }
       }
       return result as T;
@@ -781,12 +787,6 @@ interface InvoicedEntry {
 
 // --- Phase Color Map ---
 
-const PHASE_COLORS: Record<string, string> = {
-  "Design Development": "#FCD34D",
-  "Schematic": "#93C5FD",
-  "Construction Docs": "#FBBF24",
-  "Pre-Design": "#A7F3D0",
-};
 const DEFAULT_PHASE_COLOR = "#94A3B8";
 
 // --- Helper: working days in an interval ---
@@ -799,7 +799,10 @@ function workingDaysInInterval(start: Date, end: Date): number {
 
 // --- 1. Employee Phase Breakdown ---
 
-export function aggregateEmployeePhaseBreakdown(entries: (Entry & { phaseName?: string | null })[]) {
+export function aggregateEmployeePhaseBreakdown(
+  entries: (Entry & { phaseName?: string | null })[],
+  phaseColorMap?: Record<string, string>
+) {
   const groups: Record<string, number> = {};
   for (const e of entries) {
     const key = e.phaseName || "Unassigned";
@@ -808,7 +811,7 @@ export function aggregateEmployeePhaseBreakdown(entries: (Entry & { phaseName?: 
   return Object.entries(groups).map(([name, hours]) => ({
     name,
     hours: Math.round(hours * 10) / 10,
-    color: PHASE_COLORS[name] || DEFAULT_PHASE_COLOR,
+    color: phaseColorMap?.[name] || DEFAULT_PHASE_COLOR,
   }));
 }
 

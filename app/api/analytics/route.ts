@@ -108,6 +108,16 @@ export async function GET(req: Request) {
       },
     });
 
+    // Build phase color map (phaseName -> color)
+    const phases = await db.phase.findMany({
+      where: { companyId: user.companyId },
+      select: { name: true, color: true },
+    });
+    const phaseColorMap: Record<string, string> = {};
+    for (const ph of phases) {
+      phaseColorMap[ph.name] = ph.color;
+    }
+
     // Build map of projectId -> estimatedNonBillablePercent for analytics utils
     const estimatedNonBillableMap: Record<string, number> = {};
     for (const p of projects) {
@@ -191,7 +201,7 @@ export async function GET(req: Request) {
         const employeeEntries = castEntries.filter((e) => e.userId === employeeId);
 
         // Phase breakdown
-        const phaseBreakdown = aggregateEmployeePhaseBreakdown(employeeEntries);
+        const phaseBreakdown = aggregateEmployeePhaseBreakdown(employeeEntries, phaseColorMap);
 
         // Flex trend
         const flexTrend = aggregateEmployeeFlexTrend(employeeEntries, member, from, to, granularity);
@@ -352,7 +362,7 @@ export async function GET(req: Request) {
           burndown: aggregateProjectBurndown(castEntries, project, from, to, granularity),
           profitability: aggregateProjectProfitability(castEntries, projectId, from, to, granularity, estimatedNonBillableMap),
           billableMix: aggregateProjectBillableMix(castEntries, projects, estimatedNonBillableMap),
-          phaseDistribution: aggregatePhaseDistribution(projectEntries),
+          phaseDistribution: aggregatePhaseDistribution(projectEntries, phaseColorMap),
           teamContribution: aggregateTeamContribution(projectEntries),
           projects: projects.map((p) => ({
             id: p.id,
