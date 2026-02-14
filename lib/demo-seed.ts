@@ -270,13 +270,13 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
     },
   });
 
-  // ── ADMIN USER UPDATE (Marta Krogh) ────────────────────────
+  // ── ADMIN USER UPDATE (Marta Birk) ────────────────────────
 
   await db.user.update({
     where: { id: adminUserId },
     data: {
       firstName: "Marta",
-      lastName: "Krogh",
+      lastName: "Birk",
       hourlyRate: 1150,
       costRate: 550,
       weeklyTarget: 37,

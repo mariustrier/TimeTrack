@@ -286,11 +286,11 @@ export function ProjectTimeline() {
 
   /* ─── Anchor / date helpers ─── */
   const WEEK_ANCHOR = useMemo(
-    () => startOfWeek(addWeeks(getToday(), -8), { weekStartsOn: 1 }),
+    () => startOfWeek(addWeeks(getToday(), -52), { weekStartsOn: 1 }),
     []
   );
   const DAY_ANCHOR = useMemo(
-    () => startOfDay(addDays(getToday(), -56)),
+    () => startOfDay(addDays(getToday(), -365)),
     []
   );
 
