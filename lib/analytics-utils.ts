@@ -95,6 +95,15 @@ function weeksInPeriod(periodKeyStr: string, granularity: "monthly" | "weekly"):
 
 // --- Employee Insights ---
 
+const BILLING_STATUS_COLORS: Record<string, string> = {
+  billable: "#10B981",
+  included: "#6366F1",
+  nonBillable: "#F59E0B",
+  non_billable: "#F59E0B",
+  internal: "#8B5CF6",
+  presales: "#3B82F6",
+};
+
 export function aggregateEmployeeTimeDistribution(entries: Entry[]) {
   const groups: Record<string, number> = {};
   for (const e of entries) {
@@ -104,6 +113,7 @@ export function aggregateEmployeeTimeDistribution(entries: Entry[]) {
   return Object.entries(groups).map(([status, hours]) => ({
     status,
     hours: Math.round(hours * 10) / 10,
+    fill: BILLING_STATUS_COLORS[status] || "#9CA3AF",
   }));
 }
 

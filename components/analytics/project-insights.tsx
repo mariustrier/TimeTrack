@@ -295,7 +295,7 @@ export function ProjectInsights({
                 gridTemplateColumns: "1.8fr 0.8fr 1.2fr 0.8fr 0.6fr",
                 gap: 8,
                 padding: "6px 0",
-                borderBottom: "1px solid #E5E7EB",
+                borderBottom: "1px solid hsl(var(--border))",
               }}
             >
               {["Projekt", "PL", "Budget", "Overskridelse", "Margin"].map((h) => (
@@ -324,18 +324,18 @@ export function ProjectInsights({
                   gap: 8,
                   alignItems: "center",
                   padding: "8px 0",
-                  borderBottom: "1px solid #F3F4F6",
+                  borderBottom: "1px solid hsl(var(--muted))",
                 }}
               >
                 {/* Projekt */}
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <StatusDot color={item.color} />
-                  <span style={{ fontSize: 12, fontFamily: "'DM Sans', sans-serif", fontWeight: 500, color: "#1F2937" }}>
+                  <span style={{ fontSize: 12, fontFamily: "'DM Sans', sans-serif", fontWeight: 500, color: "hsl(var(--foreground))" }}>
                     {item.name}
                   </span>
                 </div>
                 {/* PM */}
-                <span style={{ fontSize: 11, fontFamily: "'DM Sans', sans-serif", color: "#6B7280" }}>
+                <span style={{ fontSize: 11, fontFamily: "'DM Sans', sans-serif", color: "hsl(var(--muted-foreground))" }}>
                   {item.pm}
                 </span>
                 {/* Budget */}

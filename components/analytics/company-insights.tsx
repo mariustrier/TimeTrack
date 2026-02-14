@@ -194,6 +194,26 @@ export function CompanyInsights({
     [nonBillableTrend, granularity]
   );
 
+  const projectedExpenseBreakdown = useMemo(
+    () => withProjection(
+      expenseBreakdown.map((d) => ({ ...d, _total: d.salaries + d.rent + d.software + d.insurance + d.utilities + d.travel + d.other })),
+      getToday(),
+      granularity,
+      ["_total"]
+    ),
+    [expenseBreakdown, granularity]
+  );
+
+  const projectedInvoicePipeline = useMemo(
+    () => withProjection(
+      invoicePipeline.map((d) => ({ ...d, _total: d.draft + d.sent + d.paid })),
+      getToday(),
+      granularity,
+      ["_total"]
+    ),
+    [invoicePipeline, granularity]
+  );
+
   const topClientPct = useMemo(() => {
     if (clientConcentration.length === 0) return 0;
     return clientConcentration[0].pct;
@@ -372,7 +392,7 @@ export function CompanyInsights({
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={invoicePipeline} margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+              <ComposedChart data={projectedInvoicePipeline} margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
                 <CartesianGrid {...GRID_STYLE} />
                 <XAxis dataKey="period" tick={AXIS_STYLE} tickLine={false} />
                 <YAxis tick={AXIS_STYLE} tickLine={false} tickFormatter={(v: number) => fmtCurrency(v)} />
@@ -393,7 +413,8 @@ export function CompanyInsights({
                 <Bar dataKey="paid" stackId="pipeline" fill="#10B981" name="paid" radius={[0, 0, 0, 0]} />
                 <Bar dataKey="sent" stackId="pipeline" fill="#3B82F6" name="sent" radius={[0, 0, 0, 0]} />
                 <Bar dataKey="draft" stackId="pipeline" fill="#F59E0B" name="draft" radius={[2, 2, 0, 0]} />
-              </BarChart>
+                <Line type="monotone" dataKey="proj__total" stroke="#6366F1" strokeWidth={2} strokeDasharray="6 3" dot={false} legendType="none" />
+              </ComposedChart>
             </ResponsiveContainer>
           )}
         </ChartCard>
@@ -408,8 +429,8 @@ export function CompanyInsights({
           {/* Billing Velocity — manual card */}
           <div
             style={{
-              background: "#FFFFFF",
-              border: "1px solid #E5E7EB",
+              background: "hsl(var(--card))",
+              border: "1px solid hsl(var(--border))",
               borderRadius: 8,
               padding: "16px 18px",
               transition: "box-shadow 0.2s ease",
@@ -426,7 +447,7 @@ export function CompanyInsights({
                 fontSize: 13,
                 fontFamily: "'DM Sans', sans-serif",
                 fontWeight: 600,
-                color: "#1F2937",
+                color: "hsl(var(--foreground))",
                 marginBottom: 12,
               }}
             >
@@ -438,7 +459,7 @@ export function CompanyInsights({
                 fontSize: 36,
                 fontFamily: "'JetBrains Mono', monospace",
                 fontWeight: 700,
-                color: "#1F2937",
+                color: "hsl(var(--foreground))",
                 lineHeight: 1.1,
               }}
             >
@@ -484,7 +505,7 @@ export function CompanyInsights({
                     style={{
                       fontSize: 10,
                       fontFamily: "'DM Sans', sans-serif",
-                      color: "#6B7280",
+                      color: "hsl(var(--muted-foreground))",
                     }}
                   >
                     {bucket.label}
@@ -497,8 +518,8 @@ export function CompanyInsights({
           {/* Collection Summary — manual card */}
           <div
             style={{
-              background: "#FFFFFF",
-              border: "1px solid #E5E7EB",
+              background: "hsl(var(--card))",
+              border: "1px solid hsl(var(--border))",
               borderRadius: 8,
               padding: "16px 18px",
               transition: "box-shadow 0.2s ease",
@@ -515,7 +536,7 @@ export function CompanyInsights({
                 fontSize: 13,
                 fontFamily: "'DM Sans', sans-serif",
                 fontWeight: 600,
-                color: "#1F2937",
+                color: "hsl(var(--foreground))",
                 marginBottom: 12,
               }}
             >
@@ -523,7 +544,7 @@ export function CompanyInsights({
             </div>
             {/* Rows */}
             {[
-              { label: "Total faktureret", value: collectionSummary.invoiced, color: "#1F2937" },
+              { label: "Total faktureret", value: collectionSummary.invoiced, color: "hsl(var(--foreground))" },
               { label: "Betalt", value: collectionSummary.paid, color: "#10B981" },
               { label: "Udestående", value: collectionSummary.outstanding, color: "#F59E0B" },
             ].map((row, i) => (
@@ -534,14 +555,14 @@ export function CompanyInsights({
                   alignItems: "center",
                   justifyContent: "space-between",
                   padding: "6px 0",
-                  borderBottom: i < 2 ? "1px solid #F3F4F6" : undefined,
+                  borderBottom: i < 2 ? "1px solid hsl(var(--muted))" : undefined,
                 }}
               >
                 <span
                   style={{
                     fontSize: 12,
                     fontFamily: "'DM Sans', sans-serif",
-                    color: "#6B7280",
+                    color: "hsl(var(--muted-foreground))",
                   }}
                 >
                   {row.label}
@@ -573,7 +594,7 @@ export function CompanyInsights({
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={290}>
-              <BarChart data={expenseBreakdown} margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+              <ComposedChart data={projectedExpenseBreakdown} margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
                 <CartesianGrid {...GRID_STYLE} />
                 <XAxis dataKey="period" tick={AXIS_STYLE} tickLine={false} />
                 <YAxis tick={AXIS_STYLE} tickLine={false} tickFormatter={(v: number) => fmtCurrency(v)} />
@@ -595,7 +616,8 @@ export function CompanyInsights({
                 <Bar dataKey="utilities" stackId="exp" fill={EXPENSE_COLORS.utilities} name="utilities" />
                 <Bar dataKey="travel" stackId="exp" fill={EXPENSE_COLORS.travel} name="travel" />
                 <Bar dataKey="other" stackId="exp" fill={EXPENSE_COLORS.other} name="other" radius={[2, 2, 0, 0]} />
-              </BarChart>
+                <Line type="monotone" dataKey="proj__total" stroke="#6366F1" strokeWidth={2} strokeDasharray="6 3" dot={false} legendType="none" />
+              </ComposedChart>
             </ResponsiveContainer>
           )}
         </ChartCard>
@@ -723,8 +745,8 @@ export function CompanyInsights({
                       gap: 10,
                       padding: "6px 8px",
                       borderRadius: 6,
-                      background: "#FAFAFA",
-                      border: "1px solid #F3F4F6",
+                      background: "hsl(var(--muted))",
+                      border: "1px solid hsl(var(--muted))",
                     }}
                   >
                     {/* Status dot */}
@@ -737,7 +759,7 @@ export function CompanyInsights({
                           fontSize: 12,
                           fontFamily: "'DM Sans', sans-serif",
                           fontWeight: 500,
-                          color: "#1F2937",
+                          color: "hsl(var(--foreground))",
                           whiteSpace: "nowrap",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
@@ -761,7 +783,7 @@ export function CompanyInsights({
                       <div
                         style={{
                           height: 5,
-                          background: "#F3F4F6",
+                          background: "hsl(var(--muted))",
                           borderRadius: 3,
                           overflow: "hidden",
                         }}
@@ -784,7 +806,7 @@ export function CompanyInsights({
                         fontSize: 12,
                         fontFamily: "'JetBrains Mono', monospace",
                         fontWeight: 600,
-                        color: "#1F2937",
+                        color: "hsl(var(--foreground))",
                         whiteSpace: "nowrap",
                         minWidth: 70,
                         textAlign: "right",

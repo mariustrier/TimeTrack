@@ -214,7 +214,7 @@ export function TeamInsights({
         >
           {capacityDetail.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={capacityDetail}>
+              <BarChart data={capacityDetail} margin={{ top: 5, right: 110, bottom: 5, left: 5 }}>
                 <CartesianGrid {...GRID_STYLE} />
                 <XAxis
                   dataKey="name"
@@ -290,7 +290,7 @@ export function TeamInsights({
                   dataKey="available"
                   name="Tilgaengelig"
                   stackId="capacity"
-                  fill="#E5E7EB"
+                  fill="#94A3B8"
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>
@@ -340,9 +340,9 @@ export function TeamInsights({
                     alignItems: "center",
                     gap: 10,
                     padding: "8px 10px",
-                    background: "#F9FAFB",
+                    background: "hsl(var(--muted))",
                     borderRadius: 6,
-                    border: "1px solid #F3F4F6",
+                    border: "1px solid hsl(var(--border))",
                   }}
                 >
                   {/* Initials avatar */}
@@ -371,7 +371,7 @@ export function TeamInsights({
                         fontSize: 12,
                         fontFamily: "'DM Sans', sans-serif",
                         fontWeight: 600,
-                        color: "#1F2937",
+                        color: "hsl(var(--foreground))",
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
@@ -413,7 +413,7 @@ export function TeamInsights({
                       style={{
                         width: "100%",
                         height: 4,
-                        background: "#F3F4F6",
+                        background: "hsl(var(--muted))",
                         borderRadius: 2,
                         overflow: "hidden",
                       }}
@@ -476,7 +476,7 @@ export function TeamInsights({
                     alignItems: "center",
                     gap: 10,
                     padding: "6px 10px",
-                    background: idx % 2 === 0 ? "#FFFFFF" : "#F9FAFB",
+                    background: idx % 2 === 0 ? "hsl(var(--card))" : "hsl(var(--muted))",
                     borderRadius: 4,
                   }}
                 >
@@ -511,7 +511,7 @@ export function TeamInsights({
                       fontSize: 12,
                       fontFamily: "'DM Sans', sans-serif",
                       fontWeight: 500,
-                      color: "#1F2937",
+                      color: "hsl(var(--foreground))",
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",

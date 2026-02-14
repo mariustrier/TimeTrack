@@ -47,7 +47,7 @@ export const AXIS_STYLE = {
 
 export const GRID_STYLE = {
   strokeDasharray: "3 3",
-  stroke: "#F3F4F6",
+  stroke: "hsl(var(--border))",
 };
 
 // ---------------------------------------------------------------------------
@@ -112,8 +112,8 @@ export function KpiCard({
   return (
     <div
       style={{
-        background: warn ? "#FFFBEB" : "#FFFFFF",
-        border: `1px solid ${warn ? "#FDE68A" : "#E5E7EB"}`,
+        background: warn ? "#FFFBEB" : "hsl(var(--card))",
+        border: `1px solid ${warn ? "#FDE68A" : "hsl(var(--border))"}`,
         borderRadius: 8,
         padding: "12px 14px",
         display: "flex",
@@ -144,7 +144,7 @@ export function KpiCard({
             fontWeight: 600,
             textTransform: "uppercase",
             letterSpacing: "0.05em",
-            color: "#6B7280",
+            color: "hsl(var(--muted-foreground))",
           }}
         >
           {label}
@@ -163,7 +163,7 @@ export function KpiCard({
             fontSize: 22,
             fontFamily: "'JetBrains Mono', monospace",
             fontWeight: 700,
-            color: color || "#1F2937",
+            color: color || "hsl(var(--foreground))",
             lineHeight: 1.1,
           }}
         >
@@ -351,10 +351,9 @@ export function ChartCard({
     <>
       <div
         style={{
-          background: "#FFFFFF",
-          border: "1px solid #E5E7EB",
+          background: "hsl(var(--card))",
+          border: "1px solid hsl(var(--border))",
           borderRadius: 8,
-          overflow: "hidden",
           transition: "box-shadow 0.2s ease",
         }}
         onMouseEnter={(e) => {
@@ -372,7 +371,7 @@ export function ChartCard({
             alignItems: "center",
             justifyContent: "space-between",
             padding: "10px 14px",
-            borderBottom: "1px solid #F3F4F6",
+            borderBottom: "1px solid hsl(var(--border))",
           }}
           onMouseEnter={() => setHeaderHover(true)}
           onMouseLeave={() => setHeaderHover(false)}
@@ -385,7 +384,7 @@ export function ChartCard({
                 fontSize: 13,
                 fontFamily: "'DM Sans', sans-serif",
                 fontWeight: 600,
-                color: "#1F2937",
+                color: "hsl(var(--foreground))",
               }}
             >
               {title}
@@ -444,8 +443,8 @@ export function ChartCard({
                 transition: "color 0.15s, background 0.15s",
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.color = "#1F2937";
-                (e.currentTarget as HTMLElement).style.background = "#F3F4F6";
+                (e.currentTarget as HTMLElement).style.color = "hsl(var(--foreground))";
+                (e.currentTarget as HTMLElement).style.background = "hsl(var(--muted))";
               }}
               onMouseLeave={(e) => {
                 (e.currentTarget as HTMLElement).style.color = "#9CA3AF";
@@ -485,8 +484,8 @@ export function ChartCard({
                   transition: "color 0.15s, background 0.15s",
                 }}
                 onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLElement).style.color = "#1F2937";
-                  (e.currentTarget as HTMLElement).style.background = "#F3F4F6";
+                  (e.currentTarget as HTMLElement).style.color = "hsl(var(--foreground))";
+                  (e.currentTarget as HTMLElement).style.background = "hsl(var(--muted))";
                 }}
                 onMouseLeave={(e) => {
                   (e.currentTarget as HTMLElement).style.color = "#9CA3AF";
@@ -526,8 +525,8 @@ export function ChartCard({
                 transition: "color 0.15s, background 0.15s",
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.color = "#1F2937";
-                (e.currentTarget as HTMLElement).style.background = "#F3F4F6";
+                (e.currentTarget as HTMLElement).style.color = "hsl(var(--foreground))";
+                (e.currentTarget as HTMLElement).style.background = "hsl(var(--muted))";
               }}
               onMouseLeave={(e) => {
                 (e.currentTarget as HTMLElement).style.color = "#9CA3AF";
@@ -578,7 +577,7 @@ export function ChartCard({
         >
           <div
             style={{
-              background: "#FFFFFF",
+              background: "hsl(var(--card))",
               borderRadius: 12,
               maxWidth: 1200,
               width: "90vw",
@@ -595,7 +594,7 @@ export function ChartCard({
                 alignItems: "center",
                 justifyContent: "space-between",
                 padding: "16px 20px",
-                borderBottom: "1px solid #E5E7EB",
+                borderBottom: "1px solid hsl(var(--border))",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -604,7 +603,7 @@ export function ChartCard({
                     fontSize: 15,
                     fontFamily: "'DM Sans', sans-serif",
                     fontWeight: 600,
-                    color: "#1F2937",
+                    color: "hsl(var(--foreground))",
                   }}
                 >
                   {title}
@@ -639,7 +638,7 @@ export function ChartCard({
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    color: "#6B7280",
+                    color: "hsl(var(--muted-foreground))",
                   }}
                 >
                   <svg
@@ -670,7 +669,7 @@ export function ChartCard({
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      color: "#6B7280",
+                      color: "hsl(var(--muted-foreground))",
                     }}
                   >
                     <svg
@@ -701,7 +700,7 @@ export function ChartCard({
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    color: "#6B7280",
+                    color: "hsl(var(--muted-foreground))",
                     marginLeft: 4,
                   }}
                 >
@@ -753,9 +752,9 @@ export function MiniSelect({ value, onChange, options, width }: MiniSelectProps)
         fontFamily: "'DM Sans', sans-serif",
         padding: "4px 8px",
         borderRadius: 6,
-        border: "1px solid #E5E7EB",
-        background: "#FFFFFF",
-        color: "#1F2937",
+        border: "1px solid hsl(var(--border))",
+        background: "hsl(var(--card))",
+        color: "hsl(var(--foreground))",
         outline: "none",
         cursor: "pointer",
         width: width ? width : undefined,
@@ -817,7 +816,7 @@ export function InfoTip({ text }: InfoTipProps) {
         width: 15,
         height: 15,
         borderRadius: "50%",
-        background: "#F3F4F6",
+        background: "hsl(var(--muted))",
         color: "#9CA3AF",
         fontSize: 9,
         fontFamily: "'DM Sans', sans-serif",
@@ -1005,7 +1004,7 @@ export function BudgetBar({ used, total, compact }: BudgetBarProps) {
         style={{
           flex: 1,
           height: barHeight,
-          background: "#F3F4F6",
+          background: "hsl(var(--muted))",
           borderRadius: barHeight / 2,
           overflow: "hidden",
         }}
@@ -1025,7 +1024,7 @@ export function BudgetBar({ used, total, compact }: BudgetBarProps) {
           fontSize: compact ? 10 : 11,
           fontFamily: "'JetBrains Mono', monospace",
           fontWeight: 600,
-          color: overBudget ? "#EF4444" : "#6B7280",
+          color: overBudget ? "#EF4444" : "hsl(var(--muted-foreground))",
           whiteSpace: "nowrap",
           minWidth: compact ? 32 : 38,
           textAlign: "right",

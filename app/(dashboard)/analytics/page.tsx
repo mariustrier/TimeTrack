@@ -49,8 +49,8 @@ function TabBtn({
         fontSize: 12,
         fontFamily: "'DM Sans', sans-serif",
         fontWeight: 600,
-        background: active ? "#1F2937" : hover ? "rgba(0,0,0,0.04)" : "transparent",
-        color: active ? "#FFFFFF" : "#6B7280",
+        background: active ? "#1F2937" : hover ? "hsl(var(--muted))" : "transparent",
+        color: active ? "#FFFFFF" : "hsl(var(--muted-foreground))",
         transition: "all 0.15s ease",
         whiteSpace: "nowrap",
       }}
@@ -110,8 +110,8 @@ function ToggleBtn({
         fontSize: 11,
         fontFamily: "'DM Sans', sans-serif",
         fontWeight: 600,
-        background: active ? "#1F2937" : hover ? "#F9FAFB" : "#FFFFFF",
-        color: active ? "#FFFFFF" : "#6B7280",
+        background: active ? "#1F2937" : hover ? "hsl(var(--muted))" : "hsl(var(--card))",
+        color: active ? "#FFFFFF" : "hsl(var(--muted-foreground))",
         borderRadius:
           position === "left" ? "4px 0 0 4px" : "0 4px 4px 0",
         transition: "all 0.15s ease",
@@ -199,9 +199,9 @@ export default function AnalyticsPage() {
     <div
       style={{
         fontFamily: "'DM Sans', sans-serif",
-        background: "#FAFAF9",
+        background: "hsl(var(--background))",
         minHeight: "100vh",
-        color: "#1F2937",
+        color: "hsl(var(--foreground))",
       }}
     >
       <FontLoader />
@@ -215,8 +215,8 @@ export default function AnalyticsPage() {
           position: "sticky",
           top: 0,
           zIndex: 40,
-          background: "#FFFFFF",
-          borderBottom: "1px solid #E5E7EB",
+          background: "hsl(var(--card))",
+          borderBottom: "1px solid hsl(var(--border))",
           padding: "14px 28px",
         }}
       >
@@ -243,7 +243,7 @@ export default function AnalyticsPage() {
                 fontWeight: 700,
                 margin: 0,
                 fontFamily: "'DM Sans', sans-serif",
-                color: "#1F2937",
+                color: "hsl(var(--foreground))",
                 whiteSpace: "nowrap",
               }}
             >
@@ -255,7 +255,7 @@ export default function AnalyticsPage() {
               style={{
                 display: "flex",
                 alignItems: "center",
-                background: "#F3F4F6",
+                background: "hsl(var(--muted))",
                 borderRadius: 6,
                 padding: 2,
                 gap: 1,
@@ -285,7 +285,7 @@ export default function AnalyticsPage() {
             <div
               style={{
                 display: "flex",
-                border: "1px solid #E5E7EB",
+                border: "1px solid hsl(var(--border))",
                 borderRadius: 4,
                 overflow: "hidden",
               }}
@@ -308,7 +308,7 @@ export default function AnalyticsPage() {
             <div
               style={{
                 display: "flex",
-                border: "1px solid #E5E7EB",
+                border: "1px solid hsl(var(--border))",
                 borderRadius: 4,
                 overflow: "hidden",
               }}
@@ -333,13 +333,13 @@ export default function AnalyticsPage() {
                 display: "inline-flex",
                 alignItems: "center",
                 padding: "4px 12px",
-                border: "1px solid #E5E7EB",
+                border: "1px solid hsl(var(--border))",
                 borderRadius: 4,
                 fontSize: 11,
                 fontFamily: "'JetBrains Mono', monospace",
                 fontWeight: 500,
-                color: "#6B7280",
-                background: "#FFFFFF",
+                color: "hsl(var(--muted-foreground))",
+                background: "hsl(var(--card))",
                 whiteSpace: "nowrap",
                 userSelect: "none",
               }}
