@@ -459,16 +459,16 @@ export default function DashboardPage() {
   const billableTotal = entries
     .filter((e) => e.billingStatus === "billable")
     .reduce((sum, e) => sum + e.hours, 0);
-  const timeBalance = grandTotal - weeklyTarget;
-
   // Daily flex balance: running cumulative (target - worked) through the week
-  // Mon-Thu get rounded target, Friday gets the remainder to match weekly total
-  // Holidays are treated like weekends (0h target)
+  // Only count days up to and including today — don't penalize for unfilled future days
   const monThuTarget = Math.round(weeklyTarget / 5 * 2) / 2; // round to nearest 0.5
   const fridayTarget = weeklyTarget - monThuTarget * 4;
+  const today = getToday();
   const flexBalances = useMemo(() => {
     let cumulative = priorFlexBalance;
     return weekDays.map((day) => {
+      // Future days: no target penalty, just carry forward
+      if (day > today) return cumulative;
       const dateStr = format(day, "yyyy-MM-dd");
       const worked = entries
         .filter((e) => e.date.split("T")[0] === dateStr)
@@ -477,7 +477,13 @@ export default function DashboardPage() {
       cumulative += worked - target;
       return cumulative;
     });
-  }, [weekDays, entries, weeklyTarget, priorFlexBalance, disabledHolidayCodes, customHolidays]);
+  }, [weekDays, entries, weeklyTarget, priorFlexBalance, disabledHolidayCodes, customHolidays, today]);
+
+  // Time balance: only count targets for days up to today
+  const targetUpToToday = weekDays
+    .filter((day) => day <= today)
+    .reduce((sum, day) => sum + getDailyTarget(day, weeklyTarget, disabledHolidayCodes, customHolidays), 0);
+  const timeBalance = grandTotal - targetUpToToday;
 
   // Helper to check if a project is the Absence project
   const isAbsenceProject = (projectId: string) => {
@@ -1350,16 +1356,17 @@ export default function DashboardPage() {
                     <td className="px-4 py-2 text-sm text-muted-foreground">{t("flexBalance")}</td>
                     {weekDays.map((day, i) => {
                       const balance = flexBalances[i];
+                      const isFuture = day > today;
                       return (
                         <td
                           key={`flex-${day.toISOString()}`}
                           className={cn(
                             "px-2 py-2 text-center text-xs font-medium",
                             isToday(day) && "bg-brand-50/30",
-                            balance > 0 ? "text-emerald-600 dark:text-emerald-400" : balance < 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground"
+                            isFuture ? "text-muted-foreground" : balance > 0 ? "text-emerald-600 dark:text-emerald-400" : balance < 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground"
                           )}
                         >
-                          {balance >= 0 ? "+" : ""}{balance.toFixed(1)}
+                          {isFuture ? "—" : `${balance >= 0 ? "+" : ""}${balance.toFixed(1)}`}
                         </td>
                       );
                     })}
