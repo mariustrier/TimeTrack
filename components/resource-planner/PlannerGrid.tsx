@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useRef, useCallback, useEffect } from "react";
-import { format, isWeekend, isToday, isSameMonth, startOfMonth, getISOWeek } from "date-fns";
+import { format, isWeekend, isSameMonth, startOfMonth, getISOWeek } from "date-fns";
+import { isToday } from "@/lib/demo-date";
 import { cn } from "@/lib/utils";
 import { useDateLocale, useLocale, useTranslations } from "@/lib/i18n";
 import { getCompanyHolidayName, isCompanyHoliday, type CustomHoliday } from "@/lib/holidays";

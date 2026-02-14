@@ -10,10 +10,10 @@ import {
   format,
   addMonths,
   subMonths,
-  isToday,
   isSameMonth,
   isWeekend,
 } from "date-fns";
+import { isToday } from "@/lib/demo-date";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";

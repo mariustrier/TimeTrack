@@ -4,7 +4,7 @@ import { format, isWeekend } from "date-fns";
 import { cn } from "@/lib/utils";
 import { isCompanyHoliday, type CustomHoliday } from "@/lib/holidays";
 import { useTranslations } from "@/lib/i18n";
-import { isToday } from "date-fns";
+import { isToday } from "@/lib/demo-date";
 
 interface Allocation {
   userId: string;

@@ -13,3 +13,13 @@ export function getToday(): Date {
   }
   return new Date();
 }
+
+/** Drop-in replacement for date-fns isToday() that respects the demo pin */
+export function isToday(date: Date): boolean {
+  const today = getToday();
+  return (
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate()
+  );
+}

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { format, isWeekend, isToday } from "date-fns";
+import { format, isWeekend } from "date-fns";
+import { isToday } from "@/lib/demo-date";
 import { cn } from "@/lib/utils";
 import { isCompanyHoliday, getCompanyHolidayName, type CustomHoliday } from "@/lib/holidays";
 import { Plus } from "lucide-react";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { getToday } from "@/lib/demo-date";
+import { getToday, isToday } from "@/lib/demo-date";
 import {
   startOfWeek,
   endOfWeek,
@@ -9,7 +9,6 @@ import {
   subWeeks,
   format,
   eachDayOfInterval,
-  isToday,
   differenceInBusinessDays,
 } from "date-fns";
 import {

@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
-import { format, isWeekend, isSameDay, isToday, isSameMonth, startOfMonth, startOfWeek, endOfWeek, getISOWeek } from "date-fns";
+import { format, isWeekend, isSameDay, isSameMonth, startOfMonth, startOfWeek, endOfWeek, getISOWeek } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useDateLocale, useLocale, useTranslations } from "@/lib/i18n";
+import { isToday } from "@/lib/demo-date";
 import { getToday } from "@/lib/demo-date";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { isCompanyHoliday, getCompanyHolidayName, type CustomHoliday } from "@/lib/holidays";

@@ -1233,6 +1233,9 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
         if (!isWorkday(day)) continue;
         if (!pattern.workDays.includes(dow)) continue;
 
+        // Don't generate entries for days after "today" (Feb 12)
+        if (day > today) continue;
+
         // Lukas started in October — skip entries before that
         if (pattern.userId === lukas.id && weekOffset < 8) continue;
 
