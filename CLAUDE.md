@@ -68,6 +68,8 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `lib/week-helpers.ts` - Week date utilities
 - `lib/calculations.ts` - Flex balance, daily target calculations (getDailyTarget)
 - `lib/holidays.ts` - Danish holidays, company holidays, isCompanyHoliday/isDanishHoliday
+- `lib/demo-date.ts` - `getToday()` — returns pinned demo date (from `NEXT_PUBLIC_DEMO_DATE` env) or real `new Date()`. Used by 12+ components.
+- `lib/demo-seed.ts` - Deterministic demo data seeder (seed 42 LCG PRNG). Pinned to Feb 12, 2026. Generates 27 weeks of time entries for 12 employees at 97% utilization across 8 projects. Includes sick days, vacations, invoices, resource allocations, and project allocations with realistic budget bars.
 - `lib/seed-holidays.ts` - ensureHolidayAbsenceReason helper
 - `lib/email.ts` - Resend email client (lazy-init), sendInvitationEmail
 - `lib/expense-utils.ts` - Expense formatting helpers
@@ -289,9 +291,10 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
 
 - **Case-sensitive file imports**: Vercel runs Linux (case-sensitive). Windows dev is case-insensitive. File names must match import casing exactly (e.g., `Sidebar.tsx` for `import from '@/components/layout/Sidebar'`). Use `git mv` to rename if needed.
 - **Strict mode function declarations**: Next.js build rejects `function foo() {}` inside `if`/`else`/`for` blocks. Use `const foo = () => {}` arrow functions instead.
-- **Map iteration**: `for...of` on `Map` objects may fail in production builds. Use `Record<string, T>` with `Object.values().forEach()` / `Object.keys().forEach()` instead.
+- **Map/Set iteration**: `for...of` on `Map` or `Set` objects fails in production builds (`--downlevelIteration` not enabled). Use `Record<string, T>` with `Object.values().forEach()` / `Object.keys().forEach()` for Maps. Use `Array.from(set).forEach()` for Sets.
 - **Uint8Array as response body**: `new NextResponse(uint8Array)` fails type check. Wrap with `Buffer.from(uint8Array)`.
 - **Prisma uses `db push`**: Schema changes use `npx prisma db push` (NOT migrations). No migration history.
+- **Demo date convention**: Dashboard components must use `getToday()` from `lib/demo-date.ts` instead of `new Date()` for determining "today" / current week / current month. This allows the demo deployment to be pinned to a specific date via `NEXT_PUBLIC_DEMO_DATE` env var. Applies to initial state, "Today" buttons, vacation accrual calculations, analytics date ranges, and timeline anchors.
 
 ## Validation & Rate Limiting
 
@@ -319,6 +322,7 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
 - `ACCOUNTING_ENCRYPTION_KEY` - Hex-encoded 32-byte key for AES-256-GCM encryption of accounting credentials
 - `ECONOMIC_APP_SECRET_TOKEN` / `ECONOMIC_APP_PUBLIC_TOKEN` - e-conomic developer app credentials (for OAuth grant flow)
 - `DINERO_CLIENT_ID` / `DINERO_CLIENT_SECRET` - Visma Connect OAuth2 credentials (for Dinero integration)
+- `NEXT_PUBLIC_DEMO_DATE` - Pins the app's concept of "today" (e.g., `2026-02-12`). When set, all dashboard/planner/analytics components use this date instead of `new Date()`. Used on the demo deployment to keep data consistent.
 
 ## Known Gaps (potential future work)
 
