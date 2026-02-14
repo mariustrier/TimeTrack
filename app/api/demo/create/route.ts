@@ -16,7 +16,7 @@ export async function POST() {
       emailAddress: [email],
       password,
       firstName: "Marta",
-      lastName: "Sjöberg",
+      lastName: "Krogh",
       publicMetadata: {
         isDemo: true,
         demoCreatedAt: new Date().toISOString(),
@@ -27,7 +27,7 @@ export async function POST() {
     // 2. Create Company
     const company = await db.company.create({
       data: {
-        name: `Demo Tegnestue ${demoId}`,
+        name: "Krogh & Partners Arkitekter",
         currency: "DKK",
         isDemo: true,
         demoExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
@@ -40,10 +40,10 @@ export async function POST() {
         clerkId: clerkUser.id,
         email,
         firstName: "Marta",
-        lastName: "Sjöberg",
+        lastName: "Krogh",
         role: "admin",
-        hourlyRate: 950,
-        costRate: 475,
+        hourlyRate: 1150,
+        costRate: 550,
         weeklyTarget: 37,
         isHourly: false,
         isDemo: true,
