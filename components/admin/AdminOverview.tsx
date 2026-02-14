@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
-  startOfWeek,
-  endOfWeek,
+  startOfMonth,
+  endOfMonth,
   format,
-  subWeeks,
-  addWeeks,
+  subMonths,
+  addMonths,
 } from "date-fns";
 import {
   DollarSign,
@@ -139,7 +139,7 @@ export function AdminOverview() {
   const dateLocale = useDateLocale();
   const formatOpts = dateLocale ? { locale: dateLocale } : undefined;
 
-  const [currentWeek, setCurrentWeek] = useState(getToday());
+  const [currentMonth, setCurrentMonth] = useState(getToday());
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -265,15 +265,15 @@ export function AdminOverview() {
   const [migrationDialogOpen, setMigrationDialogOpen] = useState(false);
   const [migrationProjects, setMigrationProjects] = useState<Array<{ id: string; name: string; color: string; systemManaged?: boolean; phasesEnabled: boolean; currentPhase: { id: string; name: string } | null }>>([]);
 
-  const weekStart = useMemo(() => startOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
-  const weekEnd = useMemo(() => endOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
+  const monthStart = useMemo(() => startOfMonth(currentMonth), [currentMonth]);
+  const monthEnd = useMemo(() => endOfMonth(currentMonth), [currentMonth]);
 
   const fetchStats = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     isRefreshing.current = true;
     try {
-      const start = format(weekStart, "yyyy-MM-dd");
-      const end = format(weekEnd, "yyyy-MM-dd");
+      const start = format(monthStart, "yyyy-MM-dd");
+      const end = format(monthEnd, "yyyy-MM-dd");
       const res = await fetch(`/api/admin/stats?startDate=${start}&endDate=${end}`);
       if (res.ok) {
         setStats(await res.json());
@@ -285,7 +285,7 @@ export function AdminOverview() {
       setLoading(false);
       isRefreshing.current = false;
     }
-  }, [weekStart, weekEnd]);
+  }, [monthStart, monthEnd]);
 
   useEffect(() => {
     fetchStats();
@@ -771,17 +771,17 @@ export function AdminOverview() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => setCurrentWeek(subWeeks(currentWeek, 1))}>
+          <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="outline" onClick={() => setCurrentWeek(getToday())}>
-            {t("thisWeek")}
+          <Button variant="outline" onClick={() => setCurrentMonth(getToday())}>
+            {t("thisMonth")}
           </Button>
-          <Button variant="outline" size="icon" onClick={() => setCurrentWeek(addWeeks(currentWeek, 1))}>
+          <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
             <ChevronRight className="h-4 w-4" />
           </Button>
           <span className="ml-2 text-sm text-muted-foreground">
-            {format(weekStart, "MMM d", formatOpts)} - {format(weekEnd, "MMM d, yyyy", formatOpts)}
+            {format(monthStart, "MMMM yyyy", formatOpts)}
           </span>
           <Button variant="ghost" size="icon" onClick={() => fetchStats(true)} className="ml-1">
             <RefreshCw className="h-4 w-4" />

@@ -658,12 +658,13 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
 
   await db.expenseCategory.createMany({
     data: [
-      { name: "Husleje", sortOrder: 0, companyId },
+      { name: "Lokaler", sortOrder: 0, companyId },
       { name: "Forsikring", sortOrder: 1, companyId },
-      { name: "Software", sortOrder: 2, companyId },
-      { name: "Transport", sortOrder: 3, companyId },
-      { name: "Materialer", sortOrder: 4, companyId },
-      { name: "Øvrig", sortOrder: 5, companyId, isDefault: true },
+      { name: "Software & IT", sortOrder: 2, companyId },
+      { name: "Rådgivere", sortOrder: 3, companyId },
+      { name: "Transport", sortOrder: 4, companyId },
+      { name: "Materialer", sortOrder: 5, companyId },
+      { name: "Øvrig drift", sortOrder: 6, companyId, isDefault: true },
     ],
     skipDuplicates: true,
   });
@@ -1473,7 +1474,7 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
     { desc: "Diverse (porto, gebyrer mv.)", cat: "Øvrig drift", base: 4000 },
   ];
 
-  const overheadEntries: { amount: number; description: string; category: string; date: Date; recurring: boolean; frequency: string; companyId: string; createdBy: string; isFinalized: boolean }[] = [];
+  const overheadEntries: { amount: number; description: string; category: string; date: Date; recurring: boolean; frequency?: string; companyId: string; createdBy: string; isFinalized: boolean }[] = [];
   for (let m = 0; m < 7; m++) {
     const monthDate = new Date(2025, 7 + m, 15, 12, 0, 0); // 15th of each month
     const gm = monthDate.getMonth(); // JS month: 7=Aug .. 11=Dec, 0=Jan, 1=Feb
@@ -1495,8 +1496,7 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
         description: item.desc,
         category: item.cat,
         date: monthDate,
-        recurring: true,
-        frequency: "monthly",
+        recurring: false,
         companyId,
         createdBy: adminUserId,
         isFinalized: m < 6, // all months finalized except current (Feb)
