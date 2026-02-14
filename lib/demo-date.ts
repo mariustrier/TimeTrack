@@ -1,13 +1,11 @@
 /**
- * Returns a pinned "today" date for the demo.
- * Hardcoded to Feb 12, 2026 to keep the demo data consistent.
- * Change DEMO_DATE to null to use the real current date.
+ * Returns a pinned "today" date for the demo deployment.
+ * Set NEXT_PUBLIC_DEMO_DATE=2026-02-12 in Vercel env vars for the demo.
+ * Production (without the env var) uses the real current date.
  */
-const DEMO_DATE = "2026-02-12";
-
 export function getToday(): Date {
-  if (DEMO_DATE) {
-    return new Date(2026, 1, 12, 12, 0, 0);
+  if (process.env.NEXT_PUBLIC_DEMO_DATE) {
+    return new Date(process.env.NEXT_PUBLIC_DEMO_DATE + "T12:00:00");
   }
   return new Date();
 }
