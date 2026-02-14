@@ -956,11 +956,12 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
     const subKey = dateKey(submittedWeekStart);
 
     if (dk >= febKey) {
-      if (dk >= subKey && userId === jonas.id && d.getDay() === 5) {
-        // Jonas's Friday only — just enough to show the approval feature
+      const thisMondayKey = dateKey(thisMonday);
+      if (dk >= subKey && dk < thisMondayKey && userId === jonas.id && d.getDay() === 5) {
+        // Jonas's Friday last week only — just enough to show the approval feature
         return { approvalStatus: "submitted", approvedAt: null, approvedBy: null, submittedAt: addDays(d, 2) };
       }
-      // Feb: draft (not yet submitted)
+      // Feb: draft (current week + not yet submitted)
       return { approvalStatus: "draft", approvedAt: null, approvedBy: null, submittedAt: null };
     }
     if (dk >= dateKey(janStart)) {
@@ -971,8 +972,8 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
     return { approvalStatus: "approved", approvedAt: addDays(d, 7), approvedBy: adminUserId, submittedAt: addDays(d, 3) };
   }
 
-  // Generate 26 weeks of entries
-  for (let weekOffset = 0; weekOffset < 26; weekOffset++) {
+  // Generate 27 weeks of entries (26 historical + current week as draft)
+  for (let weekOffset = 0; weekOffset <= 26; weekOffset++) {
     const weekMonday = addWeeks(dataStart, weekOffset);
 
     for (const pattern of patterns) {
