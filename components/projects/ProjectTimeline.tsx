@@ -19,6 +19,7 @@ import {
 } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { useTranslations } from "@/lib/i18n";
 import type {
   TimelineProject,
   TimelineActivity,
@@ -280,6 +281,7 @@ function NavBtn({
 export function ProjectTimeline() {
   /* ─── View scale (must come before date helpers) ─── */
   const [viewScale, setViewScale] = useState<"day" | "week" | "month">("month");
+  const t = useTranslations("timeline");
 
   /* ─── Anchor / date helpers ─── */
   const WEEK_ANCHOR = useMemo(
@@ -377,8 +379,37 @@ export function ProjectTimeline() {
   const editBaselineRef = useRef<TLState | null>(null);
   const isSavingRef = useRef(false);
 
+  /* ─── Filters ─── */
+  const [filterPhase, setFilterPhase] = useState<string>("all");
+  const [filterClient, setFilterClient] = useState<string>("all");
+  const [filterOpen, setFilterOpen] = useState(false);
+
   /* ─── Derived ─── */
-  const projects = undoState.present.projects;
+  const allProjects = undoState.present.projects;
+  const projects = useMemo(() => {
+    let filtered = allProjects;
+    if (filterPhase !== "all") {
+      filtered = filtered.filter((p) => p.currentPhase === filterPhase);
+    }
+    if (filterClient !== "all") {
+      filtered = filtered.filter((p) => p.client === filterClient);
+    }
+    return filtered;
+  }, [allProjects, filterPhase, filterClient]);
+
+  const uniqueClients = useMemo(() => {
+    const set = new Set<string>();
+    allProjects.forEach((p) => { if (p.client) set.add(p.client); });
+    return Array.from(set).sort();
+  }, [allProjects]);
+
+  const uniquePhases = useMemo(() => {
+    const set = new Set<string>();
+    allProjects.forEach((p) => { if (p.currentPhase) set.add(p.currentPhase); });
+    return Array.from(set).sort();
+  }, [allProjects]);
+
+  const activeFilterCount = (filterPhase !== "all" ? 1 : 0) + (filterClient !== "all" ? 1 : 0);
 
   const phaseDeadlinesByProject = useMemo(() => {
     const map: Record<string, string[]> = {};
@@ -397,17 +428,17 @@ export function ProjectTimeline() {
 
   const TOTAL_WEEKS = useMemo(() => {
     const defaultTotal = viewScale === "day" ? 180 : 26;
-    if (projects.length === 0) return defaultTotal;
+    if (allProjects.length === 0) return defaultTotal;
     let minW = Infinity;
     let maxW = -Infinity;
-    for (const p of projects) {
+    for (const p of allProjects) {
       if (p.startWeek < minW) minW = p.startWeek;
       if (p.endWeek > maxW) maxW = p.endWeek;
     }
     const padding = viewScale === "day" ? 30 : 6;
     const range = maxW - minW + padding;
     return Math.max(defaultTotal, range);
-  }, [projects, viewScale]);
+  }, [allProjects, viewScale]);
 
   const viewMode = editMode
     ? "edit"
@@ -552,7 +583,7 @@ export function ProjectTimeline() {
       }
     } catch (error) {
       console.error("Error fetching timeline data:", error);
-      toast.error("Failed to load timeline data");
+      toast.error(t("fetchError"));
     } finally {
       setLoading(false);
     }
@@ -778,18 +809,18 @@ export function ProjectTimeline() {
         const results = await Promise.all(promises);
         const failedCount = results.filter((r) => !r.ok).length;
         if (failedCount > 0) {
-          toast.error(`${failedCount} update(s) failed`);
+          toast.error(t("updatesFailed", { count: failedCount }));
         } else {
-          toast.success("All changes saved");
+          toast.success(t("allChangesSaved"));
         }
       } else {
-        toast.success("No changes to save");
+        toast.success(t("noChangesToSave"));
       }
 
       exitEditMode();
     } catch (error) {
       console.error("Error saving:", error);
-      toast.error("Failed to save changes");
+      toast.error(t("failedToSave"));
     } finally {
       isSavingRef.current = false;
     }
@@ -1049,7 +1080,7 @@ export function ProjectTimeline() {
     let newState: TLState;
     const deleteName =
       popover.entityType === "project"
-        ? projects.find((p) => p.id === popover.entityId)?.name || "Item"
+        ? allProjects.find((p) => p.id === popover.entityId)?.name || "Item"
         : "Activity";
 
     if (popover.entityType === "project") {
@@ -1085,8 +1116,8 @@ export function ProjectTimeline() {
 
     dispatch({ type: "UPDATE", payload: newState });
     setPopover(null);
-    toast.success(`Deleted "${deleteName}"`);
-  }, [popover, undoState.present, projects]);
+    toast.success(t("deletedItem", { name: deleteName }));
+  }, [popover, undoState.present, allProjects]);
 
   /* ─── Add new activity ─── */
   const handleAddActivity = useCallback(
@@ -1234,10 +1265,10 @@ export function ProjectTimeline() {
             ? prev.map((m) => (m.id === savedMs.id ? savedMs : m))
             : [...prev, savedMs]
         );
-        toast.success(isUpdate ? "Deadline updated" : "Deadline created");
+        toast.success(isUpdate ? t("deadlineUpdated") : t("deadlineCreated"));
       } catch (error) {
         console.error("Error saving deadline:", error);
-        toast.error("Failed to save deadline");
+        toast.error(t("failedToSaveDeadline"));
       }
     },
     [dateToWeek]
@@ -1253,10 +1284,10 @@ export function ProjectTimeline() {
         if (!res.ok) throw new Error("Failed to delete deadline");
 
         setLiveMilestones((prev) => prev.filter((m) => m.id !== milestoneId));
-        toast.success("Deadline deleted");
+        toast.success(t("deadlineDeleted"));
       } catch (error) {
         console.error("Error deleting deadline:", error);
-        toast.error("Failed to delete deadline");
+        toast.error(t("failedToDeleteDeadline"));
       }
     },
     []
@@ -1296,19 +1327,19 @@ export function ProjectTimeline() {
   /* ─── Mode badge ─── */
   const modeBadge = {
     overview: {
-      label: "Overview",
+      label: t("overview"),
       bg: "#F0FDF4",
       fg: "#166534",
       ring: "#BBF7D0",
     },
     planning: {
-      label: "Planning",
+      label: t("planning"),
       bg: "#EFF6FF",
       fg: "#1E40AF",
       ring: "#BFDBFE",
     },
     edit: {
-      label: "Editing",
+      label: t("editing"),
       bg: "#FEF3C7",
       fg: "#92400E",
       ring: "#FDE68A",
@@ -1316,7 +1347,7 @@ export function ProjectTimeline() {
   }[viewMode];
 
   /* ─── Loading skeleton ─── */
-  if (loading && projects.length === 0) {
+  if (loading && allProjects.length === 0) {
     return (
       <div className="space-y-6 p-6">
         <Skeleton className="h-10 w-64" />
@@ -1326,7 +1357,7 @@ export function ProjectTimeline() {
   }
 
   /* ─── No projects ─── */
-  if (!loading && projects.length === 0) {
+  if (!loading && allProjects.length === 0) {
     return (
       <div
         style={{
@@ -1341,7 +1372,7 @@ export function ProjectTimeline() {
           fontWeight: 500,
         }}
       >
-        No projects found
+        {t("noProjects")}
       </div>
     );
   }
@@ -1412,7 +1443,7 @@ export function ProjectTimeline() {
               margin: 0,
             }}
           >
-            Project Timeline
+            {t("title")}
           </h1>
           <span
             style={{
@@ -1448,9 +1479,9 @@ export function ProjectTimeline() {
 
         {/* Center: navigation */}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <NavBtn onClick={handlePrev} label="\u2039" />
-          <NavBtn onClick={handleToday} label="Today" wide />
-          <NavBtn onClick={handleNext} label="\u203A" />
+          <NavBtn onClick={handlePrev} label={"\u2190"} />
+          <NavBtn onClick={handleToday} label={t("today")} wide />
+          <NavBtn onClick={handleNext} label={"\u2192"} />
           <span
             style={{
               fontSize: 13,
@@ -1492,12 +1523,155 @@ export function ProjectTimeline() {
                   background: viewScale === s ? "#1F2937" : "#fff",
                   color: viewScale === s ? "#fff" : "#6B7280",
                   transition: "all 0.2s ease",
-                  textTransform: "capitalize",
                 }}
               >
-                {s}
+                {s === "day" ? t("viewDay") : s === "week" ? t("viewWeek") : t("viewMonth")}
               </button>
             ))}
+          </div>
+
+          {/* Filter button */}
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setFilterOpen(!filterOpen)}
+              style={{
+                padding: "5px 14px",
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 600,
+                border: activeFilterCount > 0 ? "1.5px solid #3B82F6" : "1.5px solid #E5E7EB",
+                background: activeFilterCount > 0 ? "#EFF6FF" : "#fff",
+                color: activeFilterCount > 0 ? "#2563EB" : "#6B7280",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                transition: "all 0.2s ease",
+              }}
+            >
+              {"\u2630"} {t("filter")}
+              {activeFilterCount > 0 && (
+                <span
+                  style={{
+                    background: "#2563EB",
+                    color: "#fff",
+                    borderRadius: 99,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    width: 18,
+                    height: 18,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+
+            {filterOpen && (
+              <>
+                <div
+                  onClick={() => setFilterOpen(false)}
+                  style={{ position: "fixed", inset: 0, zIndex: 98 }}
+                />
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "calc(100% + 6px)",
+                    right: 0,
+                    width: 240,
+                    background: "#fff",
+                    borderRadius: 10,
+                    boxShadow: "0 10px 25px rgba(0,0,0,0.12)",
+                    border: "1px solid #E5E7EB",
+                    padding: 14,
+                    zIndex: 99,
+                    fontFamily: "'DM Sans', 'Avenir Next', system-ui, sans-serif",
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Phase filter */}
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: "#6B7280", display: "block", marginBottom: 4 }}>
+                      {t("filterPhase")}
+                    </label>
+                    <select
+                      value={filterPhase}
+                      onChange={(e) => setFilterPhase(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "6px 10px",
+                        borderRadius: 6,
+                        border: "1px solid #E5E7EB",
+                        fontSize: 12,
+                        color: "#1F2937",
+                        background: "#fff",
+                        outline: "none",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <option value="all">{t("allPhases")}</option>
+                      {uniquePhases.map((phase) => (
+                        <option key={phase} value={phase}>{phase}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Client filter */}
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={{ fontSize: 11, fontWeight: 600, color: "#6B7280", display: "block", marginBottom: 4 }}>
+                      {t("filterClient")}
+                    </label>
+                    <select
+                      value={filterClient}
+                      onChange={(e) => setFilterClient(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "6px 10px",
+                        borderRadius: 6,
+                        border: "1px solid #E5E7EB",
+                        fontSize: 12,
+                        color: "#1F2937",
+                        background: "#fff",
+                        outline: "none",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <option value="all">{t("allClientsFilter")}</option>
+                      {uniqueClients.map((client) => (
+                        <option key={client} value={client}>{client}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Clear button */}
+                  {activeFilterCount > 0 && (
+                    <button
+                      onClick={() => {
+                        setFilterPhase("all");
+                        setFilterClient("all");
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: "6px 0",
+                        borderRadius: 6,
+                        border: "1px solid #E5E7EB",
+                        background: "#F9FAFB",
+                        color: "#6B7280",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      {t("clearFilters")}
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
 
           {/* Edit toggle */}
@@ -1533,13 +1707,11 @@ export function ProjectTimeline() {
           >
             {editMode ? (
               <>
-                <span style={{ fontSize: 13 }}>{"\u2713"}</span> Done
-                Editing
+                <span style={{ fontSize: 13 }}>{"\u2713"}</span> {t("doneEditing")}
               </>
             ) : (
               <>
-                <span style={{ fontSize: 11 }}>{"\u270E"}</span> Edit
-                Timeline
+                <span style={{ fontSize: 11 }}>{"\u270E"}</span> {t("editTimeline")}
               </>
             )}
           </button>
@@ -1581,7 +1753,7 @@ export function ProjectTimeline() {
                 letterSpacing: "0.06em",
               }}
             >
-              Projects
+              {t("projects")}
             </span>
           </div>
 
@@ -1607,9 +1779,10 @@ export function ProjectTimeline() {
                     display: "flex",
                     alignItems: "center",
                     gap: 10,
-                    padding: "14px 20px",
+                    padding: "0 20px",
+                    height: isCollapsed ? 48 : 72,
                     cursor: editMode ? "default" : "pointer",
-                    transition: "background 0.15s",
+                    transition: "background 0.15s, height 0.3s ease",
                   }}
                   onMouseEnter={(e) => {
                     if (!editMode)
@@ -1699,10 +1872,10 @@ export function ProjectTimeline() {
                 {/* Expanded: activity list in left column */}
                 <div
                   style={{
-                    maxHeight: isExpanded ? 300 : 0,
+                    maxHeight: isExpanded ? 600 : 0,
                     overflow: "hidden",
                     transition:
-                      "max-height 0.4s cubic-bezier(0.4,0,0.2,1), opacity 0.3s ease",
+                      "max-height 0.45s cubic-bezier(0.4,0,0.2,1), opacity 0.3s ease",
                     opacity: isExpanded ? 1 : 0,
                   }}
                 >
@@ -1715,7 +1888,7 @@ export function ProjectTimeline() {
                           return (
                             <div
                               key={phase.name}
-                              style={{ marginBottom: 8 }}
+                              style={{ marginBottom: 4 }}
                             >
                               <div
                                 style={{
@@ -1724,7 +1897,9 @@ export function ProjectTimeline() {
                                   color: "#9CA3AF",
                                   textTransform: "uppercase",
                                   letterSpacing: "0.08em",
-                                  marginBottom: 3,
+                                  height: 24,
+                                  display: "flex",
+                                  alignItems: "center",
                                 }}
                               >
                                 {phase.name}
@@ -1735,7 +1910,8 @@ export function ProjectTimeline() {
                                   style={{
                                     fontSize: 11,
                                     color: "#6B7280",
-                                    padding: "2px 0",
+                                    height: 28,
+                                    marginBottom: 3,
                                     display: "flex",
                                     alignItems: "center",
                                     gap: 6,
@@ -1762,7 +1938,8 @@ export function ProjectTimeline() {
                             style={{
                               fontSize: 11,
                               color: "#6B7280",
-                              padding: "2px 0",
+                              height: 28,
+                              marginBottom: 3,
                               display: "flex",
                               alignItems: "center",
                               gap: 6,
@@ -1807,7 +1984,7 @@ export function ProjectTimeline() {
                         onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.7")}
                       >
                         <span style={{ fontSize: 14, lineHeight: 1 }}>+</span>
-                        Add activity
+                        {t("addActivity")}
                       </button>
                     )}
                     {editMode && (
@@ -1834,7 +2011,7 @@ export function ProjectTimeline() {
                         onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.7")}
                       >
                         <span style={{ fontSize: 14, lineHeight: 1 }}>+</span>
-                        Add deadline
+                        {t("addDeadline")}
                       </button>
                     )}
                   </div>
@@ -1866,7 +2043,7 @@ export function ProjectTimeline() {
                 const dayOfWeek = d.getDay(); // 0=Sun, 6=Sat
                 const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
                 const dayNames = ["S", "M", "T", "W", "T", "F", "S"];
-                topLabel = isToday ? "Today" : dayNames[dayOfWeek];
+                topLabel = isToday ? t("today") : dayNames[dayOfWeek];
                 bottomLabel = format(d, "d");
 
                 return (
@@ -1912,7 +2089,7 @@ export function ProjectTimeline() {
                 );
               }
 
-              topLabel = isToday ? "Today" : `W${w + 1}`;
+              topLabel = isToday ? t("today") : `W${w + 1}`;
               bottomLabel = weekToLabel(w);
 
               return (
@@ -2711,9 +2888,9 @@ export function ProjectTimeline() {
                             }}
                             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
                             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.5"; }}
-                            title="Add deadline"
+                            title={t("addDeadline")}
                           >
-                            + Deadline
+                            + {t("deadline")}
                           </button>
                         )}
                       </div>
@@ -2789,8 +2966,7 @@ export function ProjectTimeline() {
               fontWeight: 500,
             }}
           >
-            {"\u270E"} {changeCount} unsaved change
-            {changeCount !== 1 ? "s" : ""}
+            {"\u270E"} {changeCount} {changeCount !== 1 ? t("unsavedChanges") : t("unsavedChange")}
           </span>
           <button
             onClick={undo}
@@ -2812,7 +2988,7 @@ export function ProjectTimeline() {
                   : "pointer",
             }}
           >
-            Undo
+            {t("undoAction")}
           </button>
           <button
             onClick={redo}
@@ -2834,7 +3010,7 @@ export function ProjectTimeline() {
                   : "pointer",
             }}
           >
-            Redo
+            {t("redoAction")}
           </button>
           <button
             onClick={discard}
@@ -2845,7 +3021,7 @@ export function ProjectTimeline() {
               color: "#92400E",
             }}
           >
-            Discard
+            {t("discardChanges")}
           </button>
           <button
             onClick={save}
@@ -2859,7 +3035,7 @@ export function ProjectTimeline() {
                 changeCount === 0 ? "not-allowed" : "pointer",
             }}
           >
-            Save
+            {t("saveChanges")}
           </button>
         </div>
       )}
@@ -2897,7 +3073,7 @@ export function ProjectTimeline() {
               display: "inline-block",
             }}
           />{" "}
-          Phase deadline
+          {t("phaseDeadline")}
         </span>
         <span
           style={{
@@ -2914,7 +3090,7 @@ export function ProjectTimeline() {
               display: "inline-block",
             }}
           />{" "}
-          Custom deadline
+          {t("customDeadline")}
         </span>
         <span
           style={{
@@ -2933,7 +3109,7 @@ export function ProjectTimeline() {
               opacity: 0.5,
             }}
           />{" "}
-          Project bar
+          {t("projectBar")}
         </span>
         <span
           style={{
@@ -2942,7 +3118,7 @@ export function ProjectTimeline() {
             gap: 4,
           }}
         >
-          <ConflictBadge count={1} /> Conflict
+          <ConflictBadge count={1} /> {t("conflict")}
         </span>
       </div>
 
@@ -2976,13 +3152,14 @@ function PopoverEditor({
   onDelete: () => void;
   onClose: () => void;
 }) {
+  const t = useTranslations("timeline");
   const [name, setName] = useState(popover.name);
   const [startWeek, setStartWeek] = useState(popover.startWeek);
   const [endWeek, setEndWeek] = useState(popover.endWeek);
 
   const handleApply = () => {
     if (endWeek <= startWeek) {
-      toast.error("End week must be after start week");
+      toast.error(t("endAfterStart"));
       return;
     }
     onApply(startWeek, endWeek, name);
@@ -3032,7 +3209,7 @@ function PopoverEditor({
               marginBottom: 4,
             }}
           >
-            Name
+            {t("name")}
           </label>
           <input
             value={name}
@@ -3067,7 +3244,7 @@ function PopoverEditor({
                 marginBottom: 4,
               }}
             >
-              Start Week
+              {t("startWeek")}
             </label>
             <input
               type="number"
@@ -3097,7 +3274,7 @@ function PopoverEditor({
                 marginBottom: 4,
               }}
             >
-              End Week
+              {t("endWeek")}
             </label>
             <input
               type="number"
@@ -3140,7 +3317,7 @@ function PopoverEditor({
               transition: "all 0.15s",
             }}
           >
-            Delete
+            {t("delete")}
           </button>
           <button
             onClick={handleApply}
@@ -3156,7 +3333,7 @@ function PopoverEditor({
               transition: "all 0.15s",
             }}
           >
-            Apply
+            {t("apply")}
           </button>
         </div>
       </div>
