@@ -257,7 +257,7 @@ function NavBtn({
     <button
       onClick={onClick}
       style={{
-        padding: wide ? "5px 14px" : "5px 10px",
+        padding: wide ? "6px 14px" : "6px 10px",
         borderRadius: 6,
         border: "1px solid #E5E7EB",
         background: "#fff",
@@ -1501,6 +1501,7 @@ export function ProjectTimeline() {
               fontWeight: 700,
               letterSpacing: "-0.02em",
               margin: 0,
+              whiteSpace: "nowrap",
             }}
           >
             {t("title")}
@@ -1575,7 +1576,7 @@ export function ProjectTimeline() {
                 key={s}
                 onClick={() => setViewScale(s)}
                 style={{
-                  padding: "5px 14px",
+                  padding: "6px 14px",
                   fontSize: 11,
                   fontWeight: 600,
                   border: "none",
@@ -1595,7 +1596,7 @@ export function ProjectTimeline() {
             <button
               onClick={() => setFilterOpen(!filterOpen)}
               style={{
-                padding: "5px 14px",
+                padding: "6px 14px",
                 borderRadius: 6,
                 fontSize: 12,
                 fontWeight: 600,
@@ -1758,7 +1759,7 @@ export function ProjectTimeline() {
           <button
             onClick={() => setIsFocusMode((v) => !v)}
             style={{
-              padding: "6px 16px",
+              padding: "6px 14px",
               borderRadius: 6,
               fontSize: 12,
               fontWeight: 600,
@@ -1800,7 +1801,7 @@ export function ProjectTimeline() {
               }
             }}
             style={{
-              padding: "6px 16px",
+              padding: "6px 14px",
               borderRadius: 6,
               fontSize: 12,
               fontWeight: 600,
@@ -3158,88 +3159,6 @@ export function ProjectTimeline() {
           </button>
         </div>
       )}
-
-      {/* ── Legend (bottom-left) ── */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: editMode ? 64 : 16,
-          left: 20,
-          display: "flex",
-          gap: 16,
-          fontSize: 10,
-          color: "#9CA3AF",
-          background: "rgba(255,255,255,0.9)",
-          padding: "6px 12px",
-          borderRadius: 6,
-          border: "1px solid #F3F4F6",
-          transition: "bottom 0.3s ease",
-          zIndex: 40,
-        }}
-      >
-        <span
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-          }}
-        >
-          <span
-            style={{
-              width: 14,
-              height: 0,
-              borderTop: "2px dashed #6366F1",
-              display: "inline-block",
-            }}
-          />{" "}
-          {t("phaseDeadline")}
-        </span>
-        <span
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-          }}
-        >
-          <span
-            style={{
-              width: 14,
-              height: 0,
-              borderTop: "2px dotted #F59E0B",
-              display: "inline-block",
-            }}
-          />{" "}
-          {t("customDeadline")}
-        </span>
-        <span
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-          }}
-        >
-          <span
-            style={{
-              width: 18,
-              height: 6,
-              background: "#6B7280",
-              borderRadius: 3,
-              display: "inline-block",
-              opacity: 0.5,
-            }}
-          />{" "}
-          {t("projectBar")}
-        </span>
-        <span
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-          }}
-        >
-          <ConflictBadge count={1} /> {t("conflict")}
-        </span>
-      </div>
 
       {/* Animations */}
       <style>{`
