@@ -11,12 +11,14 @@ import {
 import {
   startOfWeek,
   startOfDay,
+  startOfMonth,
   addWeeks,
   addDays,
+  addMonths,
   differenceInCalendarWeeks,
   differenceInCalendarDays,
+  differenceInCalendarMonths,
   format,
-  getISOWeek,
 } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -297,15 +299,19 @@ export function ProjectTimeline() {
     () => startOfDay(addDays(getToday(isDemo), -365)),
     [isDemo]
   );
-
-  const ANCHOR = viewScale === "day" ? DAY_ANCHOR : WEEK_ANCHOR; // year also uses WEEK_ANCHOR
+  const MONTH_ANCHOR = useMemo(
+    () => startOfMonth(addMonths(getToday(isDemo), -12)),
+    [isDemo]
+  );
 
   const TODAY_WEEK = useMemo(
     () =>
       viewScale === "day"
         ? differenceInCalendarDays(getToday(isDemo), DAY_ANCHOR)
+        : viewScale === "year"
+        ? differenceInCalendarMonths(getToday(isDemo), MONTH_ANCHOR)
         : differenceInCalendarWeeks(getToday(isDemo), WEEK_ANCHOR, { weekStartsOn: 1 }),
-    [viewScale, DAY_ANCHOR, WEEK_ANCHOR, isDemo]
+    [viewScale, DAY_ANCHOR, WEEK_ANCHOR, MONTH_ANCHOR, isDemo]
   );
 
   const dateToWeek = useCallback(
@@ -316,9 +322,12 @@ export function ProjectTimeline() {
       if (viewScale === "day") {
         return differenceInCalendarDays(d, DAY_ANCHOR);
       }
+      if (viewScale === "year") {
+        return differenceInCalendarMonths(d, MONTH_ANCHOR);
+      }
       return differenceInCalendarWeeks(d, WEEK_ANCHOR, { weekStartsOn: 1 });
     },
-    [viewScale, DAY_ANCHOR, WEEK_ANCHOR]
+    [viewScale, DAY_ANCHOR, WEEK_ANCHOR, MONTH_ANCHOR]
   );
 
   const weekToDate = useCallback(
@@ -326,9 +335,12 @@ export function ProjectTimeline() {
       if (viewScale === "day") {
         return format(addDays(DAY_ANCHOR, unit), "yyyy-MM-dd");
       }
+      if (viewScale === "year") {
+        return format(addMonths(MONTH_ANCHOR, unit), "yyyy-MM-dd");
+      }
       return format(addWeeks(WEEK_ANCHOR, unit), "yyyy-MM-dd");
     },
-    [viewScale, DAY_ANCHOR, WEEK_ANCHOR]
+    [viewScale, DAY_ANCHOR, WEEK_ANCHOR, MONTH_ANCHOR]
   );
 
   const weekToLabel = useCallback(
@@ -337,10 +349,14 @@ export function ProjectTimeline() {
         const d = addDays(DAY_ANCHOR, unit);
         return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
       }
+      if (viewScale === "year") {
+        const d = addMonths(MONTH_ANCHOR, unit);
+        return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+      }
       const d = addWeeks(WEEK_ANCHOR, unit);
       return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
     },
-    [viewScale, DAY_ANCHOR, WEEK_ANCHOR]
+    [viewScale, DAY_ANCHOR, WEEK_ANCHOR, MONTH_ANCHOR]
   );
 
   /* ─── UI State ─── */
@@ -427,7 +443,7 @@ export function ProjectTimeline() {
     return map;
   }, [liveMilestones]);
 
-  const COL_WIDTH = viewScale === "day" ? 36 : viewScale === "week" ? 56 : viewScale === "month" ? 96 : 20;
+  const COL_WIDTH = viewScale === "day" ? 36 : viewScale === "week" ? 56 : viewScale === "month" ? 96 : 64;
   const focusModeContainerRef = useRef<HTMLDivElement>(null);
   const [focusWidth, setFocusWidth] = useState(0);
 
@@ -444,10 +460,10 @@ export function ProjectTimeline() {
   const availableGridWidth = isFocusMode && focusWidth > 0 ? focusWidth - LEFT_COL - 20 : 0;
   const VISIBLE_COLS = isFocusMode && availableGridWidth > 0
     ? Math.max(1, Math.floor(availableGridWidth / COL_WIDTH))
-    : viewScale === "day" ? 35 : viewScale === "week" ? 16 : viewScale === "month" ? 10 : 52;
+    : viewScale === "day" ? 35 : viewScale === "week" ? 16 : viewScale === "month" ? 10 : 18;
 
   const TOTAL_WEEKS = useMemo(() => {
-    const defaultTotal = viewScale === "day" ? 180 : viewScale === "year" ? 156 : 26;
+    const defaultTotal = viewScale === "day" ? 180 : viewScale === "year" ? 48 : 26;
     if (allProjects.length === 0) return defaultTotal;
     let minW = Infinity;
     let maxW = -Infinity;
@@ -673,7 +689,7 @@ export function ProjectTimeline() {
     []
   );
 
-  const NAV_STEP = viewScale === "day" ? 7 : viewScale === "year" ? 13 : 4;
+  const NAV_STEP = viewScale === "day" ? 7 : viewScale === "year" ? 6 : 4;
   const handlePrev = () => setScrollOffset((s) => Math.max(0, s - NAV_STEP));
   const handleNext = () =>
     setScrollOffset((s) =>
@@ -2162,10 +2178,11 @@ export function ProjectTimeline() {
               }
 
               if (viewScale === "year") {
-                const d = addWeeks(WEEK_ANCHOR, w);
-                const isoWeek = getISOWeek(d);
-                topLabel = isToday ? t("today") : `${isoWeek}`;
-                bottomLabel = isoWeek === 1 ? format(d, "yyyy") : "";
+                const d = addMonths(MONTH_ANCHOR, w);
+                const monthName = format(d, "MMM");
+                const isJan = d.getMonth() === 0;
+                topLabel = isToday ? t("today") : monthName;
+                bottomLabel = isJan || w === weekNumbers[0] ? format(d, "yyyy") : "";
               } else {
                 topLabel = isToday ? t("today") : `W${w + 1}`;
                 bottomLabel = weekToLabel(w);

@@ -8,8 +8,6 @@ import {
   startOfWeek,
   startOfMonth,
   differenceInDays,
-  differenceInCalendarWeeks,
-  differenceInCalendarMonths,
 } from "date-fns";
 import type { TimelineColumn, TimelineViewMode, DragState, DragResult } from "./types";
 
@@ -54,7 +52,7 @@ export function useTimelineDrag({
           case "month":
             return addMonths(date, units);
           case "year":
-            return addWeeks(date, units);
+            return addMonths(date, units);
         }
       };
 
@@ -67,7 +65,7 @@ export function useTimelineDrag({
           case "month":
             return startOfMonth(date);
           case "year":
-            return startOfWeek(date, { weekStartsOn: 1 });
+            return startOfMonth(date);
         }
       };
 
