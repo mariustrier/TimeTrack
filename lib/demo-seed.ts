@@ -283,6 +283,7 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
       role: "admin",
       isHourly: false,
       locale: "da",
+      createdAt: dataStart,
     },
   });
 
