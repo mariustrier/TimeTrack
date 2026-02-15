@@ -737,7 +737,7 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
   const patterns: WorkPattern[] = [
     // Marta (admin) — leadership, 2-3 entries/day, slight positive flex
     {
-      userId: adminUserId, name: "Marta", weeklyTarget: 37, isHourly: false, flexBias: 0.15,
+      userId: adminUserId, name: "Marta", weeklyTarget: 37, isHourly: false, flexBias: 0.22,
       workDays: [1, 2, 3, 4, 5],
       getEntries: (_day, mi) => {
         const entries: { projectId: string; hours: number; projectCode: string; phaseId: string | null; phaseName: string | null; billingStatus: string }[] = [];
@@ -753,7 +753,7 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
     },
     // Anders — the "machine", highest billable, 2-3 entries/day, positive flex
     {
-      userId: anders.id, name: "Anders", weeklyTarget: 37, isHourly: false, flexBias: 0.25,
+      userId: anders.id, name: "Anders", weeklyTarget: 37, isHourly: false, flexBias: 0.30,
       workDays: [1, 2, 3, 4, 5],
       getEntries: (_day, mi) => {
         const entries: { projectId: string; hours: number; projectCode: string; phaseId: string | null; phaseName: string | null; billingStatus: string }[] = [];
@@ -768,7 +768,7 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
     },
     // Jonas — frantic, 2-3 entries/day, slight negative flex
     {
-      userId: jonas.id, name: "Jonas", weeklyTarget: 37, isHourly: false, flexBias: -0.1,
+      userId: jonas.id, name: "Jonas", weeklyTarget: 37, isHourly: false, flexBias: -0.03,
       workDays: [1, 2, 3, 4, 5],
       getEntries: (_day, mi) => {
         const entries: { projectId: string; hours: number; projectCode: string; phaseId: string | null; phaseName: string | null; billingStatus: string }[] = [];
@@ -784,7 +784,7 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
     },
     // Amara — 2 entries most days (focused, deep work), consistent, slight positive flex
     {
-      userId: amara.id, name: "Amara", weeklyTarget: 37, isHourly: false, flexBias: 0.05,
+      userId: amara.id, name: "Amara", weeklyTarget: 37, isHourly: false, flexBias: 0.08,
       workDays: [1, 2, 3, 4, 5],
       getEntries: (_day, mi) => {
         const entries: { projectId: string; hours: number; projectCode: string; phaseId: string | null; phaseName: string | null; billingStatus: string }[] = [];
@@ -802,7 +802,7 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
     },
     // Katrine — renovation specialist, VHT budget warning story (30h/wk now, was 37 pre-Jan)
     {
-      userId: katrine.id, name: "Katrine", weeklyTarget: 30, isHourly: false, flexBias: -0.05,
+      userId: katrine.id, name: "Katrine", weeklyTarget: 30, isHourly: false, flexBias: 0.00,
       workDays: [1, 2, 3, 4, 5],
       getEntries: (day, mi) => {
         const entries: { projectId: string; hours: number; projectCode: string; phaseId: string | null; phaseName: string | null; billingStatus: string }[] = [];
@@ -838,7 +838,7 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
     },
     // Erik — BIM specialist, 2-3 entries/day, positive flex
     {
-      userId: erik.id, name: "Erik", weeklyTarget: 37, isHourly: false, flexBias: 0.15,
+      userId: erik.id, name: "Erik", weeklyTarget: 37, isHourly: false, flexBias: 0.18,
       workDays: [1, 2, 3, 4, 5],
       getEntries: (day, mi) => {
         const entries: { projectId: string; hours: number; projectCode: string; phaseId: string | null; phaseName: string | null; billingStatus: string }[] = [];
@@ -861,7 +861,7 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
     },
     // Sofia — 2-3 entries/day, ELM lead, near-zero flex
     {
-      userId: sofia.id, name: "Sofia", weeklyTarget: 37, isHourly: false, flexBias: 0.05,
+      userId: sofia.id, name: "Sofia", weeklyTarget: 37, isHourly: false, flexBias: 0.12,
       workDays: [1, 2, 3, 4, 5],
       getEntries: (_day, mi) => {
         const entries: { projectId: string; hours: number; projectCode: string; phaseId: string | null; phaseName: string | null; billingStatus: string }[] = [];
@@ -878,7 +878,7 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
     },
     // Marcus — interiors, 2-3 entries/day, slight negative flex
     {
-      userId: marcus.id, name: "Marcus", weeklyTarget: 37, isHourly: false, flexBias: -0.05,
+      userId: marcus.id, name: "Marcus", weeklyTarget: 37, isHourly: false, flexBias: -0.06,
       workDays: [1, 2, 3, 4, 5],
       getEntries: (_day, mi) => {
         const entries: { projectId: string; hours: number; projectCode: string; phaseId: string | null; phaseName: string | null; billingStatus: string }[] = [];
@@ -898,7 +898,7 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
     },
     // Lukas — junior, very billable, 2 entries/day, starts weekOffset 8, positive flex
     {
-      userId: lukas.id, name: "Lukas", weeklyTarget: 37, isHourly: false, flexBias: 0.15,
+      userId: lukas.id, name: "Lukas", weeklyTarget: 37, isHourly: false, flexBias: 0.05,
       workDays: [1, 2, 3, 4, 5],
       getEntries: (_day, mi) => {
         const entries: { projectId: string; hours: number; projectCode: string; phaseId: string | null; phaseName: string | null; billingStatus: string }[] = [];
@@ -916,7 +916,7 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
     },
     // Nadia — research, 2-3 entries/day, slight negative flex
     {
-      userId: nadia.id, name: "Nadia", weeklyTarget: 37, isHourly: false, flexBias: -0.1,
+      userId: nadia.id, name: "Nadia", weeklyTarget: 37, isHourly: false, flexBias: -0.08,
       workDays: [1, 2, 3, 4, 5],
       getEntries: (_day, mi) => {
         const entries: { projectId: string; hours: number; projectCode: string; phaseId: string | null; phaseName: string | null; billingStatus: string }[] = [];

@@ -260,10 +260,16 @@ export function EmployeeInsights({
     [profitability, granularity]
   );
 
-  const projectedFlex = useMemo(
-    () => withProjection(flexTrend, getToday(isDemo), granularity, ["flex"]),
-    [flexTrend, granularity]
-  );
+  const projectedFlex = useMemo(() => {
+    if (flexTrend.length < 2) return flexTrend;
+    const lastIdx = flexTrend.length - 1;
+    const prevFlex = flexTrend[lastIdx - 1].flex;
+    return flexTrend.map((item, i) => {
+      if (i === lastIdx - 1) return { ...item, proj_flex: item.flex };
+      if (i === lastIdx) return { ...item, flex: null, proj_flex: prevFlex };
+      return item;
+    });
+  }, [flexTrend]);
 
   // ---- Derived -----------------------------------------------------------
   const hasTimeData = timeDistribution.some((d) => d.hours > 0);
