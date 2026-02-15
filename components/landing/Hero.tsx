@@ -8,9 +8,8 @@ export function Hero() {
         Få betaling for <em>al jeres tid</em>.<br />Bygget til danske rådgivere.
       </h1>
       <p className="lp-hero-sub">
-        Slut med systemer, der ikke forstår flex og feriepenge.
-        Cloud Timer samler tidsregistrering, projektøkonomi og fakturering{" "}
-        <strong>ét sted</strong>.
+        Slut med systemer, der ikke forstår flex og feriepenge.<br />
+        Cloud Timer samler tidsregistrering, projektøkonomi og fakturering <strong>ét sted</strong>.
       </p>
       <div className="lp-hero-acts" style={{ gap: 32 }}>
         <LiveDemoButton />
