@@ -140,7 +140,7 @@ export default function AnalyticsPage() {
   const today = getToday(isDemo);
   const dateRange = useMemo(
     () => ({ from: subMonths(today, 3), to: today }),
-    []
+    [isDemo]
   );
   const [kpis, setKpis] = useState<any>(null);
   const [redListCount, setRedListCount] = useState(0);

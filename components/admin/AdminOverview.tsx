@@ -143,7 +143,14 @@ export function AdminOverview() {
   const formatOpts = dateLocale ? { locale: dateLocale } : undefined;
   const isDemo = useIsDemo();
 
-  const [currentMonth, setCurrentMonth] = useState(() => getToday(isDemo));
+  const [currentMonth, setCurrentMonth] = useState(() => new Date());
+  const _demoSynced = useRef(false);
+  useEffect(() => {
+    if (!_demoSynced.current) {
+      _demoSynced.current = true;
+      setCurrentMonth(getToday(isDemo));
+    }
+  }, [isDemo]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);

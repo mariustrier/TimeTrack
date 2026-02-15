@@ -169,7 +169,14 @@ export default function DashboardPage() {
     presales: tc("preSales"),
   };
 
-  const [currentWeek, setCurrentWeek] = useState(() => getToday(isDemo));
+  const [currentWeek, setCurrentWeek] = useState(() => new Date());
+  const _demoSynced = useRef(false);
+  useEffect(() => {
+    if (!_demoSynced.current) {
+      _demoSynced.current = true;
+      setCurrentWeek(getToday(isDemo));
+    }
+  }, [isDemo]);
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);

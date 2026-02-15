@@ -7,7 +7,16 @@ interface CompanyContextValue {
   isDemo: boolean;
 }
 
-const CompanyContext = createContext<CompanyContextValue>({ logoUrl: null, isDemo: false });
+const MISSING = Symbol("CompanyContext not provided");
+const CompanyContext = createContext<CompanyContextValue | typeof MISSING>(MISSING);
+
+function useCompanyContext(): CompanyContextValue {
+  const ctx = useContext(CompanyContext);
+  if (ctx === MISSING) {
+    throw new Error("useCompanyLogo/useIsDemo must be used inside <CompanyProvider>");
+  }
+  return ctx;
+}
 
 export function CompanyProvider({
   logoUrl,
@@ -26,9 +35,9 @@ export function CompanyProvider({
 }
 
 export function useCompanyLogo() {
-  return useContext(CompanyContext).logoUrl;
+  return useCompanyContext().logoUrl;
 }
 
 export function useIsDemo() {
-  return useContext(CompanyContext).isDemo;
+  return useCompanyContext().isDemo;
 }
