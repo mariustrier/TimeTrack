@@ -64,7 +64,7 @@ import { useTranslations, useDateLocale, useLocale } from "@/lib/i18n";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { PageGuide } from "@/components/ui/page-guide";
-import { useCompanyLogo } from "@/lib/company-context";
+import { useCompanyLogo, useIsDemo } from "@/lib/company-context";
 import { isCompanyHoliday, getCompanyHolidayName, type CustomHoliday } from "@/lib/holidays";
 import { getDailyTarget } from "@/lib/calculations";
 
@@ -159,6 +159,7 @@ export default function DashboardPage() {
   const tc = useTranslations("common");
   const dateLocale = useDateLocale();
   const companyLogoUrl = useCompanyLogo();
+  const isDemo = useIsDemo();
 
   const BILLING_LABELS: Record<string, string> = {
     billable: tc("billable"),
@@ -168,7 +169,7 @@ export default function DashboardPage() {
     presales: tc("preSales"),
   };
 
-  const [currentWeek, setCurrentWeek] = useState(getToday());
+  const [currentWeek, setCurrentWeek] = useState(() => getToday(isDemo));
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -193,12 +194,12 @@ export default function DashboardPage() {
   const [isHourly, setIsHourly] = useState(false);
   const [vacationTrackingUnit, setVacationTrackingUnit] = useState("days");
   const [vacationHoursPerYear, setVacationHoursPerYear] = useState<number | null>(null);
-  const vacationDaysTotal = isHourly ? 0 : Math.round((2.08 * (getToday().getMonth() + 1) + bonusVacationDays) * 100) / 100;
+  const vacationDaysTotal = isHourly ? 0 : Math.round((2.08 * (getToday(isDemo).getMonth() + 1) + bonusVacationDays) * 100) / 100;
   const [weeklyTarget, setWeeklyTarget] = useState(40);
   const isVacationHours = vacationTrackingUnit === "hours";
   const vacationHoursUsed = isVacationHours ? Math.round(vacationDaysUsed * (weeklyTarget / 5) * 100) / 100 : 0;
   const vacationHoursTotal = isVacationHours
-    ? Math.round(((vacationHoursPerYear ?? 0) / 12 * (getToday().getMonth() + 1) + bonusVacationDays) * 100) / 100
+    ? Math.round(((vacationHoursPerYear ?? 0) / 12 * (getToday(isDemo).getMonth() + 1) + bonusVacationDays) * 100) / 100
     : 0;
   const [priorFlexBalance, setPriorFlexBalance] = useState(0);
   const [weekNote, setWeekNote] = useState<{ action: string; reason: string | null; createdAt: string } | null>(null);
@@ -463,7 +464,7 @@ export default function DashboardPage() {
   // Only count days up to and including today — don't penalize for unfilled future days
   const monThuTarget = Math.round(weeklyTarget / 5 * 2) / 2; // round to nearest 0.5
   const fridayTarget = weeklyTarget - monThuTarget * 4;
-  const today = getToday();
+  const today = getToday(isDemo);
   const flexBalances = useMemo(() => {
     let cumulative = priorFlexBalance;
     return weekDays.map((day) => {
@@ -882,7 +883,7 @@ export default function DashboardPage() {
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setCurrentWeek(getToday())}>
+          <Button variant="outline" size="sm" onClick={() => setCurrentWeek(getToday(isDemo))}>
             {tc("today")}
           </Button>
           <Button variant="ghost" size="icon" onClick={() => fetchData(true)} className="ml-1">

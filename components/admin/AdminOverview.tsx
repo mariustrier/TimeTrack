@@ -69,6 +69,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { formatHours, formatPercentage } from "@/lib/calculations";
 import { getToday } from "@/lib/demo-date";
+import { useIsDemo } from "@/lib/company-context";
 import { SUPPORTED_CURRENCIES, convertAndFormat, convertAndFormatBudget } from "@/lib/currency";
 import { useTranslations, useDateLocale, useLocale } from "@/lib/i18n";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
@@ -140,8 +141,9 @@ export function AdminOverview() {
   const tSupport = useTranslations("support");
   const dateLocale = useDateLocale();
   const formatOpts = dateLocale ? { locale: dateLocale } : undefined;
+  const isDemo = useIsDemo();
 
-  const [currentMonth, setCurrentMonth] = useState(getToday());
+  const [currentMonth, setCurrentMonth] = useState(() => getToday(isDemo));
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -770,7 +772,7 @@ export function AdminOverview() {
           <Button variant="outline" size="icon" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="outline" onClick={() => setCurrentMonth(getToday())}>
+          <Button variant="outline" onClick={() => setCurrentMonth(getToday(isDemo))}>
             {t("thisMonth")}
           </Button>
           <Button variant="outline" size="icon" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>

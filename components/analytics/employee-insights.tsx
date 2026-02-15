@@ -37,6 +37,7 @@ import {
 } from "@/components/analytics/analytics-shared";
 import { withProjection } from "@/lib/analytics-utils";
 import { getToday } from "@/lib/demo-date";
+import { useIsDemo } from "@/lib/company-context";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -156,6 +157,7 @@ export function EmployeeInsights({
   approvalFilter,
   granularity,
 }: EmployeeInsightsProps) {
+  const isDemo = useIsDemo();
   const [members, setMembers] = useState<Member[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -241,7 +243,7 @@ export function EmployeeInsights({
   // ---- Projected chart data ----------------------------------------------
   const projectedUtilization = useMemo(
     () =>
-      withProjection(utilizationTrend, getToday(), granularity, [
+      withProjection(utilizationTrend, getToday(isDemo), granularity, [
         "billableUtil",
         "totalUtil",
       ]),
@@ -250,7 +252,7 @@ export function EmployeeInsights({
 
   const projectedProfitability = useMemo(
     () =>
-      withProjection(profitability, getToday(), granularity, [
+      withProjection(profitability, getToday(isDemo), granularity, [
         "revenue",
         "cost",
         "profit",
@@ -259,7 +261,7 @@ export function EmployeeInsights({
   );
 
   const projectedFlex = useMemo(
-    () => withProjection(flexTrend, getToday(), granularity, ["flex"]),
+    () => withProjection(flexTrend, getToday(isDemo), granularity, ["flex"]),
     [flexTrend, granularity]
   );
 

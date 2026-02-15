@@ -93,8 +93,8 @@ function weeksInPeriod(periodKeyStr: string, granularity: "monthly" | "weekly"):
   return days / 7;
 }
 
-function workingDaysInPeriod(periodKeyStr: string, granularity: "monthly" | "weekly"): number {
-  const today = getToday();
+function workingDaysInPeriod(periodKeyStr: string, granularity: "monthly" | "weekly", isDemo?: boolean): number {
+  const today = getToday(isDemo);
   let start: Date, end: Date;
   if (granularity === "weekly") {
     const [y, m, d] = periodKeyStr.split("-").map(Number);
@@ -118,8 +118,8 @@ function workingDaysInPeriod(periodKeyStr: string, granularity: "monthly" | "wee
   return Math.max(count, 1);
 }
 
-function totalWorkingDays(from: Date, to: Date): number {
-  const today = getToday();
+function totalWorkingDays(from: Date, to: Date, isDemo?: boolean): number {
+  const today = getToday(isDemo);
   const cappedEnd = to > today ? today : to;
   const effectiveEnd = new Date(cappedEnd.getFullYear(), cappedEnd.getMonth(), cappedEnd.getDate());
   const effectiveStart = new Date(from.getFullYear(), from.getMonth(), from.getDate());
@@ -163,7 +163,8 @@ export function aggregateEmployeeUtilizationTrend(
   member: Member,
   from: Date,
   to: Date,
-  granularity: "monthly" | "weekly"
+  granularity: "monthly" | "weekly",
+  isDemo?: boolean
 ) {
   const periods = getPeriodKeys(from, to, granularity);
   const grouped: Record<string, Entry[]> = {};
@@ -179,7 +180,7 @@ export function aggregateEmployeeUtilizationTrend(
     const billableHours = periodEntries
       .filter((e) => e.billingStatus === "billable")
       .reduce((s, e) => s + e.hours, 0);
-    const wd = workingDaysInPeriod(key, granularity);
+    const wd = workingDaysInPeriod(key, granularity, isDemo);
     const expected = (getEffectiveWeeklyCapacity(member) / 5) * wd;
 
     return {
@@ -231,9 +232,10 @@ export function aggregateTeamUtilization(
   members: Member[],
   from: Date,
   to: Date,
-  granularity: "monthly" | "weekly"
+  granularity: "monthly" | "weekly",
+  isDemo?: boolean
 ) {
-  const wd = totalWorkingDays(from, to);
+  const wd = totalWorkingDays(from, to, isDemo);
 
   return members.map((member) => {
     const memberEntries = entries.filter((e) => e.userId === member.id);
@@ -660,7 +662,7 @@ export function aggregateNonBillableTrend(
   });
 }
 
-export function aggregateUnbilledWork(entries: Entry[], today?: Date) {
+export function aggregateUnbilledWork(entries: Entry[], today?: Date, isDemo?: boolean) {
   // Approved + billable but NOT locked = not yet invoiced
   const unbilled = entries.filter(
     (e) => e.billingStatus === "billable" && e.approvalStatus === "approved"
@@ -678,7 +680,7 @@ export function aggregateUnbilledWork(entries: Entry[], today?: Date) {
     byProject[e.projectId].entries.push(e);
   }
 
-  const now = today || getToday();
+  const now = today || getToday(isDemo);
 
   return Object.values(byProject).map((group) => {
     const hours = group.entries.reduce((s, e) => s + e.hours, 0);
@@ -882,7 +884,8 @@ export function aggregateEmployeeFlexTrend(
   member: Member,
   from: Date,
   to: Date,
-  granularity: "monthly" | "weekly"
+  granularity: "monthly" | "weekly",
+  isDemo?: boolean
 ) {
   const periods = getPeriodKeys(from, to, granularity);
   const grouped: Record<string, Entry[]> = {};
@@ -898,7 +901,7 @@ export function aggregateEmployeeFlexTrend(
   return periods.map((key) => {
     const periodEntries = grouped[key] || [];
     const totalHours = periodEntries.reduce((s, e) => s + e.hours, 0);
-    const wd = workingDaysInPeriod(key, granularity);
+    const wd = workingDaysInPeriod(key, granularity, isDemo);
     const expected = dailyTarget * wd;
     const flex = totalHours - expected;
     cumulativeFlex += flex;
@@ -919,11 +922,12 @@ export function aggregateCapacityDetail(
   vacationDays: Record<string, number>,
   from: Date,
   to: Date,
-  granularity: "monthly" | "weekly"
+  granularity: "monthly" | "weekly",
+  isDemo?: boolean
 ) {
   const periods = getPeriodKeys(from, to, granularity);
-  const wd = totalWorkingDays(from, to);
-  const today = getToday();
+  const wd = totalWorkingDays(from, to, isDemo);
+  const today = getToday(isDemo);
   const next4wEnd = addWeeks(today, 4);
 
   return members.map((member) => {
@@ -1029,9 +1033,10 @@ export function aggregateEffectiveRate(
 export function aggregateBudgetVelocity(
   entries: Entry[],
   projects: ProjectFull[],
-  today?: Date
+  today?: Date,
+  isDemo?: boolean
 ) {
-  const now = today || getToday();
+  const now = today || getToday(isDemo);
 
   const hoursByProject: Record<string, number> = {};
   for (const e of entries) {
@@ -1072,9 +1077,10 @@ export function aggregateRedList(
   entries: Entry[],
   projects: ProjectFull[],
   members: Member[],
-  today?: Date
+  today?: Date,
+  isDemo?: boolean
 ) {
-  const now = today || getToday();
+  const now = today || getToday(isDemo);
 
   const projectData: Record<string, { hours: number; revenue: number; cost: number }> = {};
   for (const e of entries) {
@@ -1276,8 +1282,8 @@ export function aggregateCollectionSummary(invoices: InvoiceData[]) {
 
 // --- 12. Unbilled Aging (simpler shape) ---
 
-export function aggregateUnbilledAging(entries: Entry[], today?: Date) {
-  const now = today || getToday();
+export function aggregateUnbilledAging(entries: Entry[], today?: Date, isDemo?: boolean) {
+  const now = today || getToday(isDemo);
   const unbilled = entries.filter(
     (e) => e.billingStatus === "billable" && e.approvalStatus === "approved"
   );

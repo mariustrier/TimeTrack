@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { subMonths, format } from "date-fns";
 import { getToday } from "@/lib/demo-date";
+import { useIsDemo } from "@/lib/company-context";
 import { useTranslations } from "@/lib/i18n";
 import {
   KpiCard,
@@ -129,13 +130,14 @@ function ToggleBtn({
 
 export default function AnalyticsPage() {
   const t = useTranslations("analytics");
+  const isDemo = useIsDemo();
 
   const [activeTab, setActiveTab] = useState("employee");
   const [granularity, setGranularity] = useState<"monthly" | "weekly">(
     "monthly"
   );
   const [approvalFilter, setApprovalFilter] = useState("approved_only");
-  const today = getToday();
+  const today = getToday(isDemo);
   const dateRange = useMemo(
     () => ({ from: subMonths(today, 3), to: today }),
     []

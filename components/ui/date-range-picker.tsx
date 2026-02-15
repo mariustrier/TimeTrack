@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/popover";
 import { useTranslations } from "@/lib/i18n";
 import { getToday } from "@/lib/demo-date";
+import { useIsDemo } from "@/lib/company-context";
 
 export interface DateRange {
   from: Date;
@@ -35,6 +36,7 @@ export function DateRangePicker({
   className,
 }: DateRangePickerProps) {
   const t = useTranslations("analytics");
+  const isDemo = useIsDemo();
   const [open, setOpen] = useState(false);
   const [customFrom, setCustomFrom] = useState(
     format(value.from, "yyyy-MM-dd")
@@ -42,32 +44,32 @@ export function DateRangePicker({
   const [customTo, setCustomTo] = useState(format(value.to, "yyyy-MM-dd"));
 
   const presets = [
-    { label: t("last7Days"), from: subDays(getToday(), 7), to: getToday() },
-    { label: t("last30Days"), from: subDays(getToday(), 30), to: getToday() },
+    { label: t("last7Days"), from: subDays(getToday(isDemo), 7), to: getToday(isDemo) },
+    { label: t("last30Days"), from: subDays(getToday(isDemo), 30), to: getToday(isDemo) },
     {
       label: t("thisMonth"),
-      from: startOfMonth(getToday()),
-      to: getToday(),
+      from: startOfMonth(getToday(isDemo)),
+      to: getToday(isDemo),
     },
     {
       label: t("last3Months"),
-      from: subMonths(getToday(), 3),
-      to: getToday(),
+      from: subMonths(getToday(isDemo), 3),
+      to: getToday(isDemo),
     },
     {
       label: t("last6Months"),
-      from: subMonths(getToday(), 6),
-      to: getToday(),
+      from: subMonths(getToday(isDemo), 6),
+      to: getToday(isDemo),
     },
     {
       label: t("last12Months"),
-      from: subMonths(getToday(), 12),
-      to: getToday(),
+      from: subMonths(getToday(isDemo), 12),
+      to: getToday(isDemo),
     },
     {
       label: t("yearToDate"),
-      from: startOfYear(getToday()),
-      to: getToday(),
+      from: startOfYear(getToday(isDemo)),
+      to: getToday(isDemo),
     },
   ];
 

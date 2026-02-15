@@ -59,9 +59,10 @@ export function computeRevenueBridge(
   monthlyActuals: { periodKey: string; revenue: number }[],
   monthlyBreakeven: number,
   monthsBack = 5,
-  monthsForward = 3
+  monthsForward = 3,
+  isDemo?: boolean
 ): RevenueBridgePoint[] {
-  const today = getToday();
+  const today = getToday(isDemo);
   const current = startOfMonth(today);
   const points: RevenueBridgePoint[] = [];
 
@@ -103,8 +104,8 @@ export function computeRevenueBridge(
   return points;
 }
 
-export function compute30DayForecast(allocations: ForecastAllocation[]): number {
-  const today = getToday();
+export function compute30DayForecast(allocations: ForecastAllocation[], isDemo?: boolean): number {
+  const today = getToday(isDemo);
   const end = addDays(today, 30);
   let total = 0;
 

@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { Flag, Handshake, Rocket, Eye, CalendarDays, AlertTriangle, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getToday } from "@/lib/demo-date";
+import { useIsDemo } from "@/lib/company-context";
 import type { TimelineMilestone, DeadlineIcon } from "./types";
 import type { LucideIcon } from "lucide-react";
 
@@ -22,11 +23,12 @@ interface DeadlineMarkerProps {
 }
 
 export function DeadlineMarker({ milestone, projectColor, onClick }: DeadlineMarkerProps) {
+  const isDemo = useIsDemo();
   const today = useMemo(() => {
-    const d = getToday();
+    const d = getToday(isDemo);
     d.setHours(0, 0, 0, 0);
     return d;
-  }, []);
+  }, [isDemo]);
 
   const dueDate = new Date(milestone.dueDate + "T00:00:00");
   const isOverdue = dueDate < today && !milestone.completed;

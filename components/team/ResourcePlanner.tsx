@@ -24,6 +24,7 @@ import { getDailyTarget, getEffectiveWeeklyCapacity } from "@/lib/calculations";
 import { isCompanyHoliday, type CustomHoliday } from "@/lib/holidays";
 import { isWeekend } from "date-fns";
 import { getToday } from "@/lib/demo-date";
+import { useIsDemo } from "@/lib/company-context";
 
 export interface Employee {
   id: string;
@@ -96,9 +97,10 @@ const INITIAL_POPOVER: PopoverState = {
 
 export function ResourcePlanner() {
   const t = useTranslations("resourcePlanner");
+  const isDemo = useIsDemo();
 
   const [viewMode, setViewMode] = useState<ViewMode>("twoWeeks");
-  const [currentDate, setCurrentDate] = useState(() => getToday());
+  const [currentDate, setCurrentDate] = useState(() => getToday(isDemo));
   const [spans, setSpans] = useState<Record<ViewMode, number>>({
     week: 1,
     twoWeeks: 2,
@@ -249,7 +251,7 @@ export function ResourcePlanner() {
     }
   };
 
-  const goToToday = () => setCurrentDate(getToday());
+  const goToToday = () => setCurrentDate(getToday(isDemo));
 
   // ── Popover handlers ──
 

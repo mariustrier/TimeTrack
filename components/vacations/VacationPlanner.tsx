@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useTranslations, useDateLocale } from "@/lib/i18n";
 import { getToday } from "@/lib/demo-date";
+import { useIsDemo } from "@/lib/company-context";
 
 const MONTHLY_ACCRUAL = 2.08;
 
@@ -53,9 +54,10 @@ function getUsedDaysInMonth(requests: VacationRequest[], year: number, month: nu
 export function VacationPlanner({ requests, bonusDays, isHourly, vacationTrackingUnit, vacationHoursPerYear, weeklyTarget }: VacationPlannerProps) {
   const t = useTranslations("vacations");
   const dateLocale = useDateLocale();
+  const isDemo = useIsDemo();
 
-  const currentYear = getToday().getFullYear();
-  const currentMonth = getToday().getMonth(); // 0-indexed
+  const currentYear = getToday(isDemo).getFullYear();
+  const currentMonth = getToday(isDemo).getMonth(); // 0-indexed
   const isHoursMode = vacationTrackingUnit === "hours";
   const dailyTarget = (weeklyTarget ?? 37) / 5;
   const monthlyHoursAccrual = isHoursMode ? (vacationHoursPerYear ?? 0) / 12 : 0;

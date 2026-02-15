@@ -42,6 +42,7 @@ import {
 } from "@/components/analytics/analytics-shared";
 import { withProjection } from "@/lib/analytics-utils";
 import { getToday } from "@/lib/demo-date";
+import { useIsDemo } from "@/lib/company-context";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -140,6 +141,7 @@ export function ProjectInsights({
   approvalFilter,
   granularity,
 }: ProjectInsightsProps) {
+  const isDemo = useIsDemo();
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [redList, setRedList] = useState<RedListItem[]>([]);
   const [budgetVelocity, setBudgetVelocity] = useState<BudgetVelocityItem[]>([]);
@@ -220,12 +222,12 @@ export function ProjectInsights({
 
   // ---- Derived data ----
   const projectedBurndown = useMemo(
-    () => withProjection(burndown, getToday(), granularity, ["hoursRemaining"]),
+    () => withProjection(burndown, getToday(isDemo), granularity, ["hoursRemaining"]),
     [burndown, granularity]
   );
 
   const projectedProfitability = useMemo(
-    () => withProjection(profitability, getToday(), granularity, ["revenue", "cost", "profit"]),
+    () => withProjection(profitability, getToday(isDemo), granularity, ["revenue", "cost", "profit"]),
     [profitability, granularity]
   );
 

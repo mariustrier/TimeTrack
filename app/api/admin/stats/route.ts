@@ -34,7 +34,7 @@ export async function GET(req: Request) {
 
     const company = await db.company.findUnique({
       where: { id: user.companyId },
-      select: { currency: true, defaultHourlyRate: true, useUniversalRate: true },
+      select: { currency: true, defaultHourlyRate: true, useUniversalRate: true, isDemo: true },
     });
 
     const members = await db.user.findMany({
@@ -65,7 +65,7 @@ export async function GET(req: Request) {
     });
 
     // Count working days in range, capped at today for utilization calc
-    const today = getToday();
+    const today = getToday(!!company?.isDemo);
     const rangeStart = startDate ? new Date(startDate) : today;
     const rangeEnd = endDate ? new Date(endDate) : today;
     const effectiveEnd = rangeEnd > today ? today : rangeEnd;

@@ -5,6 +5,7 @@ import { format, isSameMonth } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useDateLocale, useTranslations } from "@/lib/i18n";
 import { getToday } from "@/lib/demo-date";
+import { useIsDemo } from "@/lib/company-context";
 import { Button } from "@/components/ui/button";
 import { Plus, Diamond, CheckCircle, ChevronRight, ChevronDown, Flag, Handshake, Rocket, Eye, CalendarDays } from "lucide-react";
 import { ProjectBar } from "./ProjectBar";
@@ -86,6 +87,7 @@ export function TimelineGrid({
 }: TimelineGridProps) {
   const dateLocale = useDateLocale();
   const t = useTranslations("timeline");
+  const isDemo = useIsDemo();
 
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const lastDragEndRef = useRef(0);
@@ -606,7 +608,7 @@ export function TimelineGrid({
                             };
 
                             const dueDate = new Date(ms.dueDate + "T00:00:00");
-                            const today = getToday(); today.setHours(0,0,0,0);
+                            const today = getToday(isDemo); today.setHours(0,0,0,0);
                             const isOverdue = dueDate < today && !ms.completed;
 
                             return (

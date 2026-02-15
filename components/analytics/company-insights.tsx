@@ -38,6 +38,7 @@ import {
 } from "@/components/analytics/analytics-shared";
 import { withProjection } from "@/lib/analytics-utils";
 import { getToday } from "@/lib/demo-date";
+import { useIsDemo } from "@/lib/company-context";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -139,6 +140,7 @@ export function CompanyInsights({
   approvalFilter,
   granularity,
 }: CompanyInsightsProps) {
+  const isDemo = useIsDemo();
   const [loading, setLoading] = useState(true);
   const [revenueBridge, setRevenueBridge] = useState<RevenueBridgeEntry[]>([]);
   const [clientConcentration, setClientConcentration] = useState<ClientConcentrationEntry[]>([]);
@@ -190,14 +192,14 @@ export function CompanyInsights({
 
   // ---- Derived ----
   const projectedNonBillable = useMemo(
-    () => withProjection(nonBillableTrend, getToday(), granularity, ["totalNB", "internal", "presales", "nonBillable"]),
+    () => withProjection(nonBillableTrend, getToday(isDemo), granularity, ["totalNB", "internal", "presales", "nonBillable"]),
     [nonBillableTrend, granularity]
   );
 
   const projectedExpenseBreakdown = useMemo(
     () => withProjection(
       expenseBreakdown.map((d) => ({ ...d, _total: d.salaries + d.rent + d.software + d.insurance + d.utilities + d.travel + d.other })),
-      getToday(),
+      getToday(isDemo),
       granularity,
       ["_total"]
     ),
@@ -207,7 +209,7 @@ export function CompanyInsights({
   const projectedInvoicePipeline = useMemo(
     () => withProjection(
       invoicePipeline.map((d) => ({ ...d, _total: d.draft + d.sent + d.paid })),
-      getToday(),
+      getToday(isDemo),
       granularity,
       ["_total"]
     ),

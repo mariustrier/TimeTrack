@@ -57,7 +57,14 @@ export async function GET(req: Request) {
 
     const from = new Date(startDate);
     const to = new Date(endDate);
-    const today = getToday();
+
+    const company = await db.company.findUnique({
+      where: { id: user.companyId },
+      select: { currency: true, isDemo: true },
+    });
+
+    const isDemo = !!company?.isDemo;
+    const today = getToday(isDemo);
 
     const dateFilter: Record<string, unknown> = {
       date: { gte: from, lte: to },
@@ -66,11 +73,6 @@ export async function GET(req: Request) {
     if (approvalFilter === "approved_only") {
       dateFilter.approvalStatus = { in: ["approved", "locked"] };
     }
-
-    const company = await db.company.findUnique({
-      where: { id: user.companyId },
-      select: { currency: true },
-    });
 
     const members = await db.user.findMany({
       where: { companyId: user.companyId, deletedAt: null },
@@ -204,10 +206,10 @@ export async function GET(req: Request) {
         const phaseBreakdown = aggregateEmployeePhaseBreakdown(employeeEntries, phaseColorMap);
 
         // Flex trend
-        const flexTrend = aggregateEmployeeFlexTrend(employeeEntries, member, from, to, granularity);
+        const flexTrend = aggregateEmployeeFlexTrend(employeeEntries, member, from, to, granularity, isDemo);
 
         // Utilization trend with planned util
-        const utilizationTrend = aggregateEmployeeUtilizationTrend(employeeEntries, member, from, to, granularity);
+        const utilizationTrend = aggregateEmployeeUtilizationTrend(employeeEntries, member, from, to, granularity, isDemo);
 
         // Fetch resource allocations for planned util
         const employeeAllocations = await db.resourceAllocation.findMany({
@@ -320,7 +322,7 @@ export async function GET(req: Request) {
         }));
 
         return NextResponse.json({
-          utilization: aggregateTeamUtilization(castEntries, members, from, to, granularity),
+          utilization: aggregateTeamUtilization(castEntries, members, from, to, granularity, isDemo),
           timeMix: aggregateTeamTimeMix(castEntries, members),
           capacityDetail: aggregateCapacityDetail(
             castEntries,
@@ -329,7 +331,8 @@ export async function GET(req: Request) {
             vacationDays,
             from,
             to,
-            granularity
+            granularity,
+            isDemo
           ),
           effectiveRate: aggregateEffectiveRate(castEntries, projectsFull),
           currency,
@@ -473,7 +476,7 @@ export async function GET(req: Request) {
           ? Math.round(costValues.reduce((s, v) => s + v, 0) / costValues.length)
           : 0;
 
-        const revenueBridge = computeRevenueBridge(forecastAllocs, monthlyActuals, monthlyBreakeven);
+        const revenueBridge = computeRevenueBridge(forecastAllocs, monthlyActuals, monthlyBreakeven, 5, 3, isDemo);
 
         // Client Concentration
         const clientConcentration = aggregateClientConcentration(castEntries);
@@ -535,7 +538,7 @@ export async function GET(req: Request) {
               : (a.user.hourlyRate || 0),
           }));
 
-        const revenueForecast30d = compute30DayForecast(kpiForecastAllocs);
+        const revenueForecast30d = compute30DayForecast(kpiForecastAllocs, isDemo);
 
         // EBITDA: revenue - cost - overhead from entries in date range
         let totalRevenue = 0;

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useDateLocale, useLocale, useTranslations } from "@/lib/i18n";
 import { isToday } from "@/lib/demo-date";
 import { getToday } from "@/lib/demo-date";
+import { useIsDemo } from "@/lib/company-context";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { isCompanyHoliday, getCompanyHolidayName, type CustomHoliday } from "@/lib/holidays";
 import { getDailyTarget, getEffectiveWeeklyCapacity } from "@/lib/calculations";
@@ -97,7 +98,8 @@ export function ResourceGrid({
   const { locale } = useLocale();
   const t = useTranslations("resourcePlanner");
   const tc = useTranslations("common");
-  const today = getToday();
+  const isDemo = useIsDemo();
+  const today = getToday(isDemo);
 
   const isMonthView = viewMode === "month";
 

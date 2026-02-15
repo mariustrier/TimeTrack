@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useTranslations } from "@/lib/i18n";
 import { getToday } from "@/lib/demo-date";
+import { useIsDemo } from "@/lib/company-context";
 import type {
   TimelineProject,
   TimelineActivity,
@@ -283,15 +284,16 @@ export function ProjectTimeline() {
   /* ─── View scale (must come before date helpers) ─── */
   const [viewScale, setViewScale] = useState<"day" | "week" | "month">("month");
   const t = useTranslations("timeline");
+  const isDemo = useIsDemo();
 
   /* ─── Anchor / date helpers ─── */
   const WEEK_ANCHOR = useMemo(
-    () => startOfWeek(addWeeks(getToday(), -52), { weekStartsOn: 1 }),
-    []
+    () => startOfWeek(addWeeks(getToday(isDemo), -52), { weekStartsOn: 1 }),
+    [isDemo]
   );
   const DAY_ANCHOR = useMemo(
-    () => startOfDay(addDays(getToday(), -365)),
-    []
+    () => startOfDay(addDays(getToday(isDemo), -365)),
+    [isDemo]
   );
 
   const ANCHOR = viewScale === "day" ? DAY_ANCHOR : WEEK_ANCHOR;
@@ -299,9 +301,9 @@ export function ProjectTimeline() {
   const TODAY_WEEK = useMemo(
     () =>
       viewScale === "day"
-        ? differenceInCalendarDays(getToday(), DAY_ANCHOR)
-        : differenceInCalendarWeeks(getToday(), WEEK_ANCHOR, { weekStartsOn: 1 }),
-    [viewScale, DAY_ANCHOR, WEEK_ANCHOR]
+        ? differenceInCalendarDays(getToday(isDemo), DAY_ANCHOR)
+        : differenceInCalendarWeeks(getToday(isDemo), WEEK_ANCHOR, { weekStartsOn: 1 }),
+    [viewScale, DAY_ANCHOR, WEEK_ANCHOR, isDemo]
   );
 
   const dateToWeek = useCallback(

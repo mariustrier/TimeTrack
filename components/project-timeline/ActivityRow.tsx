@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "@/lib/i18n";
 import { getToday } from "@/lib/demo-date";
+import { useIsDemo } from "@/lib/company-context";
 import { InlineEditCell } from "./InlineEditCell";
 import { ActivityBlock } from "./ActivityBlock";
 import type { TimelineActivity, TimelineColumn, DragState } from "./types";
@@ -59,6 +60,7 @@ export function ActivityRow({
   dragPreview,
 }: ActivityRowProps) {
   const t = useTranslations("timeline");
+  const isDemo = useIsDemo();
 
   const rawStartDate = useMemo(() => new Date(activity.startDate + "T00:00:00"), [activity.startDate]);
   const rawEndDate = useMemo(() => new Date(activity.endDate + "T00:00:00"), [activity.endDate]);
@@ -69,10 +71,10 @@ export function ActivityRow({
   const endDate = isBeingDragged && dragPreview ? dragPreview.end : rawEndDate;
 
   const today = useMemo(() => {
-    const d = getToday();
+    const d = getToday(isDemo);
     d.setHours(0, 0, 0, 0);
     return d;
-  }, []);
+  }, [isDemo]);
 
   const isOverdue = endDate < today && activity.status !== "complete";
 

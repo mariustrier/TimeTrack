@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { useTranslations, useDateLocale, useLocale } from "@/lib/i18n";
 import { isCompanyHoliday, getCompanyHolidayName, type CustomHoliday } from "@/lib/holidays";
 import { getToday } from "@/lib/demo-date";
+import { useIsDemo } from "@/lib/company-context";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Tooltip,
@@ -56,8 +57,9 @@ export function VacationCalendar() {
   const dateLocale = useDateLocale();
   const { locale } = useLocale();
   const formatOpts = { locale: dateLocale };
+  const isDemo = useIsDemo();
 
-  const [currentMonth, setCurrentMonth] = useState(getToday());
+  const [currentMonth, setCurrentMonth] = useState(() => getToday(isDemo));
   const [vacations, setVacations] = useState<VacationRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [disabledHolidayCodes, setDisabledHolidayCodes] = useState<string[]>([]);
@@ -146,7 +148,7 @@ export function VacationCalendar() {
           <Button variant="outline" size="sm" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setCurrentMonth(getToday())}>
+          <Button variant="outline" size="sm" onClick={() => setCurrentMonth(getToday(isDemo))}>
             {tc("today")}
           </Button>
           <Button variant="outline" size="sm" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
