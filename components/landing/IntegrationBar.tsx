@@ -1,6 +1,6 @@
 export function IntegrationBar() {
   return (
-    <div id="integrations" className="lp-integrations">
+    <div id="integrations" className="lp-integrations" style={{ scrollMarginTop: 80 }}>
       <p className="lp-integrations-label">
         Direkte integration til jeres økonomisystem:
       </p>
