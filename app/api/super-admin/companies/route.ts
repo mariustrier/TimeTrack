@@ -7,6 +7,7 @@ export async function GET() {
     await requireSuperAdmin();
 
     const companies = await db.company.findMany({
+      where: { isDemo: false },
       include: {
         _count: {
           select: {

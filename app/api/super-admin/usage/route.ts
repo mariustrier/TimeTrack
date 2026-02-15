@@ -12,6 +12,7 @@ export async function GET() {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const companies = await db.company.findMany({
+      where: { isDemo: false },
       select: { id: true, name: true },
     });
     const companyMap = new Map(companies.map((c) => [c.id, c.name]));
@@ -33,11 +34,12 @@ export async function GET() {
       _sum: { costCents: true },
     });
 
+    const realCompanyIds = new Set(companies.map((c) => c.id));
     const companyIds = new Set([
       ...dailyUsage.map((d) => d.companyId),
       ...monthlyUsage.map((d) => d.companyId),
       ...totalUsage.map((d) => d.companyId),
-    ]);
+    ].filter((id) => realCompanyIds.has(id)));
 
     const dailyMap = new Map(dailyUsage.map((d) => [d.companyId, d._sum.costCents ?? 0]));
     const monthlyMap = new Map(monthlyUsage.map((d) => [d.companyId, d._sum.costCents ?? 0]));
