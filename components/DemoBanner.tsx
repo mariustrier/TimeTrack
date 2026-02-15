@@ -1,22 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useClerk } from "@clerk/nextjs";
 import { useTranslations } from "@/lib/i18n";
 import { DemoExitModal } from "@/components/DemoExitModal";
 
 export function DemoBanner() {
+  const { signOut } = useClerk();
   const t = useTranslations("demo");
-  const router = useRouter();
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     console.log("[DEMO_FUNNEL]", "banner_view");
   }, []);
 
-  const handleSignup = () => {
+  const handleSignup = async () => {
     console.log("[DEMO_FUNNEL]", "banner_signup_click");
-    router.push("/sign-up?from=demo");
+    await signOut();
+    window.location.href = "/sign-up?from=demo";
   };
 
   const handleExit = () => {

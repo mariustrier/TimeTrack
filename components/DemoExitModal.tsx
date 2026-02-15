@@ -31,9 +31,10 @@ export function DemoExitModal({ open, onClose }: DemoExitModalProps) {
     return () => window.removeEventListener("keydown", handler);
   }, [open, onClose]);
 
-  const handleSignup = () => {
+  const handleSignup = async () => {
     console.log("[DEMO_FUNNEL]", "modal_signup_click");
-    router.push("/sign-up?from=demo");
+    await signOut();
+    window.location.href = "/sign-up?from=demo";
   };
 
   const handleBook = () => {
