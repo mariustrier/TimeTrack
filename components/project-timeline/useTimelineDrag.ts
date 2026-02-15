@@ -53,6 +53,8 @@ export function useTimelineDrag({
             return addWeeks(date, units);
           case "month":
             return addMonths(date, units);
+          case "year":
+            return addWeeks(date, units);
         }
       };
 
@@ -64,6 +66,8 @@ export function useTimelineDrag({
             return startOfWeek(date, { weekStartsOn: 1 });
           case "month":
             return startOfMonth(date);
+          case "year":
+            return startOfWeek(date, { weekStartsOn: 1 });
         }
       };
 

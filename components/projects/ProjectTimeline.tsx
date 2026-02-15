@@ -282,7 +282,8 @@ function NavBtn({
 
 export function ProjectTimeline() {
   /* ─── View scale (must come before date helpers) ─── */
-  const [viewScale, setViewScale] = useState<"day" | "week" | "month">("month");
+  const [viewScale, setViewScale] = useState<"day" | "week" | "month" | "year">("month");
+  const [isFocusMode, setIsFocusMode] = useState(false);
   const t = useTranslations("timeline");
   const isDemo = useIsDemo();
 
@@ -296,7 +297,7 @@ export function ProjectTimeline() {
     [isDemo]
   );
 
-  const ANCHOR = viewScale === "day" ? DAY_ANCHOR : WEEK_ANCHOR;
+  const ANCHOR = viewScale === "day" ? DAY_ANCHOR : WEEK_ANCHOR; // year also uses WEEK_ANCHOR
 
   const TODAY_WEEK = useMemo(
     () =>
@@ -425,12 +426,27 @@ export function ProjectTimeline() {
     return map;
   }, [liveMilestones]);
 
-  const COL_WIDTH = viewScale === "day" ? 36 : viewScale === "week" ? 56 : 96;
-  const VISIBLE_COLS = viewScale === "day" ? 35 : viewScale === "week" ? 16 : 10;
+  const COL_WIDTH = viewScale === "day" ? 36 : viewScale === "week" ? 56 : viewScale === "month" ? 96 : 20;
+  const focusModeContainerRef = useRef<HTMLDivElement>(null);
+  const [focusWidth, setFocusWidth] = useState(0);
+
+  useEffect(() => {
+    if (isFocusMode) {
+      setFocusWidth(window.innerWidth);
+      const handleResize = () => setFocusWidth(window.innerWidth);
+      window.addEventListener("resize", handleResize);
+      return () => window.removeEventListener("resize", handleResize);
+    }
+  }, [isFocusMode]);
+
   const LEFT_COL = 260;
+  const availableGridWidth = isFocusMode && focusWidth > 0 ? focusWidth - LEFT_COL - 20 : 0;
+  const VISIBLE_COLS = isFocusMode && availableGridWidth > 0
+    ? Math.max(1, Math.floor(availableGridWidth / COL_WIDTH))
+    : viewScale === "day" ? 35 : viewScale === "week" ? 16 : viewScale === "month" ? 10 : 52;
 
   const TOTAL_WEEKS = useMemo(() => {
-    const defaultTotal = viewScale === "day" ? 180 : 26;
+    const defaultTotal = viewScale === "day" ? 180 : viewScale === "year" ? 156 : 26;
     if (allProjects.length === 0) return defaultTotal;
     let minW = Infinity;
     let maxW = -Infinity;
@@ -438,7 +454,7 @@ export function ProjectTimeline() {
       if (p.startWeek < minW) minW = p.startWeek;
       if (p.endWeek > maxW) maxW = p.endWeek;
     }
-    const padding = viewScale === "day" ? 30 : 6;
+    const padding = viewScale === "day" ? 30 : viewScale === "year" ? 12 : 6;
     const range = maxW - minW + padding;
     return Math.max(defaultTotal, range);
   }, [allProjects, viewScale]);
@@ -656,7 +672,7 @@ export function ProjectTimeline() {
     []
   );
 
-  const NAV_STEP = viewScale === "day" ? 7 : 4;
+  const NAV_STEP = viewScale === "day" ? 7 : viewScale === "year" ? 13 : 4;
   const handlePrev = () => setScrollOffset((s) => Math.max(0, s - NAV_STEP));
   const handleNext = () =>
     setScrollOffset((s) =>
@@ -708,6 +724,16 @@ export function ProjectTimeline() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [editMode, undo, redo]);
+
+  /* ─── Focus mode Escape key ─── */
+  useEffect(() => {
+    if (!isFocusMode) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !editMode) setIsFocusMode(false);
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isFocusMode, editMode]);
 
   /* ─── Discard ─── */
   const discard = useCallback(() => {
@@ -1407,11 +1433,22 @@ export function ProjectTimeline() {
 
   return (
     <div
+      ref={focusModeContainerRef}
       style={{
         fontFamily: "'DM Sans', 'Avenir Next', system-ui, sans-serif",
         background: "#FAFAF9",
-        minHeight: "100vh",
         color: "#1F2937",
+        ...(isFocusMode
+          ? {
+              position: "fixed" as const,
+              top: 0,
+              left: 0,
+              width: "100vw",
+              height: "100vh",
+              zIndex: 9999,
+              overflow: "auto",
+            }
+          : { minHeight: "100vh" }),
       }}
     >
       {/* Google Font */}
@@ -1513,7 +1550,7 @@ export function ProjectTimeline() {
               overflow: "hidden",
             }}
           >
-            {(["day", "week", "month"] as const).map((s) => (
+            {(["day", "week", "month", "year"] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => setViewScale(s)}
@@ -1528,7 +1565,7 @@ export function ProjectTimeline() {
                   transition: "all 0.2s ease",
                 }}
               >
-                {s === "day" ? t("viewDay") : s === "week" ? t("viewWeek") : t("viewMonth")}
+                {s === "day" ? t("viewDay") : s === "week" ? t("viewWeek") : s === "month" ? t("viewMonth") : t("viewYear")}
               </button>
             ))}
           </div>
@@ -1676,6 +1713,37 @@ export function ProjectTimeline() {
               </>
             )}
           </div>
+
+          {/* Focus mode toggle */}
+          <button
+            onClick={() => setIsFocusMode((v) => !v)}
+            style={{
+              padding: "6px 16px",
+              borderRadius: 6,
+              fontSize: 12,
+              fontWeight: 600,
+              border: isFocusMode
+                ? "1.5px solid #6366F1"
+                : "1.5px solid #E5E7EB",
+              background: isFocusMode ? "#EEF2FF" : "#fff",
+              color: isFocusMode ? "#4338CA" : "#374151",
+              cursor: "pointer",
+              transition: "all 0.25s ease",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            {isFocusMode ? (
+              <>
+                <span style={{ fontSize: 13 }}>{"\u2716"}</span> {t("exitFocus")}
+              </>
+            ) : (
+              <>
+                <span style={{ fontSize: 13 }}>{"\u26F6"}</span> {t("focusMode")}
+              </>
+            )}
+          </button>
 
           {/* Edit toggle */}
           <button

@@ -1,4 +1,4 @@
-export type TimelineViewMode = "day" | "week" | "month";
+export type TimelineViewMode = "day" | "week" | "month" | "year";
 
 export interface TimelineProject {
   id: string;
