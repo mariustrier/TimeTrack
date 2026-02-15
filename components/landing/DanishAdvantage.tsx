@@ -22,7 +22,7 @@ export function DanishAdvantage() {
           </svg>
         </div>
         <h3>Dansk Ferielov</h3>
-        <p>Vi håndterer automatisk optjening (2,08 dage), ferieafholdelse og helligdage. Det kører bare.</p>
+        <p>Vi håndterer automatisk optjening (2,08 dage), ferieafholdelse og helligdage.</p>
       </RevealOnScroll>
 
       <RevealOnScroll className="lp-pain" delay={160}>

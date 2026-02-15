@@ -7,7 +7,7 @@ export function CtaSection() {
         Få overblik. <em>Fakturér mere.</em>
       </h2>
       <p>
-        Cloud Timer er bygget til danske arkitekter, ingeniører og konsulenter,
+        Cloud Timer er bygget til danske arkitekter, ingeniører og konsulentvirksomheder,
         der vil have styr på tid, økonomi og kapacitet — i ét system.
       </p>
       <div className="lp-cta-acts">

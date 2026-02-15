@@ -8,7 +8,7 @@ export function Hero() {
         Få betaling for <em>al jeres tid</em>.<br />Bygget til danske rådgivere.
       </h1>
       <p className="lp-hero-sub">
-        Slut med amerikanske systemer, der ikke forstår flex og feriepenge.
+        Slut med systemer, der ikke forstår flex og feriepenge.
         Cloud Timer samler tidsregistrering, projektøkonomi og fakturering{" "}
         <strong>ét sted</strong>.
       </p>
