@@ -169,7 +169,6 @@ export default function DashboardPage() {
     presales: tc("preSales"),
   };
 
-  console.log("[Dashboard] isDemo from hook:", isDemo);
   const [currentWeek, setCurrentWeek] = useState(() => getToday(isDemo));
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -1101,7 +1100,7 @@ export default function DashboardPage() {
                           key={day.toISOString()}
                           className={cn(
                             "px-2 py-3 text-center font-medium w-20",
-                            isToday(day) ? "text-brand-600 bg-brand-50/50" : "text-muted-foreground",
+                            isToday(day, isDemo) ? "text-brand-600 bg-brand-50/50" : "text-muted-foreground",
                             holidayName && "bg-amber-50 dark:bg-amber-950/30"
                           )}
                         >
@@ -1209,7 +1208,7 @@ export default function DashboardPage() {
                             key={day.toISOString()}
                             className={cn(
                               "px-1 py-1 text-center",
-                              isToday(day) && "bg-brand-50/30"
+                              isToday(day, isDemo) && "bg-brand-50/30"
                             )}
                           >
                             {entry ? (
@@ -1304,7 +1303,7 @@ export default function DashboardPage() {
                         key={day.toISOString()}
                         className={cn(
                           "px-2 py-3 text-center font-semibold text-foreground",
-                          isToday(day) && "bg-brand-50/50"
+                          isToday(day, isDemo) && "bg-brand-50/50"
                         )}
                       >
                         {getColumnTotal(day).toFixed(1)}
@@ -1336,7 +1335,7 @@ export default function DashboardPage() {
                           key={`planned-${day.toISOString()}`}
                           className={cn(
                             "px-2 py-2 text-center text-xs font-medium text-indigo-600 dark:text-indigo-400",
-                            isToday(day) && "bg-brand-50/30"
+                            isToday(day, isDemo) && "bg-brand-50/30"
                           )}
                         >
                           {dayPlanned > 0 ? dayPlanned.toFixed(1) : "—"}
@@ -1364,7 +1363,7 @@ export default function DashboardPage() {
                           key={`flex-${day.toISOString()}`}
                           className={cn(
                             "px-2 py-2 text-center text-xs font-medium",
-                            isToday(day) && "bg-brand-50/30",
+                            isToday(day, isDemo) && "bg-brand-50/30",
                             isFuture ? "text-muted-foreground" : balance > 0 ? "text-emerald-600 dark:text-emerald-400" : balance < 0 ? "text-red-600 dark:text-red-400" : "text-muted-foreground"
                           )}
                         >
@@ -1397,7 +1396,7 @@ export default function DashboardPage() {
                       return (
                         <td
                           key={`submit-${day.toISOString()}`}
-                          className={cn("px-1 py-2 text-center", isToday(day) && "bg-brand-50/30")}
+                          className={cn("px-1 py-2 text-center", isToday(day, isDemo) && "bg-brand-50/30")}
                         >
                           {hasDrafts ? (
                             <Button

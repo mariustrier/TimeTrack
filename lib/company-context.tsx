@@ -27,7 +27,6 @@ export function CompanyProvider({
   isDemo: boolean;
   children: React.ReactNode;
 }) {
-  console.log("[CompanyProvider] isDemo:", isDemo);
   return (
     <CompanyContext.Provider value={{ logoUrl, isDemo }}>
       {children}
