@@ -314,7 +314,7 @@
     "budgetUsedMoney": "Brugt",
     "perHour": "/t",
     "universalBillRate": "Universel fakturasats",
-    "universalBillRateDesc": "Naar aktiveret faktureres alle medarbejdere med samme sats. Freelancere beholder deres individuelle satser.",
+    "universalBillRateDesc": "Når aktiveret faktureres alle medarbejdere med samme sats. Freelancere beholder deres individuelle satser.",
     "universalRateEnabled": "Aktiveret",
     "universalRateDisabled": "Deaktiveret",
     "freelancerNote": "{count} freelancer(e) bruger individuelle satser",

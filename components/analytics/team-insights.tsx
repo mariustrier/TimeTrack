@@ -188,7 +188,7 @@ export function TeamInsights({
           fontFamily: "'DM Sans', sans-serif",
         }}
       >
-        Indlaeser teamdata...
+        Indlæser teamdata...
       </div>
     );
   }
@@ -573,7 +573,7 @@ export function TeamInsights({
         <ChartCard
           title="Udnyttelsessammenligning"
           height={320}
-          help="Fakturerbar vs. total udnyttelse pr. medarbejder, sorteret hoejest foerst"
+          help="Fakturerbar vs. total udnyttelse pr. medarbejder, sorteret højest først"
         >
           {sortedUtilization.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>

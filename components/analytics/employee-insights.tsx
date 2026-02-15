@@ -285,7 +285,7 @@ export function EmployeeInsights({
   // ---- Member select options ---------------------------------------------
   const memberOptions = useMemo(
     () => [
-      { value: "", label: "Vaelg medarbejder..." },
+      { value: "", label: "Vælg medarbejder..." },
       ...members.map((m) => ({ value: m.id, label: m.name })),
     ],
     [members]
@@ -317,7 +317,7 @@ export function EmployeeInsights({
             fontFamily: "'DM Sans', sans-serif",
           }}
         >
-          Vaelg en medarbejder for at se indsigter
+          Vælg en medarbejder for at se indsigter
         </div>
       )}
 
@@ -334,7 +334,7 @@ export function EmployeeInsights({
             fontFamily: "'DM Sans', sans-serif",
           }}
         >
-          Indlaeser data...
+          Indlæser data...
         </div>
       )}
 
