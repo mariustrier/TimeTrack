@@ -17,7 +17,7 @@ export function DemoBanner() {
   const handleSignup = async () => {
     console.log("[DEMO_FUNNEL]", "banner_signup_click");
     await signOut();
-    window.location.href = "/sign-up?from=demo";
+    window.location.href = "https://www.cloudtimer.dk/sign-up?from=demo";
   };
 
   const handleExit = () => {

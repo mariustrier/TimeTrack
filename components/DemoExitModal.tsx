@@ -34,7 +34,7 @@ export function DemoExitModal({ open, onClose }: DemoExitModalProps) {
   const handleSignup = async () => {
     console.log("[DEMO_FUNNEL]", "modal_signup_click");
     await signOut();
-    window.location.href = "/sign-up?from=demo";
+    window.location.href = "https://www.cloudtimer.dk/sign-up?from=demo";
   };
 
   const handleBook = () => {
