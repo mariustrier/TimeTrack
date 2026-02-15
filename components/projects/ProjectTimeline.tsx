@@ -34,6 +34,7 @@ import type {
 } from "@/components/project-timeline/types";
 import { DeadlineMarker } from "@/components/project-timeline/DeadlineMarker";
 import { DeadlinePopover } from "@/components/project-timeline/DeadlinePopover";
+import { TimelineExportPopover } from "@/components/projects/TimelineExportPopover";
 
 /* ─────────────────────────────────────────────
    INTERNAL TYPES (mapped from API data)
@@ -381,6 +382,7 @@ export function ProjectTimeline() {
   /* ─── Milestones (outside undo/redo — immediate API calls) ─── */
   const [liveMilestones, setLiveMilestones] = useState<MilestoneWithWeek[]>([]);
   const [companyPhases, setCompanyPhases] = useState<CompanyPhase[]>([]);
+  const rawProjectsRef = useRef<TimelineProject[]>([]);
   const [deadlinePopover, setDeadlinePopover] = useState<{
     open: boolean;
     position: { top: number; left: number } | null;
@@ -608,6 +610,7 @@ export function ProjectTimeline() {
       dispatch({ type: "SET_STATE", payload: newState });
       setLiveMilestones(mm);
       setCompanyPhases(data.phases || []);
+      rawProjectsRef.current = data.projects || [];
 
       // Auto-set scroll to show today
       if (mp.length > 0) {
@@ -1730,6 +1733,26 @@ export function ProjectTimeline() {
               </>
             )}
           </div>
+
+          {/* Export popover */}
+          {!editMode && (
+            <TimelineExportPopover
+              projects={undoState.present.projects.map((p) => ({
+                id: p.id,
+                name: p.name,
+                color: p.color,
+                client: p.client,
+                archived: false,
+                locked: false,
+                budgetHours: null,
+              }))}
+              rawProjects={rawProjectsRef.current}
+              milestones={liveMilestones}
+              companyName=""
+              userName=""
+              isDemo={isDemo}
+            />
+          )}
 
           {/* Focus mode toggle */}
           <button
