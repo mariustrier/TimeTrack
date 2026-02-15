@@ -117,11 +117,12 @@ function Shell({ children }: { children: React.ReactNode }) {
         maxWidth: 1060, margin: "0 auto",
       }}>
         <p style={{ fontSize: 12, color: "#6B7280" }}>
-          &copy; {new Date().getFullYear()} Cloud Timer &middot; cloudtimer.dk
+          &copy; {new Date().getFullYear()} Cloud Timer &middot; cloudtimer.dk &middot; CVR: Afventer registrering
         </p>
-        <div style={{ display: "flex", gap: 18 }}>
+        <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
           <Link href="/legal/privacy" style={{ fontSize: 12, color: "#6B7280", textDecoration: "none" }}>{t("privacyPolicy")}</Link>
           <Link href="/legal/terms" style={{ fontSize: 12, color: "#6B7280", textDecoration: "none" }}>{t("termsOfService")}</Link>
+          <Link href="/legal/cookies" style={{ fontSize: 12, color: "#6B7280", textDecoration: "none" }}>{t("cookiePolicy")}</Link>
           <a href="mailto:admin@cloudtimer.dk" style={{ fontSize: 12, color: "#6B7280", textDecoration: "none" }}>{t("contact")}</a>
         </div>
       </footer>
