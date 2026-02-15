@@ -791,18 +791,18 @@ export function withProjection<T extends object>(
       const result = { ...item } as Record<string, unknown>;
       for (const key of numericKeys) {
         if (usePrevAsFallback) {
-          // Use previous period's value as projection
           const prevVal = prevItem[key];
           if (typeof prevVal === "number") {
             result[`proj_${key}`] = prevVal;
           }
         } else {
-          // Scale up partial data to full-period projection
           const val = (item as Record<string, unknown>)[key];
           if (typeof val === "number") {
             result[`proj_${key}`] = Math.round((val / ratio) * 10) / 10;
           }
         }
+        // Hide actual value so solid line stops at previous month
+        result[key] = null;
       }
       return result as T;
     }
