@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { subMonths, format } from "date-fns";
+import { subMonths, subDays, startOfMonth, startOfYear, format } from "date-fns";
 import { getToday } from "@/lib/demo-date";
 import { useIsDemo } from "@/lib/company-context";
 import { useTranslations } from "@/lib/i18n";
@@ -9,6 +9,7 @@ import {
   KpiCard,
   FontLoader,
   AnalyticsKeyframes,
+  MiniSelect,
   fmtCurrency,
   fmt,
 } from "@/components/analytics/analytics-shared";
@@ -137,11 +138,21 @@ export default function AnalyticsPage() {
     "monthly"
   );
   const [approvalFilter, setApprovalFilter] = useState("approved_only");
+  const [rangeKey, setRangeKey] = useState("last3Months");
   const today = getToday(isDemo);
-  const dateRange = useMemo(
-    () => ({ from: subMonths(today, 3), to: today }),
-    [isDemo]
-  );
+  const dateRange = useMemo(() => {
+    const end = today;
+    switch (rangeKey) {
+      case "last7Days":    return { from: subDays(today, 7), to: end };
+      case "last30Days":   return { from: subDays(today, 30), to: end };
+      case "thisMonth":    return { from: startOfMonth(today), to: end };
+      case "last3Months":  return { from: subMonths(today, 3), to: end };
+      case "last6Months":  return { from: subMonths(today, 6), to: end };
+      case "last12Months": return { from: subMonths(today, 12), to: end };
+      case "yearToDate":   return { from: startOfYear(today), to: end };
+      default:             return { from: subMonths(today, 3), to: end };
+    }
+  }, [rangeKey, isDemo]);
   const [kpis, setKpis] = useState<any>(null);
   const [redListCount, setRedListCount] = useState(0);
 
@@ -329,26 +340,20 @@ export default function AnalyticsPage() {
               />
             </div>
 
-            {/* Date range display */}
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                padding: "4px 12px",
-                border: "1px solid hsl(var(--border))",
-                borderRadius: 4,
-                fontSize: 11,
-                fontFamily: "'JetBrains Mono', monospace",
-                fontWeight: 500,
-                color: "hsl(var(--muted-foreground))",
-                background: "hsl(var(--card))",
-                whiteSpace: "nowrap",
-                userSelect: "none",
-              }}
-            >
-              {format(dateRange.from, "d. MMM")} {"\u2014"}{" "}
-              {format(dateRange.to, "d. MMM")}
-            </div>
+            {/* Date range selector */}
+            <MiniSelect
+              value={rangeKey}
+              onChange={setRangeKey}
+              options={[
+                { value: "last7Days",    label: t("last7Days") },
+                { value: "last30Days",   label: t("last30Days") },
+                { value: "thisMonth",    label: t("thisMonth") },
+                { value: "last3Months",  label: t("last3Months") },
+                { value: "last6Months",  label: t("last6Months") },
+                { value: "last12Months", label: t("last12Months") },
+                { value: "yearToDate",   label: t("yearToDate") },
+              ]}
+            />
           </div>
         </div>
       </div>
