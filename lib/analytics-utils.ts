@@ -1,6 +1,7 @@
 import { format, startOfMonth, eachMonthOfInterval, eachWeekOfInterval, startOfWeek, differenceInDays, eachDayOfInterval, isWeekend, addWeeks } from "date-fns";
 import { getEffectiveWeeklyCapacity } from "@/lib/calculations";
 import { getToday } from "@/lib/demo-date";
+import { isDanishHoliday } from "@/lib/holidays";
 
 // --- Types ---
 
@@ -112,7 +113,7 @@ function workingDaysInPeriod(periodKeyStr: string, granularity: "monthly" | "wee
   const cursor = new Date(start);
   while (cursor <= end) {
     const day = cursor.getDay();
-    if (day !== 0 && day !== 6) count++;
+    if (day !== 0 && day !== 6 && !isDanishHoliday(cursor)) count++;
     cursor.setDate(cursor.getDate() + 1);
   }
   return Math.max(count, 1);
@@ -128,7 +129,7 @@ function totalWorkingDays(from: Date, to: Date, isDemo?: boolean): number {
   const cursor = new Date(effectiveStart);
   while (cursor <= effectiveEnd) {
     const day = cursor.getDay();
-    if (day !== 0 && day !== 6) count++;
+    if (day !== 0 && day !== 6 && !isDanishHoliday(cursor)) count++;
     cursor.setDate(cursor.getDate() + 1);
   }
   return Math.max(count, 1);
