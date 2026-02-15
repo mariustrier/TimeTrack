@@ -97,15 +97,16 @@ function workingDaysInPeriod(periodKeyStr: string, granularity: "monthly" | "wee
   const today = getToday();
   let start: Date, end: Date;
   if (granularity === "weekly") {
-    start = new Date(periodKeyStr);
-    end = new Date(start);
-    end.setDate(end.getDate() + 6);
+    const [y, m, d] = periodKeyStr.split("-").map(Number);
+    start = new Date(y, m - 1, d);
+    end = new Date(y, m - 1, d + 6);
   } else {
-    start = new Date(periodKeyStr + "-01");
-    end = new Date(start.getFullYear(), start.getMonth() + 1, 0); // last day of month
+    const [y, m] = periodKeyStr.split("-").map(Number);
+    start = new Date(y, m - 1, 1);
+    end = new Date(y, m, 0); // last day of month
   }
   // Cap at today for partial periods
-  if (end > today) end = today;
+  if (end > today) end = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   if (start > today) return 0;
   let count = 0;
   const cursor = new Date(start);
@@ -119,10 +120,12 @@ function workingDaysInPeriod(periodKeyStr: string, granularity: "monthly" | "wee
 
 function totalWorkingDays(from: Date, to: Date): number {
   const today = getToday();
-  const effectiveEnd = to > today ? today : to;
-  if (from > effectiveEnd) return 1;
+  const cappedEnd = to > today ? today : to;
+  const effectiveEnd = new Date(cappedEnd.getFullYear(), cappedEnd.getMonth(), cappedEnd.getDate());
+  const effectiveStart = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  if (effectiveStart > effectiveEnd) return 1;
   let count = 0;
-  const cursor = new Date(from);
+  const cursor = new Date(effectiveStart);
   while (cursor <= effectiveEnd) {
     const day = cursor.getDay();
     if (day !== 0 && day !== 6) count++;

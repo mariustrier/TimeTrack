@@ -239,8 +239,15 @@ export function EmployeeInsights({
   }, [fetchEmployeeData]);
 
   // ---- Projected chart data ----------------------------------------------
-  // Utilization and flex are already normalized by working days (capped at today),
-  // so no projection scaling needed. Profitability uses absolute values → project.
+  const projectedUtilization = useMemo(
+    () =>
+      withProjection(utilizationTrend, getToday(), granularity, [
+        "billableUtil",
+        "totalUtil",
+      ]),
+    [utilizationTrend, granularity]
+  );
+
   const projectedProfitability = useMemo(
     () =>
       withProjection(profitability, getToday(), granularity, [
@@ -249,6 +256,11 @@ export function EmployeeInsights({
         "profit",
       ]),
     [profitability, granularity]
+  );
+
+  const projectedFlex = useMemo(
+    () => withProjection(flexTrend, getToday(), granularity, ["flex"]),
+    [flexTrend, granularity]
   );
 
   // ---- Derived -----------------------------------------------------------
@@ -493,7 +505,7 @@ export function EmployeeInsights({
             >
               {hasUtilData ? (
                 <ResponsiveContainer width="100%" height={260}>
-                  <LineChart data={utilizationTrend}>
+                  <LineChart data={projectedUtilization}>
                     <CartesianGrid {...GRID_STYLE} />
                     <ReferenceArea
                       y1={70}
@@ -561,6 +573,25 @@ export function EmployeeInsights({
                       strokeWidth={2}
                       dot={{ r: 3, fill: "#6366F1" }}
                       activeDot={{ r: 5 }}
+                    />
+                    {/* Projections (dashed with dots) */}
+                    <Line
+                      type="monotone"
+                      dataKey="proj_billableUtil"
+                      stroke="#10B981"
+                      strokeWidth={2}
+                      strokeDasharray="6 3"
+                      dot={{ r: 3, fill: "#10B981", strokeWidth: 0 }}
+                      legendType="none"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="proj_totalUtil"
+                      stroke="#6366F1"
+                      strokeWidth={2}
+                      strokeDasharray="6 3"
+                      dot={{ r: 3, fill: "#6366F1", strokeWidth: 0 }}
+                      legendType="none"
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -690,7 +721,7 @@ export function EmployeeInsights({
             >
               {hasFlexData ? (
                 <ResponsiveContainer width="100%" height={280}>
-                  <AreaChart data={flexTrend}>
+                  <ComposedChart data={projectedFlex}>
                     <CartesianGrid {...GRID_STYLE} />
                     <ReferenceArea
                       y1={-5}
@@ -735,7 +766,16 @@ export function EmployeeInsights({
                       dot={{ r: 3, fill: "#6366F1" }}
                       activeDot={{ r: 5 }}
                     />
-                  </AreaChart>
+                    <Line
+                      type="monotone"
+                      dataKey="proj_flex"
+                      stroke="#6366F1"
+                      strokeWidth={2}
+                      strokeDasharray="6 3"
+                      dot={{ r: 3, fill: "#6366F1", strokeWidth: 0 }}
+                      legendType="none"
+                    />
+                  </ComposedChart>
                 </ResponsiveContainer>
               ) : (
                 <div
