@@ -313,6 +313,7 @@
     "budgetRemaining": "Remaining",
     "budgetUsedMoney": "Used",
     "perHour": "/h",
+    "perWeek": "/wk",
     "universalBillRate": "Universal Bill Rate",
     "universalBillRateDesc": "When enabled, all employees are billed at the same rate. Freelancers keep their individual rates.",
     "universalRateEnabled": "Enabled",

@@ -313,6 +313,7 @@
     "budgetRemaining": "Resterende",
     "budgetUsedMoney": "Brugt",
     "perHour": "/t",
+    "perWeek": "/uge",
     "universalBillRate": "Universel fakturasats",
     "universalBillRateDesc": "Når aktiveret faktureres alle medarbejdere med samme sats. Freelancere beholder deres individuelle satser.",
     "universalRateEnabled": "Aktiveret",

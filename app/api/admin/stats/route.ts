@@ -259,6 +259,7 @@ export async function GET(req: Request) {
       totalProjectExpenses,
       totalOverhead,
       totalExpenses,
+      workingDays,
       currency: company?.currency || "USD",
       defaultHourlyRate: company?.defaultHourlyRate || null,
       useUniversalRate: company?.useUniversalRate || false,

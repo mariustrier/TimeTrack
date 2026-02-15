@@ -126,6 +126,7 @@ interface Stats {
   totalProjectExpenses: number;
   totalOverhead: number;
   totalExpenses: number;
+  workingDays: number;
   currency: string;
   defaultHourlyRate: number | null;
   useUniversalRate: boolean;
@@ -1060,14 +1061,19 @@ export function AdminOverview() {
                       <span className="font-medium">
                         {emp.isHourly
                           ? formatHours(emp.hours, tc("hourAbbrev"))
-                          : `${formatHours(emp.hours, tc("hourAbbrev"))} / ${formatHours(emp.weeklyTarget, tc("hourAbbrev"))}`}
+                          : `${formatHours(emp.hours, tc("hourAbbrev"))} / ${formatHours(Math.round(emp.weeklyTarget / 5 * (stats.workingDays || 1)), tc("hourAbbrev"))}`}
                       </span>
                     </div>
                     {!emp.isHourly && (
-                      <Progress
-                        value={Math.min(emp.utilization ?? 0, 100)}
-                        className="h-2"
-                      />
+                      <>
+                        <Progress
+                          value={Math.min(emp.utilization ?? 0, 100)}
+                          className="h-2"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {emp.weeklyTarget}{tc("hourAbbrev")}{t("perWeek")}
+                        </p>
+                      </>
                     )}
                     {emp.isHourly && (
                       <Badge variant="outline" className="border-blue-500 text-blue-600 text-xs">
