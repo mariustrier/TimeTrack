@@ -64,7 +64,7 @@ export async function GET(req: Request) {
       },
     });
 
-    // Count working days in range, capped at today for partial months
+    // Count working days in range, capped at today for utilization calc
     const today = getToday();
     const rangeStart = startDate ? new Date(startDate) : today;
     const rangeEnd = endDate ? new Date(endDate) : today;
@@ -77,6 +77,16 @@ export async function GET(req: Request) {
       cursor.setDate(cursor.getDate() + 1);
     }
     if (workingDays < 1) workingDays = 1;
+
+    // Full period working days (not capped) for monthly target display
+    let totalPeriodWorkingDays = 0;
+    const fullCursor = new Date(rangeStart);
+    while (fullCursor <= rangeEnd) {
+      const day = fullCursor.getDay();
+      if (day !== 0 && day !== 6) totalPeriodWorkingDays++;
+      fullCursor.setDate(fullCursor.getDate() + 1);
+    }
+    if (totalPeriodWorkingDays < 1) totalPeriodWorkingDays = 1;
 
     let totalRevenue = 0;
     let totalCost = 0;
@@ -260,6 +270,7 @@ export async function GET(req: Request) {
       totalOverhead,
       totalExpenses,
       workingDays,
+      totalPeriodWorkingDays,
       currency: company?.currency || "USD",
       defaultHourlyRate: company?.defaultHourlyRate || null,
       useUniversalRate: company?.useUniversalRate || false,

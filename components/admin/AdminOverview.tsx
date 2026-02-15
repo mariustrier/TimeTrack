@@ -127,6 +127,7 @@ interface Stats {
   totalOverhead: number;
   totalExpenses: number;
   workingDays: number;
+  totalPeriodWorkingDays: number;
   currency: string;
   defaultHourlyRate: number | null;
   useUniversalRate: boolean;
@@ -1061,7 +1062,7 @@ export function AdminOverview() {
                       <span className="font-medium">
                         {emp.isHourly
                           ? formatHours(emp.hours, tc("hourAbbrev"))
-                          : `${formatHours(emp.hours, tc("hourAbbrev"))} / ${formatHours(Math.round(emp.weeklyTarget / 5 * (stats.workingDays || 1)), tc("hourAbbrev"))}`}
+                          : `${formatHours(emp.hours, tc("hourAbbrev"))} / ${formatHours(Math.round(emp.weeklyTarget / 5 * (stats.totalPeriodWorkingDays || 1)), tc("hourAbbrev"))}`}
                       </span>
                     </div>
                     {!emp.isHourly && (
