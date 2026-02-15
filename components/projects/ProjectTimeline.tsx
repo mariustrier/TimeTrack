@@ -16,6 +16,7 @@ import {
   differenceInCalendarWeeks,
   differenceInCalendarDays,
   format,
+  getISOWeek,
 } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -2160,8 +2161,15 @@ export function ProjectTimeline() {
                 );
               }
 
-              topLabel = isToday ? t("today") : `W${w + 1}`;
-              bottomLabel = weekToLabel(w);
+              if (viewScale === "year") {
+                const d = addWeeks(WEEK_ANCHOR, w);
+                const isoWeek = getISOWeek(d);
+                topLabel = isToday ? t("today") : `${isoWeek}`;
+                bottomLabel = isoWeek === 1 ? format(d, "yyyy") : "";
+              } else {
+                topLabel = isToday ? t("today") : `W${w + 1}`;
+                bottomLabel = weekToLabel(w);
+              }
 
               return (
                 <div
