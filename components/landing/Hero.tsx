@@ -12,15 +12,15 @@ export function Hero() {
         Cloud Timer samler tidsregistrering, projektøkonomi og fakturering{" "}
         <strong>ét sted</strong>.
       </p>
-      <div className="lp-hero-acts">
+      <div className="lp-hero-acts" style={{ gap: 32 }}>
         <LiveDemoButton />
-        <Link href="/sign-up" className="lp-btn lp-btn-s lp-btn-lg">
-          Opret konto
-        </Link>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <Link href="/sign-up" className="lp-btn lp-btn-s lp-btn-lg">
+            Opret konto
+          </Link>
+          <p className="lp-demo-sub">Gratis mens vi tester systemet.</p>
+        </div>
       </div>
-      <p className="lp-hero-note">
-        Gratis mens vi tester systemet · Intet kreditkort · Dansk support
-      </p>
     </section>
   );
 }

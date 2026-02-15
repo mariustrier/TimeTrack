@@ -44,7 +44,7 @@ export function LiveDemoButton() {
   }
 
   return (
-    <>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
       <button
         className="lp-btn lp-btn-demo lp-btn-lg"
         onClick={handleClick}
@@ -59,9 +59,11 @@ export function LiveDemoButton() {
           "Prøv med demodata"
         )}
       </button>
-      {state === "error" && (
+      {state === "error" ? (
         <p className="lp-demo-error">{errorMsg}</p>
+      ) : (
+        <p className="lp-demo-sub">Ingen oprettelse. Se systemet i brug.</p>
       )}
-    </>
+    </div>
   );
 }
