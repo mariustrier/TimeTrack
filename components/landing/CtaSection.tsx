@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LiveDemoButton } from "./LiveDemoButton";
 
 export function CtaSection() {
   return (
@@ -10,13 +11,11 @@ export function CtaSection() {
         Cloud Timer er bygget til danske arkitekter, ingeniører og konsulentvirksomheder,
         der vil have styr på tid, økonomi og kapacitet — i ét system.
       </p>
+      <LiveDemoButton />
       <div className="lp-cta-acts">
-        <Link href="/sign-up" className="lp-btn lp-btn-p lp-btn-lg">
+        <Link href="/sign-up" className="lp-btn lp-btn-s lp-btn-lg">
           Kom i gang — gratis i beta
         </Link>
-        <a href="#integrations" className="lp-btn lp-btn-s lp-btn-lg">
-          Se integrationer
-        </a>
       </div>
     </div>
   );
