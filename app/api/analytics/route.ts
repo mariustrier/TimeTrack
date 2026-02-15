@@ -70,6 +70,12 @@ export async function GET(req: Request) {
       date: { gte: from, lte: to },
     };
 
+    // Flex balance always needs ALL entries (draft + submitted + approved).
+    // Other charts respect the approval filter. We fetch all and filter in-memory.
+    const flexDateFilter: Record<string, unknown> = {
+      date: { gte: from, lte: to },
+    };
+
     if (approvalFilter === "approved_only") {
       dateFilter.approvalStatus = { in: ["approved", "locked"] };
     }
@@ -174,6 +180,55 @@ export async function GET(req: Request) {
       date: e.date.toISOString(),
     }));
 
+    // For flex calculations, we need ALL entries regardless of approval filter.
+    // If filter is active, fetch a separate unfiltered set; otherwise reuse castEntries.
+    let allCastEntries = castEntries;
+    if (approvalFilter === "approved_only") {
+      const allEntries = await db.timeEntry.findMany({
+        where: {
+          companyId: user.companyId,
+          ...flexDateFilter,
+        },
+        select: {
+          id: true,
+          hours: true,
+          date: true,
+          billingStatus: true,
+          approvalStatus: true,
+          userId: true,
+          projectId: true,
+          phaseName: true,
+          invoiceId: true,
+          invoicedAt: true,
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              hourlyRate: true,
+              costRate: true,
+              weeklyTarget: true,
+            },
+          },
+          project: {
+            select: {
+              id: true,
+              name: true,
+              client: true,
+              color: true,
+              billable: true,
+              budgetHours: true,
+            },
+          },
+        },
+      });
+      allCastEntries = allEntries.map((e) => ({
+        ...e,
+        date: e.date.toISOString(),
+      }));
+    }
+
     const currency = company?.currency || "USD";
 
     // Cast projects for ProjectFull usage
@@ -201,12 +256,13 @@ export async function GET(req: Request) {
           return NextResponse.json({ error: "Employee not found" }, { status: 404 });
         }
         const employeeEntries = castEntries.filter((e) => e.userId === employeeId);
+        const allEmployeeEntries = allCastEntries.filter((e) => e.userId === employeeId);
 
         // Phase breakdown
         const phaseBreakdown = aggregateEmployeePhaseBreakdown(employeeEntries, phaseColorMap);
 
-        // Flex trend
-        const flexTrend = aggregateEmployeeFlexTrend(employeeEntries, member, from, to, granularity, isDemo);
+        // Flex trend — always uses ALL entries (draft + submitted + approved)
+        const flexTrend = aggregateEmployeeFlexTrend(allEmployeeEntries, member, from, to, granularity, isDemo);
 
         // Utilization trend with planned util
         const utilizationTrend = aggregateEmployeeUtilizationTrend(employeeEntries, member, from, to, granularity, isDemo);
@@ -244,7 +300,9 @@ export async function GET(req: Request) {
         const billableUtil = expectedHours > 0
           ? Math.round((billableHours / expectedHours) * 1000) / 10
           : 0;
-        const flexBalance = Math.round((totalHours - expectedHours) * 10) / 10;
+        // Flex balance uses ALL entries (not filtered by approval status)
+        const allTotalHours = allEmployeeEntries.reduce((s, e) => s + e.hours, 0);
+        const flexBalance = Math.round((allTotalHours - expectedHours) * 10) / 10;
 
         // Absence days: entries on system-managed Absence project
         const absenceProjects = projects.filter((p) => p.name === "Absence" || p.systemType === "absence");
