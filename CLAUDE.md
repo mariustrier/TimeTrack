@@ -15,6 +15,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - Sentry error monitoring (client/server/edge) with error boundaries at root, app, and dashboard levels
 - Vercel Blob for file storage (contract PDFs, receipts, company logos)
 - Resend for transactional emails (team invitations)
+- ExcelJS + file-saver for client-side Excel export, @react-pdf/renderer for PDF generation (timeline exports)
 
 ## Key Commands
 
@@ -48,12 +49,13 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `components/analytics/` - EmployeeInsights, TeamInsights, ProjectInsights, CompanyInsights, analytics-shared (KpiCard, ChartCard with expand/export, MiniSelect, StatusDot, InfoTip, ChartTooltip, BudgetBar, FontLoader, AnalyticsKeyframes, color/style constants)
 - `components/billing/` - UninvoicedTab, InvoicesTab, InvoiceCreateDialog, InvoiceDetailDialog, BillingSettings
 - `components/contracts/` - ContractSection (upload, AI extraction, manual entry)
-- `components/projects/` - ProjectsList, ProjectTimeline (self-contained ~2900-line inline-styled Gantt), PhaseProgress
-- `components/project-timeline/` - DeadlinePopover, DeadlineMarker, TimelineGrid, MilestoneDialog, MilestonePopover, ActivityGanttSection, ActivityRow, ActivityBlock, ActivityPopover, ActivityCategoryHeader, ActivityProgressBar, InlineEditCell, TimelineContextMenu, TimelineEditFooter, useTimelineEditSession
+- `components/projects/` - ProjectsList, ProjectTimeline (self-contained ~3200-line inline-styled Gantt), PhaseProgress, TimelineExportPopover (Excel/PDF export with filter popover), TimelinePdfDocument (@react-pdf/renderer A3 Gantt PDF)
+- `components/project-timeline/` - DeadlinePopover, DeadlineMarker, TimelineGrid, MilestoneDialog, MilestonePopover, ActivityGanttSection, ActivityRow, ActivityBlock, ActivityPopover, ActivityCategoryHeader, ActivityProgressBar, InlineEditCell, TimelineContextMenu, TimelineEditFooter, useTimelineEditSession, useTimelineDrag, types.ts (`TimelineViewMode: "day" | "week" | "month" | "year"`)
 - `components/resource-planner/` - ResourceGrid, AllocationDialog, AllocationBlock, ViewControls, PlannerControls, PlannerGrid, PlannerRow, PlannerCell, BulkActionToolbar, CapacitySummary
 - `components/team/` - TeamList, ResourcePlanner
 - `components/vacations/` - VacationCalendar, VacationPlanner
 - `components/layout/` - Sidebar (role-based nav with badge counts, support mode banner)
+- `components/landing/` - Nav, Hero, IntegrationBar, DanishAdvantage, BrowserShowcase, TimelinePreview, ResourcePlannerPreview, InsightSection, GraphStrip, FounderQuote, CtaSection, WhyChoose, Footer, LiveDemoButton, RevealOnScroll
 - `components/ui/` - shadcn/ui primitives, guided-tour, page-guide, info-tooltip, theme/locale toggles
 
 ### Shared Libraries
@@ -79,6 +81,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `lib/economic-import.ts` - e-conomic Projektkort XLSX parser
 - `lib/vacation-entries.ts` - createVacationEntries/deleteVacationEntries (shared by vacation routes)
 - `lib/invoice-pdf.ts` - Server-side A4 invoice PDF generation (pdf-lib), multi-page support, Danish formatting
+- `lib/timeline-excel-export.ts` - Client-side Excel workbook builder (ExcelJS + file-saver). 5 sheets: Projektoversigt, Aktiviteter, Milepæle, Tidslinje (Gantt via cell fills), Budgetstatus. A3 landscape, conditional formatting, today column highlight.
 - `lib/accounting/` - Accounting system adapter pattern + AES-256-GCM credential encryption:
   - `lib/accounting/types.ts` - `AccountingCredentials` type (system, accessToken, refreshToken, tokenExpiresAt, etc.)
   - `lib/accounting/encryption.ts` - `encrypt()`/`decrypt()` using `ACCOUNTING_ENCRYPTION_KEY`
@@ -198,10 +201,11 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
   - Audit log: IMPORT action with metadata
   - API: `POST /api/projects/import` (multipart/form-data, admin/manager only, rate-limited)
   - Parser: `lib/economic-import.ts` — extracts invoices, task categories, time entries from Projektkort format
-- **Timeline tab**: Self-contained ~2900-line `ProjectTimeline.tsx` component with all inline styles (no Tailwind). Two-level Gantt view with project bars, milestone markers, today line.
-  - **Architecture**: Week-based internal positioning system with `ANCHOR` date, `dateToWeek()`/`weekToDate()` conversion. `useReducer` undo/redo for project/activity position edits. Window-level `mousemove`/`mouseup` listeners for drag-and-drop (always-on during edit mode). Refs (`dragRef`, `dragDeltaRef`, `justDraggedRef`) to avoid stale closures. Milestones in separate `useState` (not undo/redo) for immediate API calls.
-  - **Day/Week/Month view toggle**: Day view (36px columns, 35 visible, daily precision with weekend dimming), Week view (56px columns, 16 visible), Month view (96px columns, 10 visible). Navigation step: 7 days / 4 weeks / 4 months. Data refetches on view switch with activity cache cleared.
-  - **Date handling**: `dateToWeek` uses `differenceInCalendarDays` (day mode) or `differenceInCalendarWeeks` (week/month). Handles both `"yyyy-MM-dd"` and ISO `"yyyy-MM-ddTHH:mm:ss.000Z"` formats via `dateStr.slice(0, 10)`.
+- **Timeline tab**: Self-contained ~3200-line `ProjectTimeline.tsx` component with all inline styles (no Tailwind). Two-level Gantt view with project bars, milestone markers, today line.
+  - **Architecture**: Week-based internal positioning system with `ANCHOR` date (+ `MONTH_ANCHOR` for year view), `dateToWeek()`/`weekToDate()` conversion. `useReducer` undo/redo for project/activity position edits. Window-level `mousemove`/`mouseup` listeners for drag-and-drop (always-on during edit mode). Refs (`dragRef`, `dragDeltaRef`, `justDraggedRef`) to avoid stale closures. Milestones in separate `useState` (not undo/redo) for immediate API calls.
+  - **Day/Week/Month/Year view toggle**: Day view (36px columns, 35 visible, daily precision with weekend dimming), Week view (56px columns, 16 visible), Month view (96px columns, 10 visible), Year view (64px columns, 18 visible, **month-based** — uses `differenceInCalendarMonths`/`addMonths` instead of week math, columns show month names with year labels at January). Navigation step: 7 days / 4 weeks / 4 months / 6 months. Data refetches on view switch with activity cache cleared.
+  - **Date handling**: `dateToWeek` uses `differenceInCalendarDays` (day mode), `differenceInCalendarWeeks` (week/month), or `differenceInCalendarMonths` (year mode). Handles both `"yyyy-MM-dd"` and ISO `"yyyy-MM-ddTHH:mm:ss.000Z"` formats via `dateStr.slice(0, 10)`.
+  - **Focus Mode**: Toggle to focus on a single project — hides all other projects, expands the focused project's activities. Activated via "Focus" button in toolbar or by clicking a project's focus icon.
   - CRUD milestones (title, due date, completion tracking)
   - **Deadline system**: Extends milestones with `type` (phase/custom), `phaseId`, `description`, `icon`, `color`
     - **Phase deadlines**: Linked to company phases, dashed vertical line in phase color. Auto-completed when phase is advanced via PhaseProgress.
@@ -223,7 +227,7 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
     - Lazy-loaded: activities fetched only when project expanded, cached in `activityCache`
     - API: `GET/POST/PUT/DELETE /api/projects/[id]/activities`, `PUT /api/projects/[id]/activities/reorder`
   - **Edit mode**: Toggle via "Edit Timeline" button. Footer bar shows unsaved change count, undo/redo/discard/save buttons. Undo/redo via `useReducer` with `past`/`present`/`future` stacks. Save batches all project + activity date changes into parallel API calls.
-  - **Legend**: Phase deadline (dashed line), Custom deadline (dotted line), Project bar, Conflict badge
+  - **Export (Excel + PDF)**: "Eksportér" button opens `TimelineExportPopover` with project selection (Alle/Aktive/Fakturerbare + checklist), date range picker, include toggles (Aktiviteter, Milepæle, Budget). Generates client-side via dynamic imports. Excel: 5-sheet workbook (ExcelJS) with Gantt chart via cell fills. PDF: A3 landscape Gantt (@react-pdf/renderer) with project bars, activity bars, milestone diamonds, today line. Activities fetched on-demand per project. Raw `TimelineProject[]` stored in `rawProjectsRef` for export data. Ctrl/Cmd+E keyboard shortcut.
 
 ### Team
 - **Team tab**: Member list with roles, bill/cost rates, weekly targets, extra vacation days, employment type (employee/freelancer), hourly toggle
@@ -288,6 +292,23 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
 - **Sidebar banner**: Amber "Support Mode" banner with company name and "Exit Support" button
 - **Audit logging**: SUPPORT_REQUEST, SUPPORT_GRANT, SUPPORT_DENY, SUPPORT_ENTER, SUPPORT_EXIT, SUPPORT_REVOKE
 - **DB model**: `SupportAccess` with status lifecycle: `pending` → `granted` → `active` → `expired`
+
+### Landing Page (`app/page.tsx`)
+- Pure CSS design (`.lp-*` classes in `globals.css`), no Tailwind
+- Warm stone palette: `--lp-bg: #FAFAF9`, `--lp-accent: #1E3A5F`, `--lp-text: #1F2937`, `--lp-dim: #6B7280`
+- Typography: Newsreader (serif headings), JetBrains Mono (data/metadata), DM Sans (body)
+- Glass-morphism nav with backdrop blur, reveal-on-scroll animations
+- Sections: Hero, IntegrationBar, DanishAdvantage, BrowserShowcase (×2 with TimelinePreview + ResourcePlannerPreview), InsightSection, GraphStrip, FounderQuote, WhyChoose, CtaSection, Footer
+- **Live demo**: `LiveDemoButton` triggers demo seed → redirects to dashboard with pinned demo date
+- **Beta messaging**: All "14-day free trial" references replaced with "Gratis i beta" / "Free during beta"
+- Footer: Privatlivspolitik, Vilkår, Cookiepolitik, Kontakt + CVR info (Danish e-handelsloven §7)
+
+### Legal Pages (`app/legal/`)
+- Server layout (`layout.tsx`) loads Newsreader + JetBrains Mono fonts
+- Client shell (`LegalShell.tsx`) provides nav, sub-nav pills, content card, footer — all matching landing page aesthetic
+- 4 pages: Privacy (`/legal/privacy`), Terms (`/legal/terms`), DPA (`/legal/dpa`), Cookies (`/legal/cookies`)
+- All inline-styled with landing page palette (Newsreader serif headings, JetBrains Mono dates, warm stone colors)
+- Redirect: `/privacy` → `/legal/privacy`
 
 ### Mileage Tracking
 - Integrated into time entry modal (collapsible section)
