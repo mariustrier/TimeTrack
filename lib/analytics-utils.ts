@@ -763,6 +763,20 @@ export function withProjection<T extends object>(
   if (ratio >= 0.95) return data; // Period almost complete, no projection needed
 
   const lastIdx = data.length - 1;
+  const prevItem = data[lastIdx - 1] as Record<string, unknown>;
+  const lastItem = data[lastIdx] as Record<string, unknown>;
+
+  // Check if current period data is mostly empty (e.g. approved-only filter)
+  // If so, use previous period's values as the projection instead
+  const lastSum = numericKeys.reduce((s, k) => {
+    const v = lastItem[k];
+    return s + (typeof v === "number" ? Math.abs(v) : 0);
+  }, 0);
+  const prevSum = numericKeys.reduce((s, k) => {
+    const v = prevItem[k];
+    return s + (typeof v === "number" ? Math.abs(v) : 0);
+  }, 0);
+  const usePrevAsFallback = lastSum < prevSum * 0.1; // current < 10% of previous → likely empty
 
   return data.map((item, i) => {
     if (i === lastIdx - 1) {
@@ -774,13 +788,20 @@ export function withProjection<T extends object>(
       return result as T;
     }
     if (i === lastIdx) {
-      // Keep actual values, add proj_ keys with scaled-up projection
       const result = { ...item } as Record<string, unknown>;
       for (const key of numericKeys) {
-        const val = (item as Record<string, unknown>)[key];
-        if (typeof val === "number") {
-          const projected = Math.round((val / ratio) * 10) / 10;
-          result[`proj_${key}`] = projected;
+        if (usePrevAsFallback) {
+          // Use previous period's value as projection
+          const prevVal = prevItem[key];
+          if (typeof prevVal === "number") {
+            result[`proj_${key}`] = prevVal;
+          }
+        } else {
+          // Scale up partial data to full-period projection
+          const val = (item as Record<string, unknown>)[key];
+          if (typeof val === "number") {
+            result[`proj_${key}`] = Math.round((val / ratio) * 10) / 10;
+          }
         }
       }
       return result as T;
