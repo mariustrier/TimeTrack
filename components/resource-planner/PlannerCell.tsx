@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { format, isWeekend } from "date-fns";
 import { isToday } from "@/lib/demo-date";
+import { useIsDemo } from "@/lib/company-context";
 import { cn } from "@/lib/utils";
 import { isCompanyHoliday, getCompanyHolidayName, type CustomHoliday } from "@/lib/holidays";
 import { Plus } from "lucide-react";
@@ -73,10 +74,11 @@ export function PlannerCell({
   onBulkDrop,
 }: PlannerCellProps) {
   const { locale } = useLocale();
+  const isDemo = useIsDemo();
   const weekend = isWeekend(day);
   const holiday = !weekend && isCompanyHoliday(day, disabledHolidayCodes, customHolidays);
   const holidayName = !weekend ? getCompanyHolidayName(day, locale as "en" | "da", disabledHolidayCodes, customHolidays) : null;
-  const today = isToday(day);
+  const today = isToday(day, isDemo);
   const totalAllocated = allocations.reduce((s, a) => s + a.hoursPerDay, 0);
   const ratio = dailyTarget > 0 ? totalAllocated / dailyTarget : 0;
   const isEmpty = allocations.length === 0 && !vacation;

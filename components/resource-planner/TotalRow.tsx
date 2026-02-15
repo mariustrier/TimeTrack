@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { isCompanyHoliday, type CustomHoliday } from "@/lib/holidays";
 import { useTranslations } from "@/lib/i18n";
 import { isToday } from "@/lib/demo-date";
+import { useIsDemo } from "@/lib/company-context";
 
 interface Allocation {
   userId: string;
@@ -31,6 +32,7 @@ export function TotalRow({
   customHolidays,
 }: TotalRowProps) {
   const tc = useTranslations("common");
+  const isDemo = useIsDemo();
   const totalUtil = totalCapacity > 0 ? (totalAllocated / totalCapacity) * 100 : 0;
 
   return (
@@ -64,7 +66,7 @@ export function TotalRow({
               "border-t-2 border-r border-border p-1 text-center",
               weekend && "bg-muted/30",
               holiday && "bg-amber-50/30 dark:bg-amber-950/10",
-              isToday(day) && "bg-brand-50/30 dark:bg-brand-950/30"
+              isToday(day, isDemo) && "bg-brand-50/30 dark:bg-brand-950/30"
             )}
           >
             {!weekend && !holiday && dayTotal > 0 && (

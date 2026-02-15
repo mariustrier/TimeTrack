@@ -17,8 +17,8 @@ export function getToday(isDemo?: boolean): Date {
 }
 
 /** Drop-in replacement for date-fns isToday() that respects the demo pin */
-export function isToday(date: Date): boolean {
-  const today = getToday();
+export function isToday(date: Date, isDemo?: boolean): boolean {
+  const today = getToday(isDemo);
   return (
     date.getFullYear() === today.getFullYear() &&
     date.getMonth() === today.getMonth() &&

@@ -212,7 +212,7 @@ export function VacationCalendar() {
                       "min-h-[80px] border-r last:border-r-0 p-1",
                       !isCurrentMonth && "bg-muted/30",
                       isWknd && "bg-muted/20",
-                      isToday(day) && "bg-brand-50/50 dark:bg-brand-950/20",
+                      isToday(day, isDemo) && "bg-brand-50/50 dark:bg-brand-950/20",
                       holidayName && "bg-amber-50/50 dark:bg-amber-950/20",
                     )}
                   >
@@ -222,8 +222,8 @@ export function VacationCalendar() {
                         className={cn(
                           "text-xs font-medium",
                           !isCurrentMonth && "text-muted-foreground/50",
-                          isToday(day) && "text-brand-600 font-bold",
-                          isWknd && !isToday(day) && "text-muted-foreground",
+                          isToday(day, isDemo) && "text-brand-600 font-bold",
+                          isWknd && !isToday(day, isDemo) && "text-muted-foreground",
                         )}
                       >
                         {format(day, "d")}

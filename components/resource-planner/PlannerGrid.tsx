@@ -3,6 +3,7 @@
 import { useMemo, useRef, useCallback, useEffect } from "react";
 import { format, isWeekend, isSameMonth, startOfMonth, getISOWeek } from "date-fns";
 import { isToday } from "@/lib/demo-date";
+import { useIsDemo } from "@/lib/company-context";
 import { cn } from "@/lib/utils";
 import { useDateLocale, useLocale, useTranslations } from "@/lib/i18n";
 import { getCompanyHolidayName, isCompanyHoliday, type CustomHoliday } from "@/lib/holidays";
@@ -106,6 +107,7 @@ export function PlannerGrid({
   const { locale } = useLocale();
   const t = useTranslations("resourcePlanner");
   const tc = useTranslations("common");
+  const isDemo = useIsDemo();
   const isMonthView = viewMode === "month";
 
   // ── Drag-to-select state ──
@@ -157,7 +159,7 @@ export function PlannerGrid({
           key: format(weekStart, "yyyy") + "-W" + getISOWeek(weekStart),
           label: "W" + getISOWeek(weekStart),
           days: [...currentWeekDays],
-          containsToday: currentWeekDays.some((d) => isToday(d)),
+          containsToday: currentWeekDays.some((d) => isToday(d, isDemo)),
           month: startOfMonth(weekStart),
         });
         currentWeekDays = [];
@@ -385,20 +387,20 @@ export function PlannerGrid({
                   className={cn(
                     "border-b border-r border-[#F3F4F6] dark:border-[#222] p-1 text-center",
                     weekend && "bg-muted/15",
-                    isToday(day) && "bg-[#FFFBEB] dark:bg-amber-950/20",
+                    isToday(day, isDemo) && "bg-[#FFFBEB] dark:bg-amber-950/20",
                     holidayName && !weekend && "bg-amber-50/20 dark:bg-amber-950/10"
                   )}
                 >
                   <div className={cn(
                     "text-[9px] font-semibold uppercase tracking-[0.05em]",
-                    isToday(day) ? "text-[#D97706]" : "text-[#9CA3AF]"
+                    isToday(day, isDemo) ? "text-[#D97706]" : "text-[#9CA3AF]"
                   )}>
-                    {isToday(day) ? "Today" : format(day, "EEE", { locale: dateLocale })}
+                    {isToday(day, isDemo) ? "Today" : format(day, "EEE", { locale: dateLocale })}
                   </div>
                   <div
                     className={cn(
                       "text-[10px] font-mono",
-                      isToday(day) ? "text-[#92400E]" : "text-[#6B7280]"
+                      isToday(day, isDemo) ? "text-[#92400E]" : "text-[#6B7280]"
                     )}
                     style={{ fontVariantNumeric: "tabular-nums" }}
                   >
@@ -447,7 +449,7 @@ export function PlannerGrid({
                   className={cn(
                     "border-b border-r border-[#F3F4F6] dark:border-[#222] p-0 h-[28px] text-center align-middle",
                     weekend && "bg-muted/10",
-                    isToday(day) && "bg-[#FFFBEB] dark:bg-amber-950/20"
+                    isToday(day, isDemo) && "bg-[#FFFBEB] dark:bg-amber-950/20"
                   )}
                 >
                   {!weekend && !holiday && totals.cap > 0 && (
@@ -565,6 +567,7 @@ function EmployeeRowGroup({
   expandedProjects,
 }: EmployeeRowGroupProps) {
   const tc = useTranslations("common");
+  const isDemo = useIsDemo();
   const empCap = getEffectiveWeeklyCapacity(employee);
 
   return (
@@ -637,7 +640,7 @@ function EmployeeRowGroup({
                 className={cn(
                   "border-b border-r border-[#F9FAFB] dark:border-[#1a1a1a] p-0 h-[32px] align-middle",
                   weekend && "bg-muted/10",
-                  isToday(day) && "bg-[rgba(251,191,36,0.03)]"
+                  isToday(day, isDemo) && "bg-[rgba(251,191,36,0.03)]"
                 )}
               >
                 <div className="flex items-center justify-center h-full px-1">

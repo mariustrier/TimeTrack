@@ -197,7 +197,7 @@ export function ResourceGrid({
           key: format(weekStart, "yyyy") + "-W" + getISOWeek(weekStart),
           label: "W" + getISOWeek(weekStart),
           days: [...currentWeekDays],
-          containsToday: currentWeekDays.some((d) => isToday(d)),
+          containsToday: currentWeekDays.some((d) => isToday(d, isDemo)),
           month: startOfMonth(weekStart),
         });
         currentWeekDays = [];
@@ -542,7 +542,7 @@ export function ResourceGrid({
                   className={cn(
                     "border-b border-r border-border p-2 text-center overflow-hidden",
                     isWeekend(day) && "bg-muted/50",
-                    isToday(day) && "bg-brand-50 dark:bg-brand-950",
+                    isToday(day, isDemo) && "bg-brand-50 dark:bg-brand-950",
                     holidayName && !isWeekend(day) && "bg-amber-50 dark:bg-amber-950/30"
                   )}
                 >
@@ -551,7 +551,7 @@ export function ResourceGrid({
                   </div>
                   <div className={cn(
                     "text-sm font-semibold",
-                    isToday(day) && "text-brand-600 dark:text-brand-400"
+                    isToday(day, isDemo) && "text-brand-600 dark:text-brand-400"
                   )}>
                     {format(day, "d", { locale: dateLocale })}
                   </div>
@@ -615,7 +615,7 @@ export function ResourceGrid({
                       "border-b border-r border-border p-1 relative h-[60px] transition-colors",
                       isWeekend(day) && "bg-muted/30",
                       isHoliday && !isWeekend(day) && "bg-amber-50/50 dark:bg-amber-950/20",
-                      isToday(day) && "bg-brand-50/50 dark:bg-brand-950/50",
+                      isToday(day, isDemo) && "bg-brand-50/50 dark:bg-brand-950/50",
                       !isWeekend(day) && !isHoliday && !isPartOfAllocation && !isPartOfVacation && "hover:bg-accent cursor-pointer",
                       isOverbooked && "bg-red-50 dark:bg-red-950/30"
                     )}
