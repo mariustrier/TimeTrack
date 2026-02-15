@@ -166,19 +166,19 @@ html { scroll-behavior: smooth; }
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 24px;
-  border: 1.5px solid var(--lp-accent);
+  padding: 12px 28px;
+  border: none;
   border-radius: 10px;
-  background: #fff;
-  color: var(--lp-accent);
+  background: var(--lp-accent);
+  color: #fff;
   font-family: 'DM Sans', sans-serif;
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  transition: background 0.2s;
 }
 .lp-btn-demo:hover {
-  background: var(--lp-accent);
+  background: #2A4A73;
   color: #fff;
 }
 .lp-btn-demo:disabled {

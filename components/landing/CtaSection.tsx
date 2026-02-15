@@ -11,12 +11,15 @@ export function CtaSection() {
         Cloud Timer er bygget til danske arkitekter, ingeniører og konsulentvirksomheder,
         der vil have styr på tid, økonomi og kapacitet — i ét system.
       </p>
-      <LiveDemoButton />
       <div className="lp-cta-acts">
+        <LiveDemoButton />
         <Link href="/sign-up" className="lp-btn lp-btn-s lp-btn-lg">
-          Kom i gang — gratis i beta
+          Opret konto
         </Link>
       </div>
+      <p className="lp-hero-note">
+        Gratis mens vi tester systemet · Intet kreditkort
+      </p>
     </div>
   );
 }

@@ -44,9 +44,9 @@ export function LiveDemoButton() {
   }
 
   return (
-    <div className="lp-demo-wrap">
+    <>
       <button
-        className="lp-btn lp-btn-demo"
+        className="lp-btn lp-btn-demo lp-btn-lg"
         onClick={handleClick}
         disabled={state === "loading"}
       >
@@ -62,9 +62,6 @@ export function LiveDemoButton() {
       {state === "error" && (
         <p className="lp-demo-error">{errorMsg}</p>
       )}
-      {state === "idle" && (
-        <p className="lp-demo-sub">Ingen oprettelse. Se systemet i brug.</p>
-      )}
-    </div>
+    </>
   );
 }
