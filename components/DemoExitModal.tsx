@@ -103,12 +103,12 @@ export function DemoExitModal({ open, onClose }: DemoExitModalProps) {
           </div>
         ) : (
           <>
-            {/* Logo mark */}
-            <div style={{ marginBottom: 20 }}>
+            {/* Logo + name */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 20 }}>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 624.49 581.6"
-                style={{ width: 48, height: 48 }}
+                viewBox="220 180 200 220"
+                style={{ width: 40, height: 40 }}
                 fill="none"
               >
                 <polyline
@@ -126,6 +126,9 @@ export function DemoExitModal({ open, onClose }: DemoExitModalProps) {
                   strokeWidth="18"
                 />
               </svg>
+              <span style={{ fontSize: 22, fontWeight: 700, color: "#1E3A5F", letterSpacing: "-0.02em" }}>
+                Cloud Timer
+              </span>
             </div>
 
             {/* Headline */}
