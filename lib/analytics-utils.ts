@@ -771,14 +771,13 @@ export function withProjection<T extends object>(
       return result as T;
     }
     if (i === lastIdx) {
-      // Scale up actual values to projected AND add proj_ keys
+      // Keep actual values, add proj_ keys with scaled-up projection
       const result = { ...item } as Record<string, unknown>;
       for (const key of numericKeys) {
         const val = (item as Record<string, unknown>)[key];
         if (typeof val === "number") {
           const projected = Math.round((val / ratio) * 10) / 10;
-          result[key] = projected; // Scale up the actual value
-          result[`proj_${key}`] = projected; // Dashed line to same value
+          result[`proj_${key}`] = projected;
         }
       }
       return result as T;
