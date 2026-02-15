@@ -479,11 +479,11 @@ export default function DashboardPage() {
     });
   }, [weekDays, entries, weeklyTarget, priorFlexBalance, disabledHolidayCodes, customHolidays, today]);
 
-  // Time balance: only count targets for days up to today
+  // Time balance: cumulative flex including all prior weeks
   const targetUpToToday = weekDays
     .filter((day) => day <= today)
     .reduce((sum, day) => sum + getDailyTarget(day, weeklyTarget, disabledHolidayCodes, customHolidays), 0);
-  const timeBalance = grandTotal - targetUpToToday;
+  const timeBalance = priorFlexBalance + grandTotal - targetUpToToday;
 
   // Helper to check if a project is the Absence project
   const isAbsenceProject = (projectId: string) => {
