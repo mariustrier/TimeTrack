@@ -100,14 +100,7 @@ export function ResourcePlanner() {
   const isDemo = useIsDemo();
 
   const [viewMode, setViewMode] = useState<ViewMode>("twoWeeks");
-  const [currentDate, setCurrentDate] = useState(() => new Date());
-  const _demoSynced = useRef(false);
-  useEffect(() => {
-    if (!_demoSynced.current) {
-      _demoSynced.current = true;
-      setCurrentDate(getToday(isDemo));
-    }
-  }, [isDemo]);
+  const [currentDate, setCurrentDate] = useState(() => getToday(isDemo));
   const [spans, setSpans] = useState<Record<ViewMode, number>>({
     week: 1,
     twoWeeks: 2,

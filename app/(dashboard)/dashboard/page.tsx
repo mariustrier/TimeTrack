@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { getToday, isToday } from "@/lib/demo-date";
 import {
   startOfWeek,
@@ -169,14 +169,8 @@ export default function DashboardPage() {
     presales: tc("preSales"),
   };
 
-  const [currentWeek, setCurrentWeek] = useState(() => new Date());
-  const _demoSynced = useRef(false);
-  useEffect(() => {
-    if (!_demoSynced.current) {
-      _demoSynced.current = true;
-      setCurrentWeek(getToday(isDemo));
-    }
-  }, [isDemo]);
+  console.log("[Dashboard] isDemo from hook:", isDemo);
+  const [currentWeek, setCurrentWeek] = useState(() => getToday(isDemo));
   const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);

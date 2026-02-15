@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   startOfMonth,
   endOfMonth,
@@ -59,14 +59,7 @@ export function VacationCalendar() {
   const formatOpts = { locale: dateLocale };
   const isDemo = useIsDemo();
 
-  const [currentMonth, setCurrentMonth] = useState(() => new Date());
-  const _demoSynced = useRef(false);
-  useEffect(() => {
-    if (!_demoSynced.current) {
-      _demoSynced.current = true;
-      setCurrentMonth(getToday(isDemo));
-    }
-  }, [isDemo]);
+  const [currentMonth, setCurrentMonth] = useState(() => getToday(isDemo));
   const [vacations, setVacations] = useState<VacationRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [disabledHolidayCodes, setDisabledHolidayCodes] = useState<string[]>([]);

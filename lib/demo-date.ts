@@ -5,13 +5,13 @@
  */
 import config from "./demo-date-generated.json";
 
+const DEMO_DATE = config?.date ?? "2026-02-12";
+
 export function getToday(isDemo?: boolean): Date {
-  if (isDemo) {
-    const pin = config.date;
-    if (pin) {
-      const [y, m, d] = pin.split("-").map(Number);
-      return new Date(y, m - 1, d, 12, 0, 0);
-    }
+  console.log("[getToday] isDemo:", isDemo, "config:", config, "DEMO_DATE:", DEMO_DATE);
+  if (isDemo && DEMO_DATE) {
+    const [y, m, d] = DEMO_DATE.split("-").map(Number);
+    return new Date(y, m - 1, d, 12, 0, 0);
   }
   return new Date();
 }
