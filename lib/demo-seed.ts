@@ -1399,40 +1399,40 @@ export async function seedDemoData(companyId: string, adminUserId: string) {
   });
 
   // ── COMPANY OVERHEAD EXPENSES ──────────────────────────────────
-  // Recurring monthly overhead: ~194,500 kr/month with seasonal variance
+  // Recurring monthly overhead: ~97,000 kr/month with seasonal variance
   // 25 items × 7 months (Aug 2025 → Feb 2026)
 
   const overheadDefs: { desc: string; cat: string; base: number; winter?: number; summer?: number; dec?: number }[] = [
-    // Lokaler (~82,000 kr/mo)
-    { desc: "Kontorhusleje, Nørrebrogade 60", cat: "Lokaler", base: 45000 },
-    { desc: "Fællesareal & drift", cat: "Lokaler", base: 8500 },
-    { desc: "Rengøring (kontor)", cat: "Lokaler", base: 4800 },
-    { desc: "El & varme", cat: "Lokaler", base: 6200, winter: 1.4 },
-    { desc: "Internet & telefoni", cat: "Lokaler", base: 3500 },
-    { desc: "Kantine & kaffe", cat: "Lokaler", base: 5000, summer: 0.7, dec: 2.2 },
-    { desc: "Kontormøbler & vedligehold", cat: "Lokaler", base: 2500 },
-    { desc: "Parkering (4 pladser)", cat: "Lokaler", base: 6000 },
-    // Forsikring (~12,500 kr/mo)
-    { desc: "Erhvervsansvarsforsikring", cat: "Forsikring", base: 6200 },
-    { desc: "Professionel ansvarsforsikring", cat: "Forsikring", base: 4800 },
-    { desc: "Indboforsikring, kontor", cat: "Forsikring", base: 1500 },
-    // Software & IT (~28,000 kr/mo)
-    { desc: "Revit + AutoCAD licenser (12 sæder)", cat: "Software & IT", base: 14500 },
-    { desc: "Adobe Creative Cloud (8 sæder)", cat: "Software & IT", base: 4800 },
-    { desc: "Microsoft 365 Business", cat: "Software & IT", base: 3200 },
-    { desc: "IT-support & serverhosting", cat: "Software & IT", base: 3500 },
-    { desc: "Cloud Timer Pro", cat: "Software & IT", base: 2000 },
-    // Rådgivere (~45,000 kr/mo)
-    { desc: "Revisor (Deloitte)", cat: "Rådgivere", base: 12000 },
-    { desc: "Advokatbistand", cat: "Rådgivere", base: 8000 },
-    { desc: "Bygherrerådgiver", cat: "Rådgivere", base: 15000 },
-    { desc: "Statiker-konsulent", cat: "Rådgivere", base: 10000 },
-    // Øvrig drift (~27,000 kr/mo)
-    { desc: "Faglige kurser & efteruddannelse", cat: "Øvrig drift", base: 8000 },
-    { desc: "Rejse & transport", cat: "Øvrig drift", base: 6500 },
-    { desc: "Print & kontorartikler", cat: "Øvrig drift", base: 3500 },
-    { desc: "Repræsentation & events", cat: "Øvrig drift", base: 5000, dec: 1.8 },
-    { desc: "Diverse (porto, gebyrer mv.)", cat: "Øvrig drift", base: 4000 },
+    // Lokaler (~41,000 kr/mo)
+    { desc: "Kontorhusleje, Nørrebrogade 60", cat: "Lokaler", base: 22500 },
+    { desc: "Fællesareal & drift", cat: "Lokaler", base: 4250 },
+    { desc: "Rengøring (kontor)", cat: "Lokaler", base: 2400 },
+    { desc: "El & varme", cat: "Lokaler", base: 3100, winter: 1.4 },
+    { desc: "Internet & telefoni", cat: "Lokaler", base: 1750 },
+    { desc: "Kantine & kaffe", cat: "Lokaler", base: 2500, summer: 0.7, dec: 2.2 },
+    { desc: "Kontormøbler & vedligehold", cat: "Lokaler", base: 1250 },
+    { desc: "Parkering (4 pladser)", cat: "Lokaler", base: 3000 },
+    // Forsikring (~6,250 kr/mo)
+    { desc: "Erhvervsansvarsforsikring", cat: "Forsikring", base: 3100 },
+    { desc: "Professionel ansvarsforsikring", cat: "Forsikring", base: 2400 },
+    { desc: "Indboforsikring, kontor", cat: "Forsikring", base: 750 },
+    // Software & IT (~14,000 kr/mo)
+    { desc: "Revit + AutoCAD licenser (12 sæder)", cat: "Software & IT", base: 7250 },
+    { desc: "Adobe Creative Cloud (8 sæder)", cat: "Software & IT", base: 2400 },
+    { desc: "Microsoft 365 Business", cat: "Software & IT", base: 1600 },
+    { desc: "IT-support & serverhosting", cat: "Software & IT", base: 1750 },
+    { desc: "Cloud Timer Pro", cat: "Software & IT", base: 1000 },
+    // Rådgivere (~22,500 kr/mo)
+    { desc: "Revisor (Deloitte)", cat: "Rådgivere", base: 6000 },
+    { desc: "Advokatbistand", cat: "Rådgivere", base: 4000 },
+    { desc: "Bygherrerådgiver", cat: "Rådgivere", base: 7500 },
+    { desc: "Statiker-konsulent", cat: "Rådgivere", base: 5000 },
+    // Øvrig drift (~13,500 kr/mo)
+    { desc: "Faglige kurser & efteruddannelse", cat: "Øvrig drift", base: 4000 },
+    { desc: "Rejse & transport", cat: "Øvrig drift", base: 3250 },
+    { desc: "Print & kontorartikler", cat: "Øvrig drift", base: 1750 },
+    { desc: "Repræsentation & events", cat: "Øvrig drift", base: 2500, dec: 1.8 },
+    { desc: "Diverse (porto, gebyrer mv.)", cat: "Øvrig drift", base: 2000 },
   ];
 
   const overheadEntries: { amount: number; description: string; category: string; date: Date; recurring: boolean; frequency?: string; companyId: string; createdBy: string; isFinalized: boolean }[] = [];
