@@ -619,7 +619,7 @@ export function EmployeeInsights({
             <ChartCard
               title="Rentabilitet"
               height={300}
-              help="Omsaetning, omkostninger og profit over tid"
+              help="Omsætning, omkostninger og profit over tid"
             >
               {hasProfitData ? (
                 <ResponsiveContainer width="100%" height={280}>
@@ -647,7 +647,7 @@ export function EmployeeInsights({
                     <Legend />
                     <Bar
                       dataKey="revenue"
-                      name="Omsaetning"
+                      name="Omsætning"
                       fill={METRIC.revenue}
                       radius={[4, 4, 0, 0]}
                     />
@@ -717,7 +717,7 @@ export function EmployeeInsights({
             <ChartCard
               title="Flex Saldo Trend"
               height={300}
-              help="Fleksbalance over tid — groen zone er +/-5 timer"
+              help="Fleksbalance over tid — grøn zone er +/-5 timer"
             >
               {hasFlexData ? (
                 <ResponsiveContainer width="100%" height={280}>

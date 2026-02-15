@@ -317,9 +317,9 @@ export function TeamInsights({
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
         {/* The Bench */}
         <ChartCard
-          title="Baenken"
+          title="Bænken"
           height={320}
-          help="Medarbejdere med under 50% allokering de naeste 4 uger"
+          help="Medarbejdere med under 50% allokering de næste 4 uger"
         >
           {benchEmployees.length > 0 ? (
             <div
@@ -386,7 +386,7 @@ export function TeamInsights({
                         color: "#9CA3AF",
                       }}
                     >
-                      {emp.allocNext4w}t allokeret naeste 4 uger ({emp.allocPct}%)
+                      {emp.allocNext4w}t allokeret næste 4 uger ({emp.allocPct}%)
                     </div>
                   </div>
                   {/* Mini progress bar */}
