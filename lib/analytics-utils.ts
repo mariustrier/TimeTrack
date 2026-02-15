@@ -93,6 +93,44 @@ function weeksInPeriod(periodKeyStr: string, granularity: "monthly" | "weekly"):
   return days / 7;
 }
 
+function workingDaysInPeriod(periodKeyStr: string, granularity: "monthly" | "weekly"): number {
+  const today = getToday();
+  let start: Date, end: Date;
+  if (granularity === "weekly") {
+    start = new Date(periodKeyStr);
+    end = new Date(start);
+    end.setDate(end.getDate() + 6);
+  } else {
+    start = new Date(periodKeyStr + "-01");
+    end = new Date(start.getFullYear(), start.getMonth() + 1, 0); // last day of month
+  }
+  // Cap at today for partial periods
+  if (end > today) end = today;
+  if (start > today) return 0;
+  let count = 0;
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const day = cursor.getDay();
+    if (day !== 0 && day !== 6) count++;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return Math.max(count, 1);
+}
+
+function totalWorkingDays(from: Date, to: Date): number {
+  const today = getToday();
+  const effectiveEnd = to > today ? today : to;
+  if (from > effectiveEnd) return 1;
+  let count = 0;
+  const cursor = new Date(from);
+  while (cursor <= effectiveEnd) {
+    const day = cursor.getDay();
+    if (day !== 0 && day !== 6) count++;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return Math.max(count, 1);
+}
+
 // --- Employee Insights ---
 
 const BILLING_STATUS_COLORS: Record<string, string> = {
@@ -138,8 +176,8 @@ export function aggregateEmployeeUtilizationTrend(
     const billableHours = periodEntries
       .filter((e) => e.billingStatus === "billable")
       .reduce((s, e) => s + e.hours, 0);
-    const weeks = weeksInPeriod(key, granularity);
-    const expected = getEffectiveWeeklyCapacity(member) * weeks;
+    const wd = workingDaysInPeriod(key, granularity);
+    const expected = (getEffectiveWeeklyCapacity(member) / 5) * wd;
 
     return {
       period: periodLabel(key, granularity),
@@ -192,8 +230,7 @@ export function aggregateTeamUtilization(
   to: Date,
   granularity: "monthly" | "weekly"
 ) {
-  const periods = getPeriodKeys(from, to, granularity);
-  const totalWeeks = periods.reduce((s, k) => s + weeksInPeriod(k, granularity), 0);
+  const wd = totalWorkingDays(from, to);
 
   return members.map((member) => {
     const memberEntries = entries.filter((e) => e.userId === member.id);
@@ -201,7 +238,7 @@ export function aggregateTeamUtilization(
     const billableHours = memberEntries
       .filter((e) => e.billingStatus === "billable")
       .reduce((s, e) => s + e.hours, 0);
-    const expected = getEffectiveWeeklyCapacity(member) * totalWeeks;
+    const expected = (getEffectiveWeeklyCapacity(member) / 5) * wd;
 
     return {
       name: memberName(member),
@@ -832,14 +869,14 @@ export function aggregateEmployeeFlexTrend(
     grouped[key].push(e);
   }
 
-  const weeklyTarget = getEffectiveWeeklyCapacity(member);
+  const dailyTarget = getEffectiveWeeklyCapacity(member) / 5;
   let cumulativeFlex = 0;
 
   return periods.map((key) => {
     const periodEntries = grouped[key] || [];
     const totalHours = periodEntries.reduce((s, e) => s + e.hours, 0);
-    const weeks = weeksInPeriod(key, granularity);
-    const expected = weeklyTarget * weeks;
+    const wd = workingDaysInPeriod(key, granularity);
+    const expected = dailyTarget * wd;
     const flex = totalHours - expected;
     cumulativeFlex += flex;
 
@@ -862,14 +899,14 @@ export function aggregateCapacityDetail(
   granularity: "monthly" | "weekly"
 ) {
   const periods = getPeriodKeys(from, to, granularity);
-  const totalWeeks = periods.reduce((s, k) => s + weeksInPeriod(k, granularity), 0);
+  const wd = totalWorkingDays(from, to);
   const today = getToday();
   const next4wEnd = addWeeks(today, 4);
 
   return members.map((member) => {
     const memberEntries = entries.filter((e) => e.userId === member.id);
-    const weeklyTarget = getEffectiveWeeklyCapacity(member);
-    const capacity = weeklyTarget * totalWeeks;
+    const dailyTarget = getEffectiveWeeklyCapacity(member) / 5;
+    const capacity = dailyTarget * wd;
 
     const billableHours = memberEntries
       .filter((e) => e.billingStatus === "billable")
@@ -902,7 +939,7 @@ export function aggregateCapacityDetail(
       }
     }
 
-    const next4wCapacity = weeklyTarget * 4;
+    const next4wCapacity = dailyTarget * 5 * 4;
     const allocPct = next4wCapacity > 0
       ? Math.round((allocNext4w / next4wCapacity) * 1000) / 10
       : 0;
