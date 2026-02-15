@@ -54,7 +54,7 @@ export default function PrivacyPage() {
 
       <h2 className="mt-10 text-xl font-semibold text-foreground">{t("contact")}</h2>
       <p className="mt-2 text-muted-foreground">{t("contactDesc")}</p>
-      <p className="mt-1 text-muted-foreground">support@cloudtimer.dk</p>
+      <p className="mt-1 text-muted-foreground">admin@cloudtimer.dk</p>
 
       <h2 className="mt-10 text-xl font-semibold text-foreground">{t("governingLaw")}</h2>
       <p className="mt-2 text-muted-foreground">{t("governingLawDesc")}</p>

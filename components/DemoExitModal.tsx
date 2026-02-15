@@ -39,7 +39,7 @@ export function DemoExitModal({ open, onClose }: DemoExitModalProps) {
 
   const handleBook = () => {
     console.log("[DEMO_FUNNEL]", "modal_book_click");
-    window.location.href = "mailto:hello@cloudtimer.dk?subject=Demo%20booking";
+    window.location.href = "mailto:admin@cloudtimer.dk?subject=Demo%20booking";
   };
 
   const handleExit = async () => {

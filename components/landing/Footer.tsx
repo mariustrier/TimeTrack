@@ -7,7 +7,7 @@ export function Footer() {
       <div className="lp-fl">
         <Link href="/legal/privacy">Privatlivspolitik</Link>
         <Link href="/legal/terms">Vilkår</Link>
-        <a href="mailto:hello@cloudtimer.dk">Kontakt</a>
+        <a href="mailto:admin@cloudtimer.dk">Kontakt</a>
       </div>
     </footer>
   );
