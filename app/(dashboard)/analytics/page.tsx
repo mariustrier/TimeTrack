@@ -366,49 +366,49 @@ export default function AnalyticsPage() {
       >
         <div style={{ flex: 1, minWidth: 0 }}>
           <KpiCard
-            label="Revenue Forecast (30d)"
+            label={t("revenueForecast30d")}
             value={kpis?.revenueForecast30d != null ? fmtCurrency(kpis.revenueForecast30d) : "\u2014"}
-            sub="fra planner-allokeringer"
+            sub={t("fromPlannerAllocations")}
             color="#10B981"
             trend="up"
-            help="Forventet omsætning de næste 30 dage beregnet ud fra ressourceallokeringer. Bekræftede = 100%, tentative = 50%."
+            help={t("revenueForecastHelp")}
           />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <KpiCard
-            label="EBITDA Est."
+            label={t("ebitdaEst")}
             value={kpis?.ebitda != null ? fmtCurrency(kpis.ebitda) : "\u2014"}
-            sub="revenue − cost − overhead"
+            sub={t("revenueMinusCostOverhead")}
             color="#6366F1"
             trend="up"
-            help="Estimeret driftsresultat for perioden. Viser om virksomheden er profitabel før skat og afskrivninger."
+            help={t("ebitdaHelp")}
           />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <KpiCard
-            label="Avg. Effective Rate"
+            label={t("avgEffectiveRate")}
             value={kpis?.avgEffectiveRate != null ? `${kpis.avgEffectiveRate} kr./t` : "\u2014"}
-            sub="revenue ÷ total timer"
-            help="Den reelle gennemsnitlige timepris — samlet omsætning divideret med samlede timer."
+            sub={t("revenueDivTotalHours")}
+            help={t("avgEffectiveRateHelp")}
           />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <KpiCard
-            label="Unbilled Revenue"
+            label={t("unbilledRevenue")}
             value={kpis?.unbilledRevenue != null ? fmtCurrency(kpis.unbilledRevenue) : "\u2014"}
-            sub={kpis?.unbilledAvgAgeDays != null ? `gns. ${kpis.unbilledAvgAgeDays} dage aging` : undefined}
+            sub={kpis?.unbilledAvgAgeDays != null ? t("avgDaysAging", { days: kpis.unbilledAvgAgeDays }) : undefined}
             color="#F59E0B"
             warn
-            help="Godkendte timer der endnu ikke er faktureret. Jo ældre, jo større risiko."
+            help={t("unbilledRevenueHelp")}
           />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <KpiCard
-            label="Leave Liability"
+            label={t("leaveLiability")}
             value={kpis?.leaveLiability != null ? fmtCurrency(kpis.leaveLiability) : "\u2014"}
-            sub="optjent ferie × kostrate"
+            sub={t("earnedVacationTimesCostRate")}
             color="#9CA3AF"
-            help="Økonomisk forpligtelse fra optjent men ikke-afholdt ferie."
+            help={t("leaveLiabilityHelp")}
           />
         </div>
       </div>

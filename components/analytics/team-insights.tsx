@@ -29,6 +29,7 @@ import {
   fmtCurrency,
 } from "@/components/analytics/analytics-shared";
 import { getToday } from "@/lib/demo-date";
+import { useTranslations } from "@/lib/i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -101,6 +102,7 @@ export function TeamInsights({
   approvalFilter,
   granularity,
 }: TeamInsightsProps) {
+  const t = useTranslations("analytics");
   const [loading, setLoading] = useState(true);
   const [capacityDetail, setCapacityDetail] = useState<CapacityDetailEntry[]>([]);
   const [effectiveRate, setEffectiveRate] = useState<EffectiveRateEntry[]>([]);
@@ -188,7 +190,7 @@ export function TeamInsights({
           fontFamily: "'DM Sans', sans-serif",
         }}
       >
-        Indlæser teamdata...
+        {t("loadingTeamData")}
       </div>
     );
   }
@@ -199,13 +201,13 @@ export function TeamInsights({
       {/* Full-width: Capacity & Health */}
       <div style={{ marginBottom: 12 }}>
         <ChartCard
-          title="Kapacitet & Sundhed"
+          title={t("capacityHealth")}
           height={320}
-          help="Stablede timer pr. medarbejder — fakturerbar, intern, ferie og tilgaengelig kapacitet"
+          help={t("capacityHealthHelp")}
           badge={
             burnoutCount > 0
               ? {
-                  label: `${burnoutCount} burnout-risiko`,
+                  label: t("burnoutRisk", { count: burnoutCount }),
                   bg: "#FEE2E2",
                   fg: "#DC2626",
                 }
@@ -247,7 +249,7 @@ export function TeamInsights({
                   stroke="#9CA3AF"
                   strokeDasharray="3 3"
                   label={{
-                    value: "100% kapacitet",
+                    value: t("fullCapacity"),
                     fill: "#9CA3AF",
                     fontSize: 10,
                     position: "right",
@@ -259,7 +261,7 @@ export function TeamInsights({
                   stroke="#EF4444"
                   strokeDasharray="6 3"
                   label={{
-                    value: "115% burnout",
+                    value: t("burnoutLine"),
                     fill: "#EF4444",
                     fontSize: 10,
                     position: "right",
@@ -267,28 +269,28 @@ export function TeamInsights({
                 />
                 <Bar
                   dataKey="billable"
-                  name="Fakturerbar"
+                  name={t("billable")}
                   stackId="capacity"
                   fill="#10B981"
                   radius={[0, 0, 0, 0]}
                 />
                 <Bar
                   dataKey="internal"
-                  name="Intern"
+                  name={t("internal")}
                   stackId="capacity"
                   fill="#8B5CF6"
                   radius={[0, 0, 0, 0]}
                 />
                 <Bar
                   dataKey="vacation"
-                  name="Ferie"
+                  name={t("vacation")}
                   stackId="capacity"
                   fill="#9CA3AF"
                   radius={[0, 0, 0, 0]}
                 />
                 <Bar
                   dataKey="available"
-                  name="Tilgaengelig"
+                  name={t("available")}
                   stackId="capacity"
                   fill="#94A3B8"
                   radius={[4, 4, 0, 0]}
@@ -307,7 +309,7 @@ export function TeamInsights({
                 fontFamily: "'DM Sans', sans-serif",
               }}
             >
-              Ingen kapacitetsdata
+              {t("noCapacityData")}
             </div>
           )}
         </ChartCard>
@@ -317,9 +319,9 @@ export function TeamInsights({
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
         {/* The Bench */}
         <ChartCard
-          title="Bænken"
+          title={t("bench")}
           height={320}
-          help="Medarbejdere med under 50% allokering de næste 4 uger"
+          help={t("benchHelp")}
         >
           {benchEmployees.length > 0 ? (
             <div
@@ -386,7 +388,7 @@ export function TeamInsights({
                         color: "#9CA3AF",
                       }}
                     >
-                      {emp.allocNext4w}t allokeret næste 4 uger ({emp.allocPct}%)
+                      {t("allocatedNext4Weeks", { hours: emp.allocNext4w, pct: emp.allocPct })}
                     </div>
                   </div>
                   {/* Mini progress bar */}
@@ -446,16 +448,16 @@ export function TeamInsights({
                 padding: "0 20px",
               }}
             >
-              Ingen medarbejdere under 50% — teamet er fuldt allokeret
+              {t("benchEmpty")}
             </div>
           )}
         </ChartCard>
 
         {/* Effective Hourly Rate */}
         <ChartCard
-          title="Effektiv Timesats"
+          title={t("effectiveRate")}
           height={320}
-          help="Effektiv timesats pr. projekt sammenlignet med fakturasats"
+          help={t("effectiveRateHelp")}
         >
           {effectiveRateSorted.length > 0 ? (
             <div
@@ -528,7 +530,7 @@ export function TeamInsights({
                       whiteSpace: "nowrap",
                     }}
                   >
-                    sats: {fmtCurrency(proj.billRate)}
+                    {t("rateLabel")} {fmtCurrency(proj.billRate)}
                   </span>
                   {/* Effective rate */}
                   <span
@@ -561,7 +563,7 @@ export function TeamInsights({
                 fontFamily: "'DM Sans', sans-serif",
               }}
             >
-              Ingen satsdata
+              {t("noRateData")}
             </div>
           )}
         </ChartCard>
@@ -571,9 +573,9 @@ export function TeamInsights({
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
         {/* Utilization Comparison */}
         <ChartCard
-          title="Udnyttelsessammenligning"
+          title={t("utilizationComparison")}
           height={320}
-          help="Fakturerbar vs. total udnyttelse pr. medarbejder, sorteret højest først"
+          help={t("utilizationComparisonHelp")}
         >
           {sortedUtilization.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
@@ -620,13 +622,13 @@ export function TeamInsights({
                 <Legend />
                 <Bar
                   dataKey="billableUtil"
-                  name="Fakturerbar"
+                  name={t("billable")}
                   fill="#10B981"
                   radius={[4, 4, 0, 0]}
                 />
                 <Bar
                   dataKey="totalUtil"
-                  name="Total"
+                  name={t("total")}
                   fill="#6366F1"
                   radius={[4, 4, 0, 0]}
                 />
@@ -644,16 +646,16 @@ export function TeamInsights({
                 fontFamily: "'DM Sans', sans-serif",
               }}
             >
-              Ingen udnyttelsesdata
+              {t("noUtilData")}
             </div>
           )}
         </ChartCard>
 
         {/* Time Mix */}
         <ChartCard
-          title="Tidsmix"
+          title={t("timeMix")}
           height={320}
-          help="Fordeling af timer efter faktureringsstatus pr. medarbejder"
+          help={t("timeMixHelp")}
         >
           {timeMixWithFirstNames.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
@@ -683,31 +685,31 @@ export function TeamInsights({
                 <Legend />
                 <Bar
                   dataKey="billable"
-                  name="Fakturerbar"
+                  name={t("billable")}
                   stackId="mix"
                   fill={BILLING_COLORS.billable}
                 />
                 <Bar
                   dataKey="included"
-                  name="Inkluderet"
+                  name={t("included")}
                   stackId="mix"
                   fill={BILLING_COLORS.included}
                 />
                 <Bar
                   dataKey="nonBillable"
-                  name="Non-billable"
+                  name={t("nonBillable")}
                   stackId="mix"
                   fill={BILLING_COLORS.nonBillable}
                 />
                 <Bar
                   dataKey="internal"
-                  name="Intern"
+                  name={t("internal")}
                   stackId="mix"
                   fill={BILLING_COLORS.internal}
                 />
                 <Bar
                   dataKey="presales"
-                  name="Pre-sales"
+                  name={t("preSales")}
                   stackId="mix"
                   fill={BILLING_COLORS.presales}
                   radius={[4, 4, 0, 0]}
@@ -726,7 +728,7 @@ export function TeamInsights({
                 fontFamily: "'DM Sans', sans-serif",
               }}
             >
-              Ingen tidsmixdata
+              {t("noTimeMixData")}
             </div>
           )}
         </ChartCard>

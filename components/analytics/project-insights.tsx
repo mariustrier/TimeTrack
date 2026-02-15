@@ -43,6 +43,7 @@ import {
 import { withProjection } from "@/lib/analytics-utils";
 import { getToday } from "@/lib/demo-date";
 import { useIsDemo } from "@/lib/company-context";
+import { useTranslations } from "@/lib/i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -124,13 +125,6 @@ interface TeamContribPoint {
 // ---------------------------------------------------------------------------
 
 const BILLING_STATUS_KEYS = ["billable", "included", "nonBillable", "internal", "presales"] as const;
-const BILLING_LABELS: Record<string, string> = {
-  billable: "Fakturerbar",
-  included: "Inkluderet",
-  nonBillable: "Ikke-fakturerbar",
-  internal: "Intern",
-  presales: "Presales",
-};
 
 // ---------------------------------------------------------------------------
 // Component
@@ -142,6 +136,13 @@ export function ProjectInsights({
   granularity,
 }: ProjectInsightsProps) {
   const isDemo = useIsDemo();
+  const t = useTranslations("analytics");
+
+  const billingLabel = (key: string) => {
+    const map: Record<string, string> = { billable: t("billable"), included: t("included"), nonBillable: t("nonBillable"), internal: t("internal"), presales: t("preSales") };
+    return map[key] || key;
+  };
+
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [redList, setRedList] = useState<RedListItem[]>([]);
   const [budgetVelocity, setBudgetVelocity] = useState<BudgetVelocityItem[]>([]);
@@ -256,10 +257,10 @@ export function ProjectInsights({
           {d.name}
         </div>
         <div style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: "#D1D5DB", marginBottom: 2 }}>
-          Tid: {d.timeElapsed}%
+          {t("timeLabel")} {d.timeElapsed}%
         </div>
         <div style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: "#D1D5DB", marginBottom: 2 }}>
-          Budget: {d.budgetConsumed}%
+          {t("budgetLabel")} {d.budgetConsumed}%
         </div>
         <div
           style={{
@@ -270,7 +271,7 @@ export function ProjectInsights({
             marginTop: 4,
           }}
         >
-          {overPace ? "Over pace" : "Healthy"}
+          {overPace ? t("overPace") : t("healthy")}
         </div>
       </div>
     );
@@ -284,10 +285,10 @@ export function ProjectInsights({
          ============================================================ */}
       {redList.length > 0 && (
         <ChartCard
-          title="Red List"
-          badge={{ label: `${redList.length} markeret`, bg: "#FEE2E2", fg: "#DC2626" }}
-          info=">85% budget eller <20% margin"
-          help="Projekter med kritisk budget- eller margin-status"
+          title={t("redList")}
+          badge={{ label: t("flaggedCount", { count: redList.length }), bg: "#FEE2E2", fg: "#DC2626" }}
+          info={t("redListInfo")}
+          help={t("redListHelp")}
         >
           <div style={{ width: "100%", overflowX: "auto" }}>
             {/* Header */}
@@ -300,7 +301,7 @@ export function ProjectInsights({
                 borderBottom: "1px solid hsl(var(--border))",
               }}
             >
-              {["Projekt", "PL", "Budget", "Overskridelse", "Margin"].map((h) => (
+              {[t("colProject"), t("colPL"), t("colBudget"), t("colOverrun"), t("colMargin")].map((h) => (
                 <span
                   key={h}
                   style={{
@@ -351,7 +352,7 @@ export function ProjectInsights({
                     color: item.overrun > 0 ? "#EF4444" : "#10B981",
                   }}
                 >
-                  {item.overrun > 0 ? `+${item.overrun}t` : "On track"}
+                  {item.overrun > 0 ? `+${item.overrun}t` : t("onTrack")}
                 </span>
                 {/* Margin */}
                 <span
@@ -377,7 +378,7 @@ export function ProjectInsights({
         <MiniSelect
           value={selectedProjectId}
           onChange={setSelectedProjectId}
-          options={[{ value: "", label: "Vælg projekt..." }, ...projectOptions]}
+          options={[{ value: "", label: t("selectProject") }, ...projectOptions]}
           width={240}
         />
       </div>
@@ -388,8 +389,8 @@ export function ProjectInsights({
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
         {/* Budget Velocity — Scatter */}
         <ChartCard
-          title="Budget Velocity"
-          help="Sammenligner tidsforbrug med budgetforbrug. Over diagonalen = overforbrug."
+          title={t("budgetVelocity")}
+          help={t("budgetVelocityHelp")}
           height={300}
         >
           <ResponsiveContainer width="100%" height={300}>
@@ -398,22 +399,22 @@ export function ProjectInsights({
               <XAxis
                 type="number"
                 dataKey="timeElapsed"
-                name="Tid"
+                name={t("timeLabel")}
                 domain={[0, 100]}
                 tick={AXIS_STYLE}
                 tickLine={false}
-                label={{ value: "Tid forbrugt %", position: "insideBottom", offset: -4, style: { ...AXIS_STYLE, fontSize: 9 } }}
+                label={{ value: t("timeSpentPct"), position: "insideBottom", offset: -4, style: { ...AXIS_STYLE, fontSize: 9 } }}
               />
               <YAxis
                 type="number"
                 dataKey="budgetConsumed"
-                name="Budget"
+                name={t("budgetLabel")}
                 domain={[0, 100]}
                 tick={AXIS_STYLE}
                 tickLine={false}
-                label={{ value: "Budget forbrugt %", angle: -90, position: "insideLeft", style: { ...AXIS_STYLE, fontSize: 9 } }}
+                label={{ value: t("budgetSpentPct"), angle: -90, position: "insideLeft", style: { ...AXIS_STYLE, fontSize: 9 } }}
               />
-              <ZAxis dataKey="hours" range={[60, 300]} name="Timer" />
+              <ZAxis dataKey="hours" range={[60, 300]} name={t("hours")} />
               {/* Red tint above diagonal */}
               <ReferenceArea x1={0} x2={100} y1={0} y2={100} fill="#EF4444" fillOpacity={0.04} />
               {/* Diagonal */}
@@ -424,7 +425,7 @@ export function ProjectInsights({
                 strokeWidth={1}
               />
               <Tooltip content={renderScatterTooltip} />
-              <Scatter name="Projekter" data={budgetVelocity}>
+              <Scatter name={t("projects")} data={budgetVelocity}>
                 {budgetVelocity.map((entry, i) => (
                   <Cell
                     key={i}
@@ -438,8 +439,8 @@ export function ProjectInsights({
 
         {/* Billable Mix — stacked Bar */}
         <ChartCard
-          title="Billable Mix"
-          help="Fordeling af timer pr. faktureringsstatus pr. projekt"
+          title={t("billableMix")}
+          help={t("billableMixHelp")}
           height={300}
         >
           <ResponsiveContainer width="100%" height={300}>
@@ -459,14 +460,14 @@ export function ProjectInsights({
                 content={
                   <ChartTooltip
                     formatter={(v, k) => {
-                      const label = BILLING_LABELS[k] || k;
+                      const label = billingLabel(k);
                       return `${v.toFixed(1)}t`;
                     }}
                   />
                 }
               />
               <Legend
-                formatter={(value: string) => BILLING_LABELS[value] || value}
+                formatter={(value: string) => billingLabel(value)}
                 wrapperStyle={{ fontSize: 10, fontFamily: "'DM Sans', sans-serif" }}
               />
               {BILLING_STATUS_KEYS.map((key) => (
@@ -490,13 +491,13 @@ export function ProjectInsights({
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
           {/* Contract Burn-down */}
           <ChartCard
-            title="Contract Burn-down"
-            help="Resterende budgettimer vs. ideel afbrænding"
+            title={t("contractBurndown")}
+            help={t("contractBurndownHelp")}
             height={300}
           >
             {burndown.length === 0 && !loadingDetail ? (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300, color: "#9CA3AF", fontSize: 12, fontFamily: "'DM Sans', sans-serif" }}>
-                Ingen burndown-data for dette projekt
+                {t("noBurndownData")}
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={300}>
@@ -508,8 +509,8 @@ export function ProjectInsights({
                     content={
                       <ChartTooltip
                         formatter={(v, k) => {
-                          if (k === "hoursRemaining") return `${v.toFixed(1)}t rest`;
-                          if (k === "idealBurn") return `${v.toFixed(1)}t ideel`;
+                          if (k === "hoursRemaining") return t("hoursRemainingFmt", { hours: v.toFixed(1) });
+                          if (k === "idealBurn") return t("hoursIdealFmt", { hours: v.toFixed(1) });
                           return `${v.toFixed(1)}t`;
                         }}
                       />
@@ -522,7 +523,7 @@ export function ProjectInsights({
                     fill="#10B981"
                     fillOpacity={0.15}
                     strokeWidth={2}
-                    name="Timer tilbage"
+                    name={t("hoursRemaining")}
                   />
                   <Line
                     type="monotone"
@@ -531,7 +532,7 @@ export function ProjectInsights({
                     strokeWidth={2}
                     strokeDasharray="5 5"
                     dot={false}
-                    name="Ideel afbrænding"
+                    name={t("idealBurn")}
                   />
                   {/* Projection */}
                   <Line dataKey="proj_hoursRemaining" stroke="#10B981" strokeWidth={2} strokeDasharray="6 3" dot={false} legendType="none" />
@@ -542,13 +543,13 @@ export function ProjectInsights({
 
           {/* Project Profitability */}
           <ChartCard
-            title="Projekt Rentabilitet"
-            help="Omsætning, omkostninger og profit over tid"
+            title={t("projectProfitability")}
+            help={t("profitabilityHelp")}
             height={300}
           >
             {profitability.length === 0 && !loadingDetail ? (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300, color: "#9CA3AF", fontSize: 12, fontFamily: "'DM Sans', sans-serif" }}>
-                Ingen rentabilitetsdata
+                {t("noProfitData")}
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={300}>
@@ -570,9 +571,9 @@ export function ProjectInsights({
                   />
                   <Legend
                     formatter={(value: string) => {
-                      if (value === "revenue") return "Omsætning";
-                      if (value === "cost") return "Omkostning";
-                      if (value === "profit") return "Profit";
+                      if (value === "revenue") return t("revenue");
+                      if (value === "cost") return t("cost");
+                      if (value === "profit") return t("profit");
                       return value;
                     }}
                     wrapperStyle={{ fontSize: 10, fontFamily: "'DM Sans', sans-serif" }}
@@ -598,13 +599,13 @@ export function ProjectInsights({
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           {/* Phase Distribution — vertical bar */}
           <ChartCard
-            title="Fasefordeling"
-            help="Timefordeling pr. projektfase"
+            title={t("phaseDistribution")}
+            help={t("phaseDistributionHelp")}
             height={300}
           >
             {phaseDistribution.length === 0 ? (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300, color: "#9CA3AF", fontSize: 12, fontFamily: "'DM Sans', sans-serif" }}>
-                Ingen fasedata
+                {t("noPhaseData")}
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={300}>
@@ -623,7 +624,7 @@ export function ProjectInsights({
                       <ChartTooltip formatter={(v) => `${v.toFixed(1)}t`} />
                     }
                   />
-                  <Bar dataKey="hours" name="Timer" radius={[0, 4, 4, 0]}>
+                  <Bar dataKey="hours" name={t("hours")} radius={[0, 4, 4, 0]}>
                     {phaseDistribution.map((entry, i) => (
                       <Cell key={i} fill={entry.color} />
                     ))}
@@ -635,13 +636,13 @@ export function ProjectInsights({
 
           {/* Team Contribution — donut Pie */}
           <ChartCard
-            title="Teamfordeling"
-            help="Teammedlemmernes bidrag i timer"
+            title={t("teamContribution")}
+            help={t("teamContributionHelp")}
             height={300}
           >
             {teamContribution.length === 0 ? (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300, color: "#9CA3AF", fontSize: 12, fontFamily: "'DM Sans', sans-serif" }}>
-                Ingen teamdata
+                {t("noTeamData")}
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={300}>

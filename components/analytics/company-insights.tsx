@@ -39,6 +39,7 @@ import {
 import { withProjection } from "@/lib/analytics-utils";
 import { getToday } from "@/lib/demo-date";
 import { useIsDemo } from "@/lib/company-context";
+import { useTranslations } from "@/lib/i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -121,16 +122,6 @@ const EXPENSE_COLORS: Record<string, string> = {
   other: "#F97316",
 };
 
-const EXPENSE_LABELS: Record<string, string> = {
-  salaries: "Lønninger",
-  rent: "Husleje",
-  insurance: "Forsikring",
-  software: "Software",
-  utilities: "Forsyning",
-  travel: "Rejser",
-  other: "Andet",
-};
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -141,6 +132,11 @@ export function CompanyInsights({
   granularity,
 }: CompanyInsightsProps) {
   const isDemo = useIsDemo();
+  const t = useTranslations("analytics");
+  const expenseLabel = (key: string) => {
+    const map: Record<string, string> = { salaries: t("catSalaries"), rent: t("catRent"), insurance: t("catInsurance"), software: t("catSoftware"), utilities: t("catUtilities"), travel: t("catTravel"), other: t("catOther") };
+    return map[key] || key;
+  };
   const [loading, setLoading] = useState(true);
   const [revenueBridge, setRevenueBridge] = useState<RevenueBridgeEntry[]>([]);
   const [clientConcentration, setClientConcentration] = useState<ClientConcentrationEntry[]>([]);
@@ -239,14 +235,14 @@ export function CompanyInsights({
           1. REVENUE BRIDGE (full-width)
          ============================================================ */}
       <ChartCard
-        title="Revenue Bridge"
-        badge={{ label: "FORECAST", bg: "#EEF2FF", fg: "#4338CA" }}
-        help="Faktisk omsætning vs. forecast med break-even reference"
+        title={t("revenueBridge")}
+        badge={{ label: t("forecast"), bg: "#EEF2FF", fg: "#4338CA" }}
+        help={t("revenueBridgeHelp")}
         height={320}
       >
         {revenueBridge.length === 0 && !loading ? (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 320, color: "#9CA3AF", fontSize: 12, fontFamily: "'DM Sans', sans-serif" }}>
-            Ingen omsætningsdata
+            {t("noRevenueData")}
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={320}>
@@ -267,8 +263,8 @@ export function CompanyInsights({
               />
               <Legend
                 formatter={(value: string) => {
-                  if (value === "actual") return "Faktisk";
-                  if (value === "forecast") return "Forecast";
+                  if (value === "actual") return t("actual");
+                  if (value === "forecast") return t("forecast");
                   return value;
                 }}
                 wrapperStyle={{ fontSize: 10, fontFamily: "'DM Sans', sans-serif" }}
@@ -320,14 +316,14 @@ export function CompanyInsights({
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
         {/* Client Concentration — donut Pie */}
         <ChartCard
-          title="Kundekoncentration"
-          badge={topClientPct > 40 ? { label: "MONITOR", bg: "#FFFBEB", fg: "#D97706" } : undefined}
-          help="Omsætningsfordeling pr. kunde"
+          title={t("clientConcentration")}
+          badge={topClientPct > 40 ? { label: t("monitorBadge"), bg: "#FFFBEB", fg: "#D97706" } : undefined}
+          help={t("clientConcentrationHelp")}
           height={300}
         >
           {clientConcentration.length === 0 && !loading ? (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300, color: "#9CA3AF", fontSize: 12, fontFamily: "'DM Sans', sans-serif" }}>
-              Ingen kundedata
+              {t("noClientData")}
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
@@ -384,13 +380,13 @@ export function CompanyInsights({
 
         {/* Invoice Pipeline — stacked Bar */}
         <ChartCard
-          title="Faktura-pipeline"
-          help="Fakturastatus over tid: betalt, sendt og kladde"
+          title={t("invoicePipeline")}
+          help={t("invoicePipelineHelp")}
           height={300}
         >
           {invoicePipeline.length === 0 && !loading ? (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300, color: "#9CA3AF", fontSize: 12, fontFamily: "'DM Sans', sans-serif" }}>
-              Ingen fakturadata
+              {t("noInvoiceData")}
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
@@ -405,9 +401,9 @@ export function CompanyInsights({
                 />
                 <Legend
                   formatter={(value: string) => {
-                    if (value === "paid") return "Betalt";
-                    if (value === "sent") return "Sendt";
-                    if (value === "draft") return "Kladde";
+                    if (value === "paid") return t("paid");
+                    if (value === "sent") return t("sent");
+                    if (value === "draft") return t("draft");
                     return value;
                   }}
                   wrapperStyle={{ fontSize: 10, fontFamily: "'DM Sans', sans-serif" }}
@@ -453,7 +449,7 @@ export function CompanyInsights({
                 marginBottom: 12,
               }}
             >
-              Faktureringshastighed
+              {t("billingVelocity")}
             </div>
             {/* Big number */}
             <div
@@ -476,7 +472,7 @@ export function CompanyInsights({
                 marginBottom: 14,
               }}
             >
-              gns. dage fra registrering til faktura
+              {t("billingVelocityDesc")}
             </div>
             {/* Bucket pills */}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -542,13 +538,13 @@ export function CompanyInsights({
                 marginBottom: 12,
               }}
             >
-              Indsamlingsoversigt
+              {t("collectionSummary")}
             </div>
             {/* Rows */}
             {[
-              { label: "Total faktureret", value: collectionSummary.invoiced, color: "hsl(var(--foreground))" },
-              { label: "Betalt", value: collectionSummary.paid, color: "#10B981" },
-              { label: "Udestående", value: collectionSummary.outstanding, color: "#F59E0B" },
+              { label: t("totalInvoiced"), value: collectionSummary.invoiced, color: "hsl(var(--foreground))" },
+              { label: t("paid"), value: collectionSummary.paid, color: "#10B981" },
+              { label: t("outstanding"), value: collectionSummary.outstanding, color: "#F59E0B" },
             ].map((row, i) => (
               <div
                 key={i}
@@ -586,13 +582,13 @@ export function CompanyInsights({
 
         {/* Right column: Expense Breakdown */}
         <ChartCard
-          title="Udgiftsfordeling"
-          help="Månedlig fordeling af virksomhedsudgifter"
+          title={t("expenseBreakdown")}
+          help={t("expenseBreakdownHelp")}
           height={290}
         >
           {expenseBreakdown.length === 0 && !loading ? (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 290, color: "#9CA3AF", fontSize: 12, fontFamily: "'DM Sans', sans-serif" }}>
-              Ingen udgiftsdata
+              {t("noExpenseData")}
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={290}>
@@ -608,7 +604,7 @@ export function CompanyInsights({
                   }
                 />
                 <Legend
-                  formatter={(value: string) => EXPENSE_LABELS[value] || value}
+                  formatter={(value: string) => expenseLabel(value)}
                   wrapperStyle={{ fontSize: 10, fontFamily: "'DM Sans', sans-serif" }}
                 />
                 <Bar dataKey="salaries" stackId="exp" fill={EXPENSE_COLORS.salaries} name="salaries" />
@@ -631,13 +627,13 @@ export function CompanyInsights({
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         {/* Non-Billable Trend — LineChart */}
         <ChartCard
-          title="Ikke-fakturerbar trend"
-          help="Procentdel ikke-fakturerbare timer over tid"
+          title={t("nonBillableTrend")}
+          help={t("nonBillableTrendHelp")}
           height={280}
         >
           {nonBillableTrend.length === 0 && !loading ? (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 280, color: "#9CA3AF", fontSize: 12, fontFamily: "'DM Sans', sans-serif" }}>
-              Ingen trenddata
+              {t("noTrendData")}
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={280}>
@@ -656,10 +652,10 @@ export function CompanyInsights({
                 />
                 <Legend
                   formatter={(value: string) => {
-                    if (value === "totalNB") return "Total ikke-fakt.";
-                    if (value === "internal") return "Intern";
-                    if (value === "presales") return "Presales";
-                    if (value === "nonBillable") return "Ikke-fakt.";
+                    if (value === "totalNB") return t("totalNonBillableShort");
+                    if (value === "internal") return t("internal");
+                    if (value === "presales") return t("preSales");
+                    if (value === "nonBillable") return t("nonBillableShort");
                     return value;
                   }}
                   wrapperStyle={{ fontSize: 10, fontFamily: "'DM Sans', sans-serif" }}
@@ -717,13 +713,13 @@ export function CompanyInsights({
 
         {/* Unbilled Work Aging — list layout */}
         <ChartCard
-          title="Ufaktureret arbejde"
-          help="Projekter med ufakturerede timer sorteret efter omsætning"
+          title={t("unbilledWork")}
+          help={t("unbilledWorkHelp")}
           height={280}
         >
           {unbilledAging.length === 0 && !loading ? (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 280, color: "#9CA3AF", fontSize: 12, fontFamily: "'DM Sans', sans-serif" }}>
-              Ingen ufakturerede poster
+              {t("noUnbilledData")}
             </div>
           ) : (
             <div

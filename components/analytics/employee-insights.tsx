@@ -38,6 +38,7 @@ import {
 import { withProjection } from "@/lib/analytics-utils";
 import { getToday } from "@/lib/demo-date";
 import { useIsDemo } from "@/lib/company-context";
+import { useTranslations } from "@/lib/i18n";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -93,19 +94,6 @@ interface FlexTrendEntry {
 }
 
 // ---------------------------------------------------------------------------
-// Status display labels
-// ---------------------------------------------------------------------------
-
-const STATUS_LABELS: Record<string, string> = {
-  billable: "Fakturerbar",
-  included: "Inkluderet",
-  nonBillable: "Ikke-fakturerbar",
-  non_billable: "Ikke-fakturerbar",
-  internal: "Intern",
-  presales: "Pre-sales",
-};
-
-// ---------------------------------------------------------------------------
 // Pie label renderer
 // ---------------------------------------------------------------------------
 
@@ -158,6 +146,13 @@ export function EmployeeInsights({
   granularity,
 }: EmployeeInsightsProps) {
   const isDemo = useIsDemo();
+  const t = useTranslations("analytics");
+
+  const statusLabel = (key: string) => {
+    const map: Record<string, string> = { billable: t("billable"), included: t("included"), non_billable: t("nonBillable"), nonBillable: t("nonBillable"), internal: t("internal"), presales: t("preSales") };
+    return map[key] || key;
+  };
+
   const [members, setMembers] = useState<Member[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -293,7 +288,7 @@ export function EmployeeInsights({
   // ---- Member select options ---------------------------------------------
   const memberOptions = useMemo(
     () => [
-      { value: "", label: "Vælg medarbejder..." },
+      { value: "", label: t("selectEmployee") },
       ...members.map((m) => ({ value: m.id, label: m.name })),
     ],
     [members]
@@ -325,7 +320,7 @@ export function EmployeeInsights({
             fontFamily: "'DM Sans', sans-serif",
           }}
         >
-          Vælg en medarbejder for at se indsigter
+          {t("selectEmployeePrompt")}
         </div>
       )}
 
@@ -342,7 +337,7 @@ export function EmployeeInsights({
             fontFamily: "'DM Sans', sans-serif",
           }}
         >
-          Indlæser data...
+          {t("loadingData")}
         </div>
       )}
 
@@ -353,37 +348,37 @@ export function EmployeeInsights({
           <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
             <div style={{ flex: "1 1 0", minWidth: 160 }}>
               <KpiCard
-                label="Gns. Udnyttelse"
+                label={t("avgUtilization")}
                 value={`${kpis.billableUtil}%`}
                 color={utilColor(kpis.billableUtil)}
-                sub={`mod ${kpis.billableUtil >= 70 ? "80" : "70"}% gennemsnit`}
-                help="Andel af kapacitet brugt pa fakturerbart arbejde i perioden"
+                sub={t("vsAvgTarget", { target: kpis.billableUtil >= 70 ? "80" : "70" })}
+                help={t("avgUtilizationHelp")}
               />
             </div>
             <div style={{ flex: "1 1 0", minWidth: 160 }}>
               <KpiCard
-                label="Total Timer"
+                label={t("totalHours")}
                 value={`${kpis.totalHours}t`}
-                sub={`${billablePct}% fakturerbar`}
-                help="Samlet antal registrerede timer i perioden"
+                sub={t("pctBillable", { pct: billablePct })}
+                help={t("totalHoursHelp")}
               />
             </div>
             <div style={{ flex: "1 1 0", minWidth: 160 }}>
               <KpiCard
-                label="Flex Saldo"
+                label={t("flexBalance")}
                 value={`${kpis.flexBalance > 0 ? "+" : ""}${kpis.flexBalance}t`}
                 color={flexColor(kpis.flexBalance)}
-                sub="akkumuleret flex"
+                sub={t("accumulatedFlex")}
                 warn={Math.abs(kpis.flexBalance) > 30}
-                help="Akkumuleret fleksbalance — positiv = overarbejde, negativ = undertid"
+                help={t("flexBalanceHelp")}
               />
             </div>
             <div style={{ flex: "1 1 0", minWidth: 160 }}>
               <KpiCard
-                label="Fravaersdage"
+                label={t("absenceDays")}
                 value={`${kpis.absenceDays}`}
-                sub="ferie + sygdom"
-                help="Antal fravaersdage (ferie, sygdom, personlig) i perioden"
+                sub={t("vacationPlusSick")}
+                help={t("absenceDaysHelp")}
               />
             </div>
           </div>
@@ -392,9 +387,9 @@ export function EmployeeInsights({
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
             {/* Time Distribution - Pie */}
             <ChartCard
-              title="Tidsfordeling"
+              title={t("timeDistribution")}
               height={300}
-              help="Fordeling af timer efter faktureringsstatus"
+              help={t("timeDistributionHelp")}
             >
               {hasTimeData ? (
                 <ResponsiveContainer width="100%" height={280}>
@@ -425,7 +420,7 @@ export function EmployeeInsights({
                     />
                     <Legend
                       formatter={(value: string) =>
-                        STATUS_LABELS[value] || value
+                        statusLabel(value)
                       }
                     />
                   </PieChart>
@@ -442,16 +437,16 @@ export function EmployeeInsights({
                     fontFamily: "'DM Sans', sans-serif",
                   }}
                 >
-                  Ingen tidsdata
+                  {t("noTimeData")}
                 </div>
               )}
             </ChartCard>
 
             {/* Phase Breakdown - Horizontal bar */}
             <ChartCard
-              title="Fasefordeling"
+              title={t("phaseBreakdown")}
               height={300}
-              help="Timer fordelt pa projektfaser"
+              help={t("phaseBreakdownHelp")}
             >
               {hasPhaseData ? (
                 <ResponsiveContainer width="100%" height={280}>
@@ -479,7 +474,7 @@ export function EmployeeInsights({
                         />
                       }
                     />
-                    <Bar dataKey="hours" name="Timer" radius={[0, 4, 4, 0]}>
+                    <Bar dataKey="hours" name={t("hours")} radius={[0, 4, 4, 0]}>
                       {phaseBreakdown.map((entry, i) => (
                         <Cell key={i} fill={entry.color} />
                       ))}
@@ -498,7 +493,7 @@ export function EmployeeInsights({
                     fontFamily: "'DM Sans', sans-serif",
                   }}
                 >
-                  Ingen fasedata
+                  {t("noPhaseData")}
                 </div>
               )}
             </ChartCard>
@@ -507,9 +502,9 @@ export function EmployeeInsights({
           {/* Full-width: Utilization Trend */}
           <div style={{ marginBottom: 12 }}>
             <ChartCard
-              title="Udnyttelsestrend"
+              title={t("utilizationTrend")}
               height={260}
-              help="Fakturerbar og samlet udnyttelse over tid med planlagt maal"
+              help={t("utilizationTrendHelp")}
             >
               {hasUtilData ? (
                 <ResponsiveContainer width="100%" height={260}>
@@ -556,7 +551,7 @@ export function EmployeeInsights({
                     <Line
                       type="monotone"
                       dataKey="plannedUtil"
-                      name="Planlagt"
+                      name={t("planned")}
                       stroke="#9CA3AF"
                       strokeWidth={2}
                       strokeDasharray="6 3"
@@ -566,7 +561,7 @@ export function EmployeeInsights({
                     <Line
                       type="monotone"
                       dataKey="billableUtil"
-                      name="Fakturerbar"
+                      name={t("billable")}
                       stroke="#10B981"
                       strokeWidth={2}
                       dot={{ r: 3, fill: "#10B981" }}
@@ -576,7 +571,7 @@ export function EmployeeInsights({
                     <Line
                       type="monotone"
                       dataKey="totalUtil"
-                      name="Total"
+                      name={t("total")}
                       stroke="#6366F1"
                       strokeWidth={2}
                       dot={{ r: 3, fill: "#6366F1" }}
@@ -615,7 +610,7 @@ export function EmployeeInsights({
                     fontFamily: "'DM Sans', sans-serif",
                   }}
                 >
-                  Ingen udnyttelsesdata
+                  {t("noUtilData")}
                 </div>
               )}
             </ChartCard>
@@ -625,9 +620,9 @@ export function EmployeeInsights({
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             {/* Profitability */}
             <ChartCard
-              title="Rentabilitet"
+              title={t("profitability")}
               height={300}
-              help="Omsætning, omkostninger og profit over tid"
+              help={t("profitabilityHelp")}
             >
               {hasProfitData ? (
                 <ResponsiveContainer width="100%" height={280}>
@@ -655,20 +650,20 @@ export function EmployeeInsights({
                     <Legend />
                     <Bar
                       dataKey="revenue"
-                      name="Omsætning"
+                      name={t("revenue")}
                       fill={METRIC.revenue}
                       radius={[4, 4, 0, 0]}
                     />
                     <Bar
                       dataKey="cost"
-                      name="Omkostning"
+                      name={t("cost")}
                       fill={METRIC.cost}
                       radius={[4, 4, 0, 0]}
                     />
                     <Line
                       type="monotone"
                       dataKey="profit"
-                      name="Profit"
+                      name={t("profit")}
                       stroke={METRIC.profit}
                       strokeWidth={2}
                       dot={{ r: 3, fill: METRIC.profit }}
@@ -716,16 +711,16 @@ export function EmployeeInsights({
                     fontFamily: "'DM Sans', sans-serif",
                   }}
                 >
-                  Ingen rentabilitetsdata
+                  {t("noProfitData")}
                 </div>
               )}
             </ChartCard>
 
             {/* Flex Balance Trend */}
             <ChartCard
-              title="Flex Saldo Trend"
+              title={t("flexBalanceTrend")}
               height={300}
-              help="Fleksbalance over tid — grøn zone er +/-5 timer"
+              help={t("flexBalanceTrendHelp")}
             >
               {hasFlexData ? (
                 <ResponsiveContainer width="100%" height={280}>
@@ -766,7 +761,7 @@ export function EmployeeInsights({
                     <Area
                       type="monotone"
                       dataKey="flex"
-                      name="Flex"
+                      name={t("flex")}
                       stroke="#6366F1"
                       strokeWidth={2}
                       fill="#6366F1"
@@ -797,7 +792,7 @@ export function EmployeeInsights({
                     fontFamily: "'DM Sans', sans-serif",
                   }}
                 >
-                  Ingen flexdata
+                  {t("noFlexData")}
                 </div>
               )}
             </ChartCard>
