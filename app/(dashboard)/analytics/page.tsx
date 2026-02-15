@@ -49,8 +49,8 @@ function TabBtn({
         fontSize: 12,
         fontFamily: "'DM Sans', sans-serif",
         fontWeight: 600,
-        background: active ? "#1F2937" : hover ? "hsl(var(--muted))" : "transparent",
-        color: active ? "#FFFFFF" : "hsl(var(--muted-foreground))",
+        background: active ? "#EEF2FF" : hover ? "hsl(var(--muted))" : "transparent",
+        color: active ? "#4338CA" : "hsl(var(--muted-foreground))",
         transition: "all 0.15s ease",
         whiteSpace: "nowrap",
       }}
@@ -110,8 +110,8 @@ function ToggleBtn({
         fontSize: 11,
         fontFamily: "'DM Sans', sans-serif",
         fontWeight: 600,
-        background: active ? "#1F2937" : hover ? "hsl(var(--muted))" : "hsl(var(--card))",
-        color: active ? "#FFFFFF" : "hsl(var(--muted-foreground))",
+        background: active ? "#EEF2FF" : hover ? "hsl(var(--muted))" : "hsl(var(--card))",
+        color: active ? "#4338CA" : "hsl(var(--muted-foreground))",
         borderRadius:
           position === "left" ? "4px 0 0 4px" : "0 4px 4px 0",
         transition: "all 0.15s ease",
