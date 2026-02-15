@@ -122,7 +122,7 @@ export function Sidebar({ userRole, isSuperAdmin: superAdmin, supportMode, suppo
   };
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r border-border bg-card">
+    <aside className="flex h-full w-64 flex-col border-r border-border bg-card">
       <div className="flex h-16 items-center gap-2 border-b border-border -ml-2">
         <LogoIcon className="h-[5.5rem] w-[5.5rem] text-brand-500" />
         <span className="text-lg font-bold text-foreground">{t("timetrack")}</span>

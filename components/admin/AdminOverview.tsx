@@ -684,12 +684,6 @@ export function AdminOverview() {
     );
   }
 
-  const monthlyProjection = {
-    revenue: stats.totalRevenue * 4,
-    cost: (stats.totalCost + stats.totalExpenses) * 4,
-    profit: (stats.totalProfit - stats.totalExpenses) * 4,
-  };
-
   return (
     <div className="space-y-6">
       {/* Support Access Banner */}
@@ -886,31 +880,6 @@ export function AdminOverview() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Monthly Projection */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">{t("monthlyProjection")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <p className="text-sm text-muted-foreground">{t("revenue")}</p>
-              <p className="text-lg font-bold text-emerald-600">{convertAndFormat(monthlyProjection.revenue, masterCurrency, displayCurrency)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">{t("cost")}</p>
-              <p className="text-lg font-bold text-red-600">{convertAndFormat(monthlyProjection.cost, masterCurrency, displayCurrency)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">{t("profit")}</p>
-              <p className={cn("text-lg font-bold", monthlyProjection.profit >= 0 ? "text-emerald-600" : "text-red-600")}>
-                {convertAndFormat(monthlyProjection.profit, masterCurrency, displayCurrency)}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Team Overview Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

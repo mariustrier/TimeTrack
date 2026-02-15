@@ -1678,5 +1678,21 @@
     "externallyInvoicedDesc": "These hours were imported from your accounting system and have already been invoiced.",
     "importedHours": "imported hours",
     "importedEntries": "entries"
+  },
+  "demo": {
+    "bannerText": "You are viewing a demo of Cloud Timer with sample data",
+    "bannerTextMobile": "Demo data",
+    "bannerSignup": "Create your company →",
+    "bannerExit": "Exit demo",
+    "modalHeadline": "Ready to get your time under control?",
+    "modalSubtitle": "Get started right away — no setup, no commitment.",
+    "modalPill1": "14 days free",
+    "modalPill2": "No credit card",
+    "modalPill3": "Danish support",
+    "modalPrimary": "Create your company for free",
+    "modalSecondary": "Book a demo with us",
+    "modalTertiary": "No thanks, back to the front page",
+    "modalFinePrint": "Your demo account is automatically deleted after 24 hours.",
+    "modalExiting": "Cleaning up..."
   }
 }

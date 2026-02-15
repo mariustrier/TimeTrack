@@ -1675,5 +1675,21 @@
     "externallyInvoicedDesc": "Disse timer er importeret fra dit regnskabssystem og er allerede faktureret.",
     "importedHours": "importerede timer",
     "importedEntries": "poster"
+  },
+  "demo": {
+    "bannerText": "Du ser en demo af Cloud Timer med eksempeldata",
+    "bannerTextMobile": "Demodata",
+    "bannerSignup": "Opret din virksomhed →",
+    "bannerExit": "Afslut demo",
+    "modalHeadline": "Klar til at få styr på jeres tid?",
+    "modalSubtitle": "Start med det samme — ingen opsætning, ingen forpligtelser.",
+    "modalPill1": "14 dage gratis",
+    "modalPill2": "Intet kreditkort",
+    "modalPill3": "Dansk support",
+    "modalPrimary": "Opret din virksomhed gratis",
+    "modalSecondary": "Book en demo med os",
+    "modalTertiary": "Nej tak, tilbage til forsiden",
+    "modalFinePrint": "Din demo-konto slettes automatisk efter 24 timer.",
+    "modalExiting": "Rydder op..."
   }
 }

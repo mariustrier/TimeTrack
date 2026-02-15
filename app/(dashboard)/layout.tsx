@@ -10,6 +10,7 @@ import { GuidedTour, AdminSetupTour, ProjectsTour, TeamTour } from "@/components
 import { GuideProvider } from "@/components/ui/guide-context";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CompanyProvider } from "@/lib/company-context";
+import { DemoBanner } from "@/components/DemoBanner";
 
 export default async function DashboardLayout({
   children,
@@ -24,7 +25,7 @@ export default async function DashboardLayout({
 
   const user = await db.user.findUnique({
     where: { clerkId: userId },
-    include: { company: { select: { logoUrl: true } } },
+    include: { company: { select: { logoUrl: true, isDemo: true } } },
   });
 
   if (!user) {
@@ -53,12 +54,15 @@ export default async function DashboardLayout({
     }
   }
 
+  const isDemo = !!user.company?.isDemo;
+
   return (
     <LocaleProvider>
       <TooltipProvider delayDuration={200}>
-      <CompanyProvider logoUrl={user.company?.logoUrl ?? null}>
+      <CompanyProvider logoUrl={user.company?.logoUrl ?? null} isDemo={isDemo}>
       <GuideProvider dismissedGuides={user.dismissedGuides}>
-        <div className="flex h-screen overflow-hidden bg-background">
+        {isDemo && <DemoBanner />}
+        <div className={`flex overflow-hidden bg-background ${isDemo ? "mt-[40px] h-[calc(100vh-40px)]" : "h-screen"}`}>
           <Sidebar
             userRole={user.role}
             isSuperAdmin={isSuperAdmin(user.email)}

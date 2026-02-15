@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getAuthUser, isAdminOrManager } from "@/lib/auth";
 import { expandRecurringExpenses } from "@/lib/expense-utils";
 import { getEffectiveWeeklyCapacity } from "@/lib/calculations";
+import { differenceInCalendarDays } from "date-fns";
 
 export async function GET(req: Request) {
   try {
@@ -63,6 +64,10 @@ export async function GET(req: Request) {
       },
     });
 
+    const weeksInRange = startDate && endDate
+      ? Math.max(1, (differenceInCalendarDays(new Date(endDate), new Date(startDate)) + 1) / 7)
+      : 1;
+
     let totalRevenue = 0;
     let totalCost = 0;
     let totalHours = 0;
@@ -100,7 +105,7 @@ export async function GET(req: Request) {
         costRate: member.costRate,
         weeklyTarget: member.weeklyTarget,
         isHourly: member.isHourly,
-        utilization: member.isHourly ? null : (hours / getEffectiveWeeklyCapacity(member)) * 100,
+        utilization: member.isHourly ? null : (hours / (getEffectiveWeeklyCapacity(member) * weeksInRange)) * 100,
       };
     });
 
@@ -238,7 +243,7 @@ export async function GET(req: Request) {
       totalProfit: totalRevenue - totalCost,
       totalHours,
       billableHours,
-      utilization: targetHours > 0 ? (totalHours / targetHours) * 100 : 0,
+      utilization: targetHours > 0 ? (totalHours / (targetHours * weeksInRange)) * 100 : 0,
       employeeStats,
       projectStats,
       totalProjectExpenses,
