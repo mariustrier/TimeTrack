@@ -11,6 +11,8 @@ import {
   KeyRound,
   Loader2,
   LogIn,
+  FileDown,
+  DatabaseZap,
 } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +28,9 @@ interface CompanyInfo {
   createdAt: string;
   userCount: number;
   entryCount: number;
+  importedEntryCount: number;
+  lastImportDate: string | null;
+  accountingSystem: string | null;
 }
 
 interface CompanyUsage {
@@ -68,6 +73,7 @@ export default function SuperAdminPage() {
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState<SupportSession[]>([]);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [backfillLoading, setBackfillLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -141,8 +147,33 @@ export default function SuperAdminPage() {
     }
   };
 
+  const handleBackfillActivities = async () => {
+    if (!confirm(t("backfillConfirm"))) return;
+    setBackfillLoading(true);
+    try {
+      const res = await fetch("/api/super-admin/backfill-activities", {
+        method: "POST",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.activitiesCreated > 0) {
+          toast.success(`${t("backfillSuccess")}: ${data.projectsProcessed} projects, ${data.activitiesCreated} activities`);
+        } else {
+          toast.info(t("backfillNone"));
+        }
+      } else {
+        toast.error("Backfill failed");
+      }
+    } catch {
+      toast.error("Backfill failed");
+    } finally {
+      setBackfillLoading(false);
+    }
+  };
+
   const totalUsers = companies.reduce((sum, c) => sum + c.userCount, 0);
   const totalEntries = companies.reduce((sum, c) => sum + c.entryCount, 0);
+  const totalImported = companies.reduce((sum, c) => sum + c.importedEntryCount, 0);
 
   if (loading) {
     return (
@@ -151,8 +182,8 @@ export default function SuperAdminPage() {
           <div className="h-8 w-8 animate-pulse rounded-lg bg-muted" />
           <div className="h-8 w-48 animate-pulse rounded bg-muted" />
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="h-24 animate-pulse rounded-lg bg-muted" />
           ))}
         </div>
@@ -175,7 +206,7 @@ export default function SuperAdminPage() {
       </div>
 
       {/* Platform Stats */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <Card>
           <CardContent className="flex items-center gap-4 p-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-950">
@@ -209,6 +240,17 @@ export default function SuperAdminPage() {
             </div>
           </CardContent>
         </Card>
+        <Card>
+          <CardContent className="flex items-center gap-4 p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-950">
+              <FileDown className="h-5 w-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{totalImported.toLocaleString()}</p>
+              <p className="text-sm text-muted-foreground">{t("totalImported")}</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Companies Table */}
@@ -231,6 +273,9 @@ export default function SuperAdminPage() {
                     <th className="pb-2 font-medium text-muted-foreground">{t("companyName")}</th>
                     <th className="pb-2 font-medium text-muted-foreground">{t("users")}</th>
                     <th className="pb-2 font-medium text-muted-foreground">{t("entries")}</th>
+                    <th className="pb-2 font-medium text-muted-foreground">{t("importedEntries")}</th>
+                    <th className="pb-2 font-medium text-muted-foreground">{t("lastImport")}</th>
+                    <th className="pb-2 font-medium text-muted-foreground">{t("accounting")}</th>
                     <th className="pb-2 font-medium text-muted-foreground">{t("created")}</th>
                     <th className="pb-2 text-right font-medium text-muted-foreground">{ts("access")}</th>
                   </tr>
@@ -248,6 +293,29 @@ export default function SuperAdminPage() {
                         </td>
                         <td className="py-3 text-muted-foreground">{company.userCount}</td>
                         <td className="py-3 text-muted-foreground">{company.entryCount.toLocaleString()}</td>
+                        <td className="py-3 text-muted-foreground">
+                          {company.importedEntryCount > 0 ? (
+                            <span className="font-medium text-amber-600">{company.importedEntryCount.toLocaleString()}</span>
+                          ) : (
+                            <span className="text-muted-foreground/50">-</span>
+                          )}
+                        </td>
+                        <td className="py-3 text-muted-foreground">
+                          {company.lastImportDate ? (
+                            new Date(company.lastImportDate).toLocaleDateString()
+                          ) : (
+                            <span className="text-muted-foreground/50">-</span>
+                          )}
+                        </td>
+                        <td className="py-3">
+                          {company.accountingSystem ? (
+                            <Badge variant="outline" className="text-xs capitalize">
+                              {company.accountingSystem}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground/50">-</span>
+                          )}
+                        </td>
                         <td className="py-3 text-muted-foreground">
                           {new Date(company.createdAt).toLocaleDateString()}
                         </td>
@@ -301,6 +369,28 @@ export default function SuperAdminPage() {
               </table>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Backfill Timeline Activities */}
+      <Card>
+        <CardContent className="flex items-center justify-between p-4">
+          <div>
+            <p className="font-medium text-foreground">{t("backfillActivities")}</p>
+            <p className="text-sm text-muted-foreground">{t("backfillDescription")}</p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={handleBackfillActivities}
+            disabled={backfillLoading}
+          >
+            {backfillLoading ? (
+              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+            ) : (
+              <DatabaseZap className="mr-1.5 h-4 w-4" />
+            )}
+            {t("backfillActivities")}
+          </Button>
         </CardContent>
       </Card>
 

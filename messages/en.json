@@ -1275,7 +1275,16 @@
     "dailyBudget": "Daily",
     "monthlyBudget": "Monthly",
     "noCompanies": "No companies found",
-    "noCompaniesDescription": "Companies will appear here once users sign up."
+    "noCompaniesDescription": "Companies will appear here once users sign up.",
+    "importedEntries": "Imported",
+    "lastImport": "Last Import",
+    "accounting": "Accounting",
+    "totalImported": "Imported Entries",
+    "backfillActivities": "Backfill Timeline Activities",
+    "backfillDescription": "Generate timeline activities for all existing imported projects",
+    "backfillConfirm": "This will create timeline activities from imported time entries for all companies. Continue?",
+    "backfillSuccess": "Backfill complete",
+    "backfillNone": "No projects needed backfilling"
   },
   "expenses": {
     "title": "Expenses",

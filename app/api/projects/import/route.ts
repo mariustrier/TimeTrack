@@ -116,20 +116,22 @@ export async function POST(req: Request) {
     }
 
     // Validate phase mappings if provided
-    const categoryPhaseMap = new Map<number, { id: string; name: string }>();
+    const categoryPhaseMap = new Map<number, { id: string; name: string; color: string }>();
     if (mappings.categories && Object.keys(mappings.categories).length > 0) {
       const phaseIds = Object.values(mappings.categories).filter(Boolean);
       if (phaseIds.length > 0) {
         const phases = await db.phase.findMany({
           where: { companyId: user.companyId, id: { in: phaseIds } },
-          select: { id: true, name: true },
+          select: { id: true, name: true, color: true },
         });
-        const phaseMap = new Map(phases.map((p) => [p.id, p.name]));
+        const phaseMap = new Map(phases.map((p) => [p.id, { name: p.name, color: p.color }]));
         for (const [catNum, phaseId] of Object.entries(mappings.categories)) {
           if (phaseId && phaseMap.has(phaseId)) {
+            const phaseData = phaseMap.get(phaseId)!;
             categoryPhaseMap.set(Number(catNum), {
               id: phaseId,
-              name: phaseMap.get(phaseId)!,
+              name: phaseData.name,
+              color: phaseData.color,
             });
           }
         }
@@ -230,6 +232,75 @@ export async function POST(req: Request) {
         });
       }
 
+      // Auto-create timeline activities from phase-mapped categories
+      let activitiesCreated = 0;
+      if (categoryPhaseMap.size > 0) {
+        // Delete previously imported activities on re-import
+        await tx.projectActivity.deleteMany({
+          where: {
+            projectId,
+            companyId: user.companyId,
+            note: { startsWith: "Imported from e-conomic" },
+          },
+        });
+
+        // Compute per-category date ranges from imported entries
+        const categoryDateRanges: Record<string, {
+          minDate: string;
+          maxDate: string;
+          categoryName: string;
+          entryCount: number;
+          totalHours: number;
+        }> = {};
+
+        entriesToImport.forEach((entry) => {
+          const key = String(entry.categoryNumber);
+          if (!categoryDateRanges[key]) {
+            categoryDateRanges[key] = {
+              minDate: entry.date,
+              maxDate: entry.date,
+              categoryName: entry.categoryName,
+              entryCount: 0,
+              totalHours: 0,
+            };
+          }
+          const range = categoryDateRanges[key];
+          if (entry.date < range.minDate) range.minDate = entry.date;
+          if (entry.date > range.maxDate) range.maxDate = entry.date;
+          range.entryCount += 1;
+          range.totalHours += entry.hours;
+        });
+
+        // Create ProjectActivity for each category mapped to a phase
+        const categoryKeys = Object.keys(categoryDateRanges);
+        for (let i = 0; i < categoryKeys.length; i++) {
+          const catNum = Number(categoryKeys[i]);
+          const phase = categoryPhaseMap.get(catNum);
+          if (!phase) continue;
+
+          const range = categoryDateRanges[categoryKeys[i]];
+          const endDate = new Date(range.maxDate + "T00:00:00");
+          const status = endDate < now ? "complete" : "in_progress";
+
+          await tx.projectActivity.create({
+            data: {
+              projectId,
+              companyId: user.companyId,
+              name: range.categoryName,
+              phaseId: phase.id,
+              categoryName: range.categoryName,
+              startDate: new Date(range.minDate + "T00:00:00"),
+              endDate,
+              status,
+              color: phase.color,
+              note: `Imported from e-conomic: ${range.entryCount} entries, ${range.totalHours.toFixed(1)} hours`,
+              sortOrder: activitiesCreated,
+            },
+          });
+          activitiesCreated++;
+        }
+      }
+
       // Create audit log
       await tx.auditLog.create({
         data: {
@@ -245,6 +316,7 @@ export async function POST(req: Request) {
             employeesMapped: uniqueMappedUserIds.length,
             totalHours: entriesToImport.reduce((s, e) => s + e.hours, 0),
             categoriesMapped: categoryPhaseMap.size,
+            activitiesCreated,
           }),
         },
       });
@@ -255,15 +327,16 @@ export async function POST(req: Request) {
         select: { id: true, name: true, client: true, color: true },
       });
 
-      return project;
+      return { project, activitiesCreated };
     });
 
     return NextResponse.json({
-      project: result,
+      project: result.project,
       stats: {
         entries: entriesToImport.length,
         employees: Array.from(new Set(mappedUserIds)).length,
         hours: entriesToImport.reduce((s, e) => s + e.hours, 0),
+        activitiesCreated: result.activitiesCreated,
       },
     });
   } catch (error) {

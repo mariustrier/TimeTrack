@@ -1275,7 +1275,16 @@
     "dailyBudget": "Daglig",
     "monthlyBudget": "Månedlig",
     "noCompanies": "Ingen firmaer fundet",
-    "noCompaniesDescription": "Firmaer vises her, når brugere tilmelder sig."
+    "noCompaniesDescription": "Firmaer vises her, når brugere tilmelder sig.",
+    "importedEntries": "Importeret",
+    "lastImport": "Seneste import",
+    "accounting": "Regnskab",
+    "totalImported": "Importerede registreringer",
+    "backfillActivities": "Opret tidslinjeaktiviteter",
+    "backfillDescription": "Generer tidslinjeaktiviteter for alle eksisterende importerede projekter",
+    "backfillConfirm": "Dette opretter tidslinjeaktiviteter fra importerede tidsregistreringer for alle firmaer. Fortsæt?",
+    "backfillSuccess": "Oprettelse fuldført",
+    "backfillNone": "Ingen projekter havde brug for aktiviteter"
   },
   "expenses": {
     "title": "Udlæg",
