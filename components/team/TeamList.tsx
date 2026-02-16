@@ -49,6 +49,12 @@ interface TeamMember {
   vacationDays: number;
   vacationTrackingUnit: string;
   vacationHoursPerYear: number | null;
+  roleId: string | null;
+}
+
+interface CategoryOption {
+  id: string;
+  name: string;
 }
 
 export function TeamList() {
@@ -77,6 +83,8 @@ export function TeamList() {
   const [vacationDays, setVacationDays] = useState("0");
   const [vacationTrackingUnit, setVacationTrackingUnit] = useState("days");
   const [vacationHoursPerYear, setVacationHoursPerYear] = useState("");
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
 
   async function fetchTeam() {
     setLoading(true);
@@ -101,6 +109,10 @@ export function TeamList() {
         }
       })
       .catch(() => {});
+    fetch("/api/roles")
+      .then((res) => res.ok ? res.json() : [])
+      .then((data) => setCategories(data.map((r: any) => ({ id: r.id, name: r.name }))))
+      .catch(() => {});
   }, []);
 
   function openInviteModal() {
@@ -117,6 +129,7 @@ export function TeamList() {
     setVacationDays("0");
     setVacationTrackingUnit("days");
     setVacationHoursPerYear("");
+    setCategoryId(null);
     setModalOpen(true);
   }
 
@@ -134,6 +147,7 @@ export function TeamList() {
     setVacationDays(member.vacationDays.toString());
     setVacationTrackingUnit(member.vacationTrackingUnit || "days");
     setVacationHoursPerYear(member.vacationHoursPerYear != null ? member.vacationHoursPerYear.toString() : "");
+    setCategoryId(member.roleId || null);
     setModalOpen(true);
   }
 
@@ -153,6 +167,7 @@ export function TeamList() {
         vacationDays,
         vacationTrackingUnit,
         vacationHoursPerYear: vacationTrackingUnit === "hours" && vacationHoursPerYear ? Number(vacationHoursPerYear) : null,
+        roleId: categoryId,
       };
 
       if (editingMember) {
@@ -271,6 +286,7 @@ export function TeamList() {
                   <TableHead>{tc("name")}</TableHead>
                   <TableHead>{tc("email")}</TableHead>
                   <TableHead>{t("role")}</TableHead>
+                  {categories.length > 0 && <TableHead>Kategori</TableHead>}
                   <TableHead><span className="flex items-center gap-1">{t("billRate")} <InfoTooltip textKey="billRate" size={13} /></span></TableHead>
                   <TableHead>
                     <span className="flex items-center gap-1">
@@ -312,6 +328,17 @@ export function TeamList() {
                         )}
                       </div>
                     </TableCell>
+                    {categories.length > 0 && (
+                      <TableCell>
+                        {member.roleId ? (
+                          <Badge variant="outline" className="text-xs">
+                            {categories.find((c) => c.id === member.roleId)?.name || "—"}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
+                    )}
                     <TableCell>{convertAndFormat(member.hourlyRate, masterCurrency, displayCurrency)}/{tc("hourAbbrev")}</TableCell>
                     <TableCell>
                       {showCostRates
@@ -419,6 +446,22 @@ export function TeamList() {
                   </SelectContent>
                 </Select>
               </div>
+              {categories.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Kategori</Label>
+                  <Select value={categoryId || "__none__"} onValueChange={(v) => setCategoryId(v === "__none__" ? null : v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Ingen kategori</SelectItem>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">

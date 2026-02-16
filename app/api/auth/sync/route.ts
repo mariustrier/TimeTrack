@@ -1,6 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { seedDefaultRoles } from "@/lib/seed-roles";
 
 export async function POST(req: Request) {
   try {
@@ -70,6 +71,9 @@ export async function POST(req: Request) {
         currency: currency || "USD",
       },
     });
+
+    // Seed 7 default roles
+    await seedDefaultRoles(company.id);
 
     // Create system-managed Absence project
     await db.project.create({

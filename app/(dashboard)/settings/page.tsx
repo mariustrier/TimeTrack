@@ -34,6 +34,9 @@ export default function SettingsPage() {
   const [notifyWeeklyDigest, setNotifyWeeklyDigest] = useState(true);
   const [notifySaving, setNotifySaving] = useState(false);
 
+  // Role state
+  const [userRole, setUserRole] = useState<string>("");
+
   useEffect(() => {
     // Fetch user preferences
     Promise.all([
@@ -48,6 +51,7 @@ export default function SettingsPage() {
         setNotifyApprovals(prefs.notifyApprovals ?? true);
         setNotifyVacations(prefs.notifyVacations ?? true);
         setNotifyWeeklyDigest(prefs.notifyWeeklyDigest ?? true);
+        if (prefs.role) setUserRole(prefs.role);
       }
     }).catch(() => {});
   }, []);

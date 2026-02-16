@@ -14,6 +14,7 @@ export async function GET() {
       lastName: user.lastName,
       email: user.email,
       locale: user.locale,
+      role: user.role,
       notifyApprovals: user.notifyApprovals,
       notifyVacations: user.notifyVacations,
       notifyWeeklyDigest: user.notifyWeeklyDigest,

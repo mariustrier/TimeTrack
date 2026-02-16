@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { clerkClient } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { seedDemoData } from "@/lib/demo-seed";
+import { seedDefaultRoles } from "@/lib/seed-roles";
 
 export async function POST() {
   try {
@@ -33,6 +34,9 @@ export async function POST() {
         demoExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       },
     });
+
+    // 2b. Seed default roles
+    await seedDefaultRoles(company.id);
 
     // 3. Create admin User linked to Clerk
     const user = await db.user.create({

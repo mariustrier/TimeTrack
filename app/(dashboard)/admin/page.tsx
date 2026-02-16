@@ -8,6 +8,7 @@ import { AdminApprovals } from "@/components/admin/AdminApprovals";
 import { AdminVacations } from "@/components/admin/AdminVacations";
 import { AdminBackups } from "@/components/admin/AdminBackups";
 import { AdminAuditLog } from "@/components/admin/AdminAuditLog";
+import { AdminCategories } from "@/components/admin/AdminCategories";
 import { useTranslations } from "@/lib/i18n";
 import { PageGuide } from "@/components/ui/page-guide";
 
@@ -61,6 +62,7 @@ export default function AdminPage() {
               </Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="categories">Kategorier</TabsTrigger>
           <TabsTrigger value="backups">{t("backupsTab")}</TabsTrigger>
           <TabsTrigger value="audit-log">{t("auditLogTab")}</TabsTrigger>
         </TabsList>
@@ -72,6 +74,9 @@ export default function AdminPage() {
         </TabsContent>
         <TabsContent value="vacations" className="mt-6">
           <AdminVacations />
+        </TabsContent>
+        <TabsContent value="categories" className="mt-6">
+          <AdminCategories />
         </TabsContent>
         <TabsContent value="backups" className="mt-6">
           <AdminBackups />

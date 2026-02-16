@@ -32,6 +32,7 @@ export async function GET() {
         vacationDays: true,
         vacationTrackingUnit: true,
         vacationHoursPerYear: true,
+        roleId: true,
         companyId: true,
         createdAt: true,
       },
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const result = validate(createTeamMemberSchema, body);
     if (!result.success) return result.response;
-    const { email, firstName, lastName, role, employmentType, hourlyRate, costRate, weeklyTarget, isHourly } = result.data;
+    const { email, firstName, lastName, role, employmentType, hourlyRate, costRate, weeklyTarget, isHourly, roleId } = result.data;
 
     const normalizedEmail = email.toLowerCase();
     const existing = await db.user.findFirst({
@@ -80,6 +81,7 @@ export async function POST(req: Request) {
         costRate: costRate ?? 0,
         weeklyTarget: weeklyTarget ?? 40,
         isHourly: isHourly ?? false,
+        ...(roleId && { roleId }),
         companyId: user.companyId,
       },
     });

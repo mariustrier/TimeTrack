@@ -69,6 +69,10 @@ model Company {
   invoices            Invoice[]
   customerMappings    CustomerMapping[]
   projectActivities   ProjectActivity[]
+  roles               Role[]
+  economics           CompanyEconomics?
+  importBatches       ImportBatch[]
+  absences            Absence[]
 }
 
 model User {
@@ -88,6 +92,10 @@ model User {
   vacationTrackingUnit  String   @default("days")  // "days" | "hours"
   vacationHoursPerYear  Float?                     // annual vacation hour entitlement (e.g., 150 for 30h/week)
   companyId     String
+  roleId        String?
+  status        String   @default("active") // "placeholder" | "pending" | "invited" | "active"
+  invitedAt     DateTime?
+  acceptedAt    DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -108,6 +116,7 @@ model User {
   notifyWeeklyDigest  Boolean  @default(true)
 
   company             Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyRole         Role?                @relation(fields: [roleId], references: [id], onDelete: SetNull)
   timeEntries         TimeEntry[]
   vacationRequests    VacationRequest[]
   allocations         ProjectAllocation[]
@@ -117,9 +126,11 @@ model User {
   expenses            Expense[]
   absenceReasons      AbsenceReason[]      @relation("UserAbsenceReasons")
   projectActivities   ProjectActivity[]
+  absences            Absence[]
 
   @@index([companyId])
   @@index([clerkId])
+  @@index([roleId])
 }
 
 model Project {
@@ -154,6 +165,9 @@ model Project {
   // Project timeline dates
   startDate   DateTime?
   endDate     DateTime?
+
+  // Import tracking
+  importBatchId String?
 
   // Analytics estimates
   estimatedNonBillablePercent  Float?  // 0-100, estimated non-billable overhead percentage
@@ -225,12 +239,16 @@ model TimeEntry {
   invoicedAt          DateTime?
   externallyInvoiced  Boolean   @default(false) // True for imported entries already invoiced in external system
 
+  // Import tracking
+  importBatchId String?
+
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
   company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
   absenceReason AbsenceReason? @relation(fields: [absenceReasonId], references: [id], onDelete: SetNull)
   phase         Phase?         @relation(fields: [phaseId], references: [id], onDelete: SetNull)
   invoice       Invoice?       @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  importBatch   ImportBatch?   @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([projectId])
@@ -239,6 +257,7 @@ model TimeEntry {
   @@index([approvalStatus])
   @@index([companyId, approvalStatus, date])
   @@index([phaseId])
+  @@index([importBatchId])
 }
 
 model VacationRequest {
@@ -751,4 +770,82 @@ model ProjectActivity {
 
   @@index([projectId])
   @@index([companyId])
+}
+
+// ─── ROLES ───
+// Company-scoped role definitions for team members (Partner, Senior, Junior, etc.)
+model Role {
+  id          String   @id @default(cuid())
+  companyId   String
+  name        String
+  sortOrder   Int
+  defaultRate Float?
+  color       String?
+  isDefault   Boolean  @default(false)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  users   User[]
+
+  @@index([companyId])
+}
+
+// ─── COMPANY ECONOMICS ───
+// Profitability & utilization settings for the Indtjening dashboard
+model CompanyEconomics {
+  id                   String    @id @default(cuid())
+  companyId            String    @unique
+  avgHourlyRate        Float?
+  yearlyOverhead       Float?
+  yearlyPayroll        Float?
+  includePayroll       Boolean   @default(false)
+  targetUtilization    Float     @default(75)
+  overheadImportedAt   DateTime?
+  overheadImportSource String?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+// ─── IMPORT BATCHES ───
+// Tracks each data import session for audit trail and undo capability
+model ImportBatch {
+  id             String   @id @default(cuid())
+  companyId      String
+  source         String   // "eazyproject" | "timelog" | "harvest" | "generic_csv" | "generic_xlsx"
+  fileName       String
+  importedBy     String   // userId who performed the import
+  importedAt     DateTime @default(now())
+  stats          Json     // ImportStats snapshot
+  status         String   // "completed" | "undone" | "partial"
+  projectCount   Int
+  memberCount    Int
+  timeEntryCount Int
+  absenceCount   Int
+  totalHours     Float
+
+  company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  timeEntries TimeEntry[]
+  absences    Absence[]
+
+  @@index([companyId])
+}
+
+// ─── ABSENCES ───
+// Imported absence records (vacation, sick, holiday, education, etc.)
+model Absence {
+  id            String    @id @default(cuid())
+  date          DateTime
+  hours         Float
+  type          String    // "vacation" | "sick" | "holiday" | "parental" | "education" | "other"
+  description   String?
+  userId        String
+  companyId     String
+  importBatchId String?
+  createdAt     DateTime  @default(now())
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  importBatch ImportBatch? @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([userId])
 }

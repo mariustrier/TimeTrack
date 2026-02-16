@@ -102,6 +102,7 @@ export const createTeamMemberSchema = z.object({
   costRate: z.coerce.number().nonnegative().optional(),
   weeklyTarget: z.coerce.number().nonnegative().max(168).optional(),
   isHourly: z.boolean().optional(),
+  roleId: z.string().nullable().optional(),
 });
 
 export const updateTeamMemberSchema = z.object({
@@ -116,6 +117,7 @@ export const updateTeamMemberSchema = z.object({
   vacationDays: z.coerce.number().int().nonnegative().max(365).optional(),
   vacationTrackingUnit: z.enum(["days", "hours"]).optional(),
   vacationHoursPerYear: z.coerce.number().nonnegative().max(2000).nullable().optional(),
+  roleId: z.string().nullable().optional(),
 });
 
 // --- Expenses ---
@@ -303,6 +305,23 @@ export const updatePhaseSchema = z.object({
 });
 
 export const reorderPhasesSchema = z.object({
+  orderedIds: z.array(z.string().min(1)).min(1),
+});
+
+// ─── ROLES ───
+export const createRoleSchema = z.object({
+  name: z.string().min(1).max(100),
+  defaultRate: z.number().min(0).optional().nullable(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().nullable(),
+});
+
+export const updateRoleSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  defaultRate: z.number().min(0).optional().nullable(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().nullable(),
+});
+
+export const reorderRolesSchema = z.object({
   orderedIds: z.array(z.string().min(1)).min(1),
 });
 
