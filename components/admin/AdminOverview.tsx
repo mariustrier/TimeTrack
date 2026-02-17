@@ -77,6 +77,7 @@ import { TeamUtilizationBars } from "@/components/admin/TeamUtilizationBars";
 import { AtRiskProjects } from "@/components/admin/AtRiskProjects";
 import { Switch } from "@/components/ui/switch";
 import { PhaseMigrationDialog } from "@/components/admin/PhaseMigrationDialog";
+import { AdminCategories } from "@/components/admin/AdminCategories";
 import { ShieldAlert, CheckCircle, XCircle } from "lucide-react";
 
 interface EmployeeStat {
@@ -1230,6 +1231,13 @@ export function AdminOverview() {
               </p>
             ) : null;
           })()}
+        </CardContent>
+      </Card>
+
+      {/* Employee Categories */}
+      <Card>
+        <CardContent className="p-6">
+          <AdminCategories />
         </CardContent>
       </Card>
 
