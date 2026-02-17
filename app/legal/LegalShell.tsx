@@ -117,7 +117,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         maxWidth: 1060, margin: "0 auto",
       }}>
         <p style={{ fontSize: 12, color: "#6B7280" }}>
-          &copy; {new Date().getFullYear()} Cloud Timer &middot; cloudtimer.dk &middot; CVR: Afventer registrering
+          &copy; {new Date().getFullYear()} Cloud Timer &middot; cloudtimer.dk &middot; CVR: 46254988
         </p>
         <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
           <Link href="/legal/privacy" style={{ fontSize: 12, color: "#6B7280", textDecoration: "none" }}>{t("privacyPolicy")}</Link>

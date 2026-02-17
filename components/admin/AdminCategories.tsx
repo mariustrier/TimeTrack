@@ -413,9 +413,9 @@ export function AdminCategories() {
     <div className="space-y-6 max-w-2xl">
       {/* Header */}
       <div>
-        <h2 className="text-lg font-semibold text-foreground">Medarbejder kategorier</h2>
+        <h2 className="text-lg font-semibold text-foreground">Roller</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Opret og tilpas kategorier for dine medarbejdere. Træk for at ændre rækkefølgen.
+          Opret og tilpas roller for jeres team. Træk for at ændre rækkefølgen.
         </p>
       </div>
 
