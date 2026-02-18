@@ -26,7 +26,10 @@ export async function GET() {
         aiAnonymization: true,
         logoUrl: true,
         phasesEnabled: true,
+        rolesEnabled: true,
         flexStartDate: true,
+        timeSyncEnabled: true,
+        expenseSyncEnabled: true,
       },
     });
 
@@ -90,6 +93,15 @@ export async function PUT(req: Request) {
         }
       }
     }
+    if (body.rolesEnabled !== undefined) {
+      data.rolesEnabled = !!body.rolesEnabled;
+    }
+    if (body.timeSyncEnabled !== undefined) {
+      data.timeSyncEnabled = !!body.timeSyncEnabled;
+    }
+    if (body.expenseSyncEnabled !== undefined) {
+      data.expenseSyncEnabled = !!body.expenseSyncEnabled;
+    }
     if (body.flexStartDate !== undefined) {
       data.flexStartDate = body.flexStartDate ? new Date(body.flexStartDate) : null;
     }
@@ -108,7 +120,10 @@ export async function PUT(req: Request) {
         expenseAutoApproveThreshold: true,
         aiAnonymization: true,
         phasesEnabled: true,
+        rolesEnabled: true,
         flexStartDate: true,
+        timeSyncEnabled: true,
+        expenseSyncEnabled: true,
       },
     });
 

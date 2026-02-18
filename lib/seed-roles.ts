@@ -1,10 +1,10 @@
 import { db } from "@/lib/db";
 
 const DEFAULT_ROLES = [
-  { name: "Senior", sortOrder: 1 },
-  { name: "Medarbejder", sortOrder: 2 },
-  { name: "Junior", sortOrder: 3 },
-  { name: "Studerende", sortOrder: 4 },
+  { name: "Partner", sortOrder: 1 },
+  { name: "Senior", sortOrder: 2 },
+  { name: "Medarbejder", sortOrder: 3 },
+  { name: "Junior", sortOrder: 4 },
 ];
 
 export async function seedDefaultRoles(companyId: string) {

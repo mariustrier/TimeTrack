@@ -1,4 +1,15 @@
-import type { AccountingAdapter, AccountingCredentials, ExternalCustomer, InvoiceWithLines } from "./types";
+import type {
+  AccountingAdapter,
+  AccountingCredentials,
+  ExternalCustomer,
+  ExternalProject,
+  ExternalEmployee,
+  ExternalAccount,
+  InvoiceWithLines,
+  TimeEntryPushPayload,
+  ExpensePushPayload,
+  SyncResult,
+} from "./types";
 
 type CredentialUpdateCallback = (credentials: AccountingCredentials) => Promise<void>;
 
@@ -187,5 +198,119 @@ export class DineroAdapter implements AccountingAdapter {
       externalId: String(data.guid || data.id),
       externalNumber: data.number ? String(data.number) : undefined,
     };
+  }
+
+  // ─── SYNC CAPABILITIES ───
+
+  supportsTimeEntryPush(): boolean {
+    return false;
+  }
+
+  supportsExpensePush(): boolean {
+    return true;
+  }
+
+  async listProjects(): Promise<ExternalProject[]> {
+    return [];
+  }
+
+  async listEmployees(): Promise<ExternalEmployee[]> {
+    return [];
+  }
+
+  async listAccounts(): Promise<ExternalAccount[]> {
+    const hdrs = await this.headers();
+    const res = await fetch(
+      `https://api.dinero.dk/v1/${this.organizationId}/accounts/entry`,
+      { headers: hdrs }
+    );
+    if (!res.ok) throw new Error(`Failed to fetch accounts: ${res.status}`);
+    const data = await res.json();
+    return (data || []).map((a: Record<string, unknown>) => ({
+      id: String(a.accountNumber),
+      name: String(a.name || ""),
+      number: String(a.accountNumber),
+    }));
+  }
+
+  async pushTimeEntry(_payload: TimeEntryPushPayload): Promise<SyncResult> {
+    return { success: false, error: "Dinero does not support time entry push" };
+  }
+
+  async pushExpense(payload: ExpensePushPayload): Promise<SyncResult> {
+    try {
+      const hdrs = await this.headers();
+
+      // Step 1: Upload receipt if available
+      let fileGuid: string | undefined;
+      if (payload.receiptUrl) {
+        const receiptRes = await fetch(payload.receiptUrl);
+        if (!receiptRes.ok) throw new Error("Failed to download receipt");
+        const receiptBuffer = await receiptRes.arrayBuffer();
+
+        const uploadRes = await fetch(
+          `https://api.dinero.dk/v1/${this.organizationId}/files`,
+          {
+            method: "POST",
+            headers: {
+              ...hdrs,
+              "Content-Type": "application/octet-stream",
+              "X-Filename": payload.receiptFileName || "receipt.pdf",
+            },
+            body: receiptBuffer,
+          }
+        );
+        if (!uploadRes.ok) throw new Error(`Receipt upload failed: ${uploadRes.status}`);
+        const uploadData = await uploadRes.json();
+        fileGuid = uploadData.fileGuid || uploadData.guid;
+      }
+
+      // Step 2: Create manual voucher
+      const voucherBody = {
+        voucherDate: payload.date,
+        description: payload.description,
+        lines: [
+          {
+            accountNumber: parseInt(payload.categoryAccountId, 10),
+            amount: payload.amount,
+            description: payload.description,
+          },
+        ],
+      };
+
+      const voucherRes = await fetch(
+        `https://api.dinero.dk/v1/${this.organizationId}/vouchers/manuel`,
+        {
+          method: "POST",
+          headers: hdrs,
+          body: JSON.stringify(voucherBody),
+        }
+      );
+      if (!voucherRes.ok) {
+        const err = await voucherRes.json().catch(() => ({}));
+        throw new Error(`Voucher creation failed: ${(err as Record<string, string>).message || voucherRes.status}`);
+      }
+      const voucherData = await voucherRes.json();
+      const docGuid = voucherData.guid || voucherData.voucherGuid;
+
+      // Step 3: Bind receipt to voucher
+      if (fileGuid && docGuid) {
+        const fileName = payload.receiptFileName || "receipt.pdf";
+        await fetch(
+          `https://api.dinero.dk/v1/${this.organizationId}/attachments/${docGuid}/${fileGuid}/${encodeURIComponent(fileName)}`,
+          {
+            method: "POST",
+            headers: hdrs,
+          }
+        );
+      }
+
+      return { success: true, externalId: docGuid };
+    } catch (err) {
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : "Dinero expense push failed",
+      };
+    }
   }
 }

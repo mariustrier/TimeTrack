@@ -443,3 +443,27 @@ export const customerMappingSchema = z.object({
   externalCustomerId: z.string().min(1).max(100),
   externalCustomerName: z.string().min(1).max(200),
 });
+
+// --- Accounting Sync Mappings ---
+
+export const projectMappingSchema = z.object({
+  projectId: z.string().min(1),
+  externalProjectId: z.string().min(1).max(100),
+  externalProjectName: z.string().min(1).max(200),
+});
+
+export const employeeMappingSchema = z.object({
+  userId: z.string().min(1),
+  externalEmployeeId: z.string().min(1).max(100),
+  externalEmployeeName: z.string().min(1).max(200),
+});
+
+export const expenseCategoryMappingSchema = z.object({
+  category: z.string().min(1).max(200),
+  externalAccountId: z.string().min(1).max(100),
+  externalAccountName: z.string().min(1).max(200),
+});
+
+export const syncRequestSchema = z.object({
+  entryIds: z.array(z.string()).optional(),
+});

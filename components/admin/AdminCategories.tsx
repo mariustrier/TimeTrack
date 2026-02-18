@@ -20,6 +20,8 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useTranslations } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 
 interface Role {
   id: string;
@@ -29,6 +31,10 @@ interface Role {
   color: string | null;
   isDefault: boolean;
   _count: { users: number };
+}
+
+interface AdminCategoriesProps {
+  enabled: boolean;
 }
 
 // ─── Sortable Role Row ───
@@ -45,6 +51,8 @@ function SortableRoleRow({
   onSetEditRate,
   onDelete,
   deleting,
+  enabled,
+  t,
 }: {
   role: Role;
   editingId: string | null;
@@ -57,6 +65,8 @@ function SortableRoleRow({
   onSetEditRate: (v: string) => void;
   onDelete: (role: Role) => void;
   deleting: string | null;
+  enabled: boolean;
+  t: (key: string) => string;
 }) {
   const {
     attributes,
@@ -65,7 +75,7 @@ function SortableRoleRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: role.id });
+  } = useSortable({ id: role.id, disabled: !enabled });
 
   const isEditing = editingId === role.id;
   const nameRef = useRef<HTMLInputElement>(null);
@@ -93,19 +103,24 @@ function SortableRoleRow({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-3 rounded-lg border bg-card px-4 py-3 transition-shadow ${
-        isDragging ? "shadow-lg border-brand-500/50" : "border-border"
-      }`}
+      className={cn(
+        "flex items-center gap-3 rounded-lg border bg-card px-4 py-3 transition-shadow",
+        isDragging ? "shadow-lg border-brand-500/50" : "border-border",
+        !enabled && "opacity-50"
+      )}
     >
       {/* Drag handle */}
-      <button
-        {...attributes}
-        {...listeners}
-        className="cursor-grab touch-none rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent active:cursor-grabbing"
-        tabIndex={-1}
-      >
-        <GripVertical className="h-4 w-4" />
-      </button>
+      {enabled && (
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab touch-none rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent active:cursor-grabbing"
+          tabIndex={-1}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+      )}
+      {!enabled && <div className="w-6" />}
 
       {/* Name */}
       <div className="flex-1 min-w-0">
@@ -118,7 +133,10 @@ function SortableRoleRow({
             className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
           />
         ) : (
-          <span className="text-sm font-medium text-foreground truncate block">
+          <span className={cn(
+            "text-sm font-medium truncate block",
+            enabled ? "text-foreground" : "text-muted-foreground"
+          )}>
             {role.name}
           </span>
         )}
@@ -160,29 +178,29 @@ function SortableRoleRow({
 
       {/* Actions */}
       <div className="flex items-center gap-1 shrink-0 w-20 justify-end">
-        {isEditing ? (
+        {enabled && isEditing ? (
           <>
             <button
               onClick={onSaveEdit}
               className="rounded p-1.5 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"
-              title="Gem"
+              title={t("rolesSave")}
             >
               <Check className="h-4 w-4" />
             </button>
             <button
               onClick={onCancelEdit}
               className="rounded p-1.5 text-muted-foreground hover:bg-accent transition-colors"
-              title="Annullér"
+              title={t("rolesCancel")}
             >
               <X className="h-4 w-4" />
             </button>
           </>
-        ) : (
+        ) : enabled ? (
           <>
             <button
               onClick={() => onStartEdit(role)}
               className="rounded p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              title="Redigér"
+              title={t("rolesEdit")}
             >
               <Pencil className="h-3.5 w-3.5" />
             </button>
@@ -190,12 +208,12 @@ function SortableRoleRow({
               onClick={() => onDelete(role)}
               disabled={deleting === role.id}
               className="rounded p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
-              title="Slet"
+              title={t("rolesDelete")}
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           </>
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -203,7 +221,8 @@ function SortableRoleRow({
 
 // ─── Main Component ───
 
-export function AdminCategories() {
+export function AdminCategories({ enabled }: AdminCategoriesProps) {
+  const t = useTranslations("admin");
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -237,11 +256,11 @@ export function AdminCategories() {
       const data = await res.json();
       setRoles(data);
     } catch {
-      toast.error("Kunne ikke hente kategorier");
+      toast.error(t("rolesFetchError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchRoles();
@@ -268,7 +287,7 @@ export function AdminCategories() {
       const data = await res.json();
       setRoles(data);
     } catch {
-      toast.error("Kunne ikke ændre rækkefølge");
+      toast.error(t("rolesReorderError"));
       fetchRoles();
     }
   };
@@ -292,7 +311,7 @@ export function AdminCategories() {
 
     const rate = editRate.trim() ? parseFloat(editRate.replace(",", ".")) : null;
     if (editRate.trim() && (isNaN(rate!) || rate! < 0)) {
-      toast.error("Ugyldig timepris");
+      toast.error(t("rolesInvalidRate"));
       return;
     }
 
@@ -307,14 +326,14 @@ export function AdminCategories() {
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || "Fejl");
+        throw new Error(err.error || "Error");
       }
       const updated = await res.json();
       setRoles((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
       cancelEdit();
-      toast.success("Kategori opdateret");
+      toast.success(t("rolesSaved"));
     } catch (err: any) {
-      toast.error(err.message || "Kunne ikke opdatere");
+      toast.error(err.message || t("rolesFetchError"));
     }
   };
 
@@ -338,7 +357,7 @@ export function AdminCategories() {
 
     const rate = newRate.trim() ? parseFloat(newRate.replace(",", ".")) : null;
     if (newRate.trim() && (isNaN(rate!) || rate! < 0)) {
-      toast.error("Ugyldig timepris");
+      toast.error(t("rolesInvalidRate"));
       return;
     }
 
@@ -354,14 +373,14 @@ export function AdminCategories() {
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || "Fejl");
+        throw new Error(err.error || "Error");
       }
       const created = await res.json();
       setRoles((prev) => [...prev, created]);
       cancelAdd();
-      toast.success("Kategori oprettet");
+      toast.success(t("rolesCreated"));
     } catch (err: any) {
-      toast.error(err.message || "Kunne ikke oprette");
+      toast.error(err.message || t("rolesFetchError"));
     } finally {
       setSaving(false);
     }
@@ -372,7 +391,7 @@ export function AdminCategories() {
   const handleDelete = async (role: Role) => {
     if (role._count.users > 0) {
       toast.error(
-        `Kan ikke slette — ${role._count.users} medarbejder${role._count.users === 1 ? "" : "e"} er tilknyttet. Flyt dem til en anden kategori først.`
+        t("rolesDeleteError").replace("{count}", String(role._count.users))
       );
       return;
     }
@@ -382,12 +401,12 @@ export function AdminCategories() {
       const res = await fetch(`/api/roles/${role.id}`, { method: "DELETE" });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || "Fejl");
+        throw new Error(err.error || "Error");
       }
       setRoles((prev) => prev.filter((r) => r.id !== role.id));
-      toast.success("Kategori slettet");
+      toast.success(t("rolesDeleted"));
     } catch (err: any) {
-      toast.error(err.message || "Kunne ikke slette");
+      toast.error(err.message || t("rolesFetchError"));
     } finally {
       setDeleting(null);
     }
@@ -413,18 +432,21 @@ export function AdminCategories() {
     <div className="space-y-6 max-w-2xl">
       {/* Header */}
       <div>
-        <h2 className="text-lg font-semibold text-foreground">Roller</h2>
+        <h2 className="text-lg font-semibold text-foreground">{t("rolesTitle")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Opret og tilpas roller for jeres team. Træk for at ændre rækkefølgen.
+          {t("rolesDescription")}
         </p>
       </div>
 
       {/* Table header */}
-      <div className="flex items-center gap-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+      <div className={cn(
+        "flex items-center gap-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider",
+        !enabled && "opacity-50"
+      )}>
         <div className="w-6" /> {/* grip spacer */}
-        <div className="flex-1">Navn</div>
-        <div className="w-36 shrink-0 text-right">Standard-timepris</div>
-        <div className="w-20 shrink-0 text-right">Brugere</div>
+        <div className="flex-1">{t("rolesName")}</div>
+        <div className="w-36 shrink-0 text-right">{t("rolesDefaultRate")}</div>
+        <div className="w-20 shrink-0 text-right">{t("rolesUsers")}</div>
         <div className="w-20 shrink-0" /> {/* actions spacer */}
       </div>
 
@@ -453,77 +475,81 @@ export function AdminCategories() {
                 onSetEditRate={setEditRate}
                 onDelete={handleDelete}
                 deleting={deleting}
+                enabled={enabled}
+                t={t}
               />
             ))}
           </div>
         </SortableContext>
       </DndContext>
 
-      {/* Add new category row */}
-      {adding ? (
-        <div className="flex items-center gap-3 rounded-lg border border-dashed border-brand-500/50 bg-brand-500/5 px-4 py-3">
-          <div className="w-6" />
-          <div className="flex-1 min-w-0">
-            <input
-              ref={newNameRef}
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") saveAdd();
-                if (e.key === "Escape") cancelAdd();
-              }}
-              placeholder="Kategorinavn"
-              className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
-            />
-          </div>
-          <div className="w-36 shrink-0">
-            <div className="flex items-center gap-1">
+      {/* Add new role row */}
+      {enabled && (
+        adding ? (
+          <div className="flex items-center gap-3 rounded-lg border border-dashed border-brand-500/50 bg-brand-500/5 px-4 py-3">
+            <div className="w-6" />
+            <div className="flex-1 min-w-0">
               <input
-                value={newRate}
-                onChange={(e) => setNewRate(e.target.value)}
+                ref={newNameRef}
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") saveAdd();
                   if (e.key === "Escape") cancelAdd();
                 }}
-                placeholder="—"
-                className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-right text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
+                placeholder={t("rolesNamePlaceholder")}
+                className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
               />
-              <span className="text-xs text-muted-foreground whitespace-nowrap">kr./t</span>
+            </div>
+            <div className="w-36 shrink-0">
+              <div className="flex items-center gap-1">
+                <input
+                  value={newRate}
+                  onChange={(e) => setNewRate(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveAdd();
+                    if (e.key === "Escape") cancelAdd();
+                  }}
+                  placeholder="—"
+                  className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-right text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500"
+                />
+                <span className="text-xs text-muted-foreground whitespace-nowrap">kr./t</span>
+              </div>
+            </div>
+            <div className="w-20 shrink-0" />
+            <div className="flex items-center gap-1 shrink-0 w-20 justify-end">
+              <button
+                onClick={saveAdd}
+                disabled={saving || !newName.trim()}
+                className="rounded p-1.5 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors disabled:opacity-50"
+                title={t("rolesSave")}
+              >
+                <Check className="h-4 w-4" />
+              </button>
+              <button
+                onClick={cancelAdd}
+                className="rounded p-1.5 text-muted-foreground hover:bg-accent transition-colors"
+                title={t("rolesCancel")}
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
           </div>
-          <div className="w-20 shrink-0" />
-          <div className="flex items-center gap-1 shrink-0 w-20 justify-end">
-            <button
-              onClick={saveAdd}
-              disabled={saving || !newName.trim()}
-              className="rounded p-1.5 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors disabled:opacity-50"
-              title="Gem"
-            >
-              <Check className="h-4 w-4" />
-            </button>
-            <button
-              onClick={cancelAdd}
-              className="rounded p-1.5 text-muted-foreground hover:bg-accent transition-colors"
-              title="Annullér"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button
-          onClick={startAdd}
-          className="flex items-center gap-2 rounded-lg border border-dashed border-border px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-brand-500/50 hover:bg-brand-500/5 transition-colors w-full"
-        >
-          <Plus className="h-4 w-4" />
-          Tilføj kategori
-        </button>
+        ) : (
+          <button
+            onClick={startAdd}
+            className="flex items-center gap-2 rounded-lg border border-dashed border-border px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-brand-500/50 hover:bg-brand-500/5 transition-colors w-full"
+          >
+            <Plus className="h-4 w-4" />
+            {t("rolesAdd")}
+          </button>
+        )
       )}
 
       {/* Footer hint */}
       {roles.length > 0 && (
-        <p className="text-xs text-muted-foreground">
-          Kategorier bruges til at gruppere medarbejdere og kan tildeles standard-timepriser. Rækkefølgen afspejler anciennitet (1 = højest).
+        <p className={cn("text-xs text-muted-foreground", !enabled && "opacity-50")}>
+          {t("rolesFooterHint")}
         </p>
       )}
     </div>

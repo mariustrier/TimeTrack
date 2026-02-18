@@ -267,6 +267,8 @@ export function AdminOverview() {
   const [phaseApplyGlobally, setPhaseApplyGlobally] = useState(false);
   const [phaseSaving, setPhaseSaving] = useState(false);
   const [phasesToggleSaving, setPhasesToggleSaving] = useState(false);
+  const [rolesEnabled, setRolesEnabled] = useState(true);
+  const [rolesToggleSaving, setRolesToggleSaving] = useState(false);
   const [migrationDialogOpen, setMigrationDialogOpen] = useState(false);
   const [migrationProjects, setMigrationProjects] = useState<Array<{ id: string; name: string; color: string; systemManaged?: boolean; phasesEnabled: boolean; currentPhase: { id: string; name: string } | null }>>([]);
 
@@ -360,6 +362,7 @@ export function AdminOverview() {
           setExpenseThresholdInput(data.expenseAutoApproveThreshold?.toString() || "");
           setCompanyLogoUrl(data.logoUrl || null);
           setPhasesEnabled(data.phasesEnabled || false);
+          setRolesEnabled(data.rolesEnabled ?? true);
           setFlexStartDate(data.flexStartDate ? data.flexStartDate.split("T")[0] : "");
         }
       })
@@ -1234,10 +1237,41 @@ export function AdminOverview() {
         </CardContent>
       </Card>
 
-      {/* Employee Categories */}
+      {/* Employee Roles */}
       <Card>
         <CardContent className="p-6">
-          <AdminCategories />
+          <div className="flex items-center gap-3 mb-6">
+            <button
+              onClick={async () => {
+                const newVal = !rolesEnabled;
+                setRolesEnabled(newVal);
+                setRolesToggleSaving(true);
+                try {
+                  await fetch("/api/admin/economic", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ rolesEnabled: newVal }),
+                  });
+                } catch { /* ignore */ } finally {
+                  setRolesToggleSaving(false);
+                }
+              }}
+              disabled={rolesToggleSaving}
+              className={cn(
+                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                rolesEnabled ? "bg-primary" : "bg-muted-foreground/30"
+              )}
+            >
+              <span className={cn(
+                "inline-block h-4 w-4 rounded-full bg-white transition-transform",
+                rolesEnabled ? "translate-x-6" : "translate-x-1"
+              )} />
+            </button>
+            <Badge variant={rolesEnabled ? "default" : "secondary"}>
+              {rolesEnabled ? t("rolesEnabled") : t("rolesDisabled")}
+            </Badge>
+          </div>
+          <AdminCategories enabled={rolesEnabled} />
         </CardContent>
       </Card>
 

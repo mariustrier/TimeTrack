@@ -35,6 +35,9 @@ model Company {
   // Project phases
   phasesEnabled Boolean @default(false)
 
+  // Employee roles/categories
+  rolesEnabled Boolean @default(true)
+
   // Invoice settings
   invoicePrefix       String?     // e.g., "CT-" for invoice display (optional)
   nextInvoiceNumber   Int         @default(1)
@@ -48,6 +51,8 @@ model Company {
   // Accounting integration
   accountingSystem        String?     // "e-conomic" | "billy" | "dinero" | null
   accountingCredentials   String?     // Encrypted JSON with system-specific credentials
+  timeSyncEnabled         Boolean     @default(false)
+  expenseSyncEnabled      Boolean     @default(false)
 
   // Flex balance
   flexStartDate  DateTime?  // Flex balance calculated from this date (null = use user.createdAt)
@@ -73,6 +78,10 @@ model Company {
   economics           CompanyEconomics?
   importBatches       ImportBatch[]
   absences            Absence[]
+  projectMappings     ProjectMapping[]
+  employeeMappings    EmployeeMapping[]
+  expenseCategoryMappings ExpenseCategoryMapping[]
+  syncLogs            SyncLog[]
 }
 
 model User {
@@ -127,6 +136,7 @@ model User {
   absenceReasons      AbsenceReason[]      @relation("UserAbsenceReasons")
   projectActivities   ProjectActivity[]
   absences            Absence[]
+  employeeMappings    EmployeeMapping[]
 
   @@index([companyId])
   @@index([clerkId])
@@ -189,6 +199,7 @@ model Project {
   expenses            Expense[]
   invoices            Invoice[]
   activities          ProjectActivity[]
+  projectMappings     ProjectMapping[]
 
   @@index([companyId])
 }
@@ -241,6 +252,10 @@ model TimeEntry {
 
   // Import tracking
   importBatchId String?
+
+  // Accounting sync
+  accountingSyncedAt  DateTime?
+  accountingSyncId    String?
 
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -426,6 +441,10 @@ model Expense {
   // Invoice tracking
   invoiceId   String?
   invoicedAt  DateTime?
+
+  // Accounting sync
+  accountingSyncedAt  DateTime?
+  accountingSyncId    String?
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -848,4 +867,75 @@ model Absence {
 
   @@index([companyId])
   @@index([userId])
+}
+
+// ─── ACCOUNTING SYNC: PROJECT MAPPING ───
+// Maps Cloud Timer projects to external accounting system projects (e.g., e-conomic)
+model ProjectMapping {
+  id                  String   @id @default(cuid())
+  companyId           String
+  projectId           String
+  externalProjectId   String
+  externalProjectName String
+  createdAt           DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, projectId])
+  @@index([companyId])
+}
+
+// ─── ACCOUNTING SYNC: EMPLOYEE MAPPING ───
+// Maps Cloud Timer users to external accounting system employees
+model EmployeeMapping {
+  id                    String   @id @default(cuid())
+  companyId             String
+  userId                String
+  externalEmployeeId    String
+  externalEmployeeName  String
+  createdAt             DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, userId])
+  @@index([companyId])
+}
+
+// ─── ACCOUNTING SYNC: EXPENSE CATEGORY MAPPING ───
+// Maps Cloud Timer expense categories to external accounting system accounts
+model ExpenseCategoryMapping {
+  id                  String   @id @default(cuid())
+  companyId           String
+  category            String   // CT expense category name
+  externalAccountId   String
+  externalAccountName String
+  createdAt           DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, category])
+  @@index([companyId])
+}
+
+// ─── ACCOUNTING SYNC: SYNC LOG ───
+// Tracks sync operations for audit trail and status display
+model SyncLog {
+  id          String    @id @default(cuid())
+  companyId   String
+  syncType    String    // "time_entries" | "expenses"
+  direction   String    // "push" | "export"
+  system      String    // "e-conomic" | "dinero" | "billy"
+  status      String    // "success" | "partial" | "error"
+  itemCount   Int
+  errorCount  Int       @default(0)
+  errors      String?   // JSON array of error details
+  triggeredBy String    // user ID
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, startedAt])
 }

@@ -1,4 +1,15 @@
-import type { AccountingAdapter, AccountingCredentials, ExternalCustomer, InvoiceWithLines } from "./types";
+import type {
+  AccountingAdapter,
+  AccountingCredentials,
+  ExternalCustomer,
+  ExternalProject,
+  ExternalEmployee,
+  ExternalAccount,
+  InvoiceWithLines,
+  TimeEntryPushPayload,
+  ExpensePushPayload,
+  SyncResult,
+} from "./types";
 
 const BASE_URL = "https://restapi.e-conomic.com";
 
@@ -90,5 +101,48 @@ export class EconomicAdapter implements AccountingAdapter {
       externalId: String(data.draftInvoiceNumber),
       externalNumber: String(data.draftInvoiceNumber),
     };
+  }
+
+  // ─── SYNC CAPABILITIES ───
+
+  supportsTimeEntryPush(): boolean {
+    // Stubbed until e-conomic Projects API v2 endpoints are discovered
+    return false;
+  }
+
+  supportsExpensePush(): boolean {
+    return false;
+  }
+
+  async listProjects(): Promise<ExternalProject[]> {
+    // TODO: Implement once Projects API v2 endpoints are confirmed
+    // Try: GET https://apis.e-conomic.com/projectsapi/v2.0.0/projects
+    return [];
+  }
+
+  async listEmployees(): Promise<ExternalEmployee[]> {
+    const res = await fetch(`${BASE_URL}/employees?pagesize=1000`, {
+      headers: this.headers(),
+    });
+    if (!res.ok) throw new Error(`Failed to fetch employees: ${res.status}`);
+    const data = await res.json();
+    return (data.collection || []).map((e: Record<string, unknown>) => ({
+      id: String(e.employeeNumber),
+      name: String(e.name || ""),
+      number: String(e.employeeNumber),
+    }));
+  }
+
+  async listAccounts(): Promise<ExternalAccount[]> {
+    throw new Error("e-conomic: account listing not supported for expense sync");
+  }
+
+  async pushTimeEntry(_payload: TimeEntryPushPayload): Promise<SyncResult> {
+    // TODO: Implement once Projects API v2 time entry endpoint is confirmed
+    return { success: false, error: "e-conomic time entry push not yet implemented — waiting for Projects API v2 discovery" };
+  }
+
+  async pushExpense(_payload: ExpensePushPayload): Promise<SyncResult> {
+    return { success: false, error: "e-conomic does not support expense/voucher push" };
   }
 }

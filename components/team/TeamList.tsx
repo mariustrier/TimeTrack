@@ -85,6 +85,7 @@ export function TeamList() {
   const [vacationHoursPerYear, setVacationHoursPerYear] = useState("");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [rolesEnabled, setRolesEnabled] = useState(true);
 
   async function fetchTeam() {
     setLoading(true);
@@ -107,11 +108,17 @@ export function TeamList() {
           setMasterCurrency(data.currency || "USD");
           setDisplayCurrency(data.currency || "USD");
         }
+        const enabled = data?.rolesEnabled ?? true;
+        setRolesEnabled(enabled);
+        if (enabled) {
+          fetch("/api/roles")
+            .then((res) => res.ok ? res.json() : [])
+            .then((roles) => setCategories(roles.map((r: any) => ({ id: r.id, name: r.name }))))
+            .catch(() => {});
+        } else {
+          setCategories([]);
+        }
       })
-      .catch(() => {});
-    fetch("/api/roles")
-      .then((res) => res.ok ? res.json() : [])
-      .then((data) => setCategories(data.map((r: any) => ({ id: r.id, name: r.name }))))
       .catch(() => {});
   }, []);
 
