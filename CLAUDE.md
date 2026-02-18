@@ -39,9 +39,9 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 10. `app/(dashboard)/settings/` - Tour replay, data export, account deletion
 11. `app/(dashboard)/super-admin/` - Platform-level admin with support access requests *(superAdmin only)*
 
-### API Routes (108 route files across 29 domains)
+### API Routes (122 route files across 29 domains)
 - `app/api/` - All scoped by companyId (via `getAuthUser()` which auto-overrides for support mode)
-- Key domains: `time-entries`, `projects`, `projects/[id]/activities` (CRUD + reorder), `team`, `admin`, `expenses`, `vacations`, `contracts`, `resource-allocations`, `analytics`, `ai`, `insights`, `mileage`, `auth`, `cron`, `super-admin`, `super-admin/access`, `admin/support-access`, `user`, `upload`, `absence-reasons`, `admin/phases`, `phases`, `admin/expense-categories`, `invoices`, `billing`, `roles` (CRUD + reorder), `accounting/test`, `accounting/customers`, `accounting/mappings`, `accounting/economic` (authorize + callback), `accounting/dinero` (authorize + callback)
+- Key domains: `time-entries`, `projects`, `projects/[id]/activities` (CRUD + reorder), `team`, `admin`, `expenses`, `vacations`, `contracts`, `resource-allocations`, `analytics`, `ai`, `insights`, `mileage`, `auth`, `cron`, `super-admin`, `super-admin/access`, `admin/support-access`, `user`, `upload`, `absence-reasons`, `admin/phases`, `phases`, `admin/expense-categories`, `invoices`, `billing`, `roles` (CRUD + reorder), `accounting/test`, `accounting/customers`, `accounting/mappings`, `accounting/mappings/projects` (CRUD), `accounting/mappings/employees` (CRUD), `accounting/mappings/expense-categories` (CRUD), `accounting/projects`, `accounting/employees`, `accounting/accounts`, `accounting/sync/time-entries`, `accounting/sync/expenses`, `accounting/sync/status`, `accounting/export/time-entries`, `accounting/export/expenses`, `accounting/economic` (authorize + callback), `accounting/dinero` (authorize + callback)
 
 ### Components
 - `components/admin/` - AdminOverview, AdminApprovals, AdminVacations, AdminBackups, AdminAuditLog, AdminCategories, TeamUtilizationBars, PhaseMigrationDialog
@@ -73,7 +73,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `lib/demo-date.ts` - `getToday()` returns pinned demo date from committed `lib/demo-date-generated.json` (or real `new Date()` if `{"date":null}`). Also exports custom `isToday()` that checks against `getToday()` — **must be used instead of `date-fns isToday`** which always uses the real system date. Used by 12+ components.
 - `lib/demo-date-generated.json` - Committed JSON file with `{"date":"2026-02-12"}` (or `{"date":null}` for production). Imported by `demo-date.ts`. Using a committed file avoids webpack `DefinePlugin` issues with `NEXT_PUBLIC_*` env vars on Vercel.
 - `lib/demo-seed.ts` - Deterministic demo data seeder (seed 42 LCG PRNG). Pinned to Feb 12, 2026. Generates 27 weeks of time entries for 12 employees at 93%+ billable utilization across 8 projects. Per-employee `flexBias` controls flex balance (-20 to +25h range). Absence entries created for vacation/sick days (under Absence project) to keep flex neutral on off-days. Christmas period 15% skip rate. Skips entries for days after the pinned date. Includes sick days, vacations, invoices, resource allocations, and project allocations with tightly budgeted remaining hours (~30-40h above actual usage).
-- `lib/seed-roles.ts` - Seeds 4 default roles (Senior, Medarbejder, Junior, Studerende) for new companies
+- `lib/seed-roles.ts` - Seeds 4 default roles (Partner, Senior, Medarbejder, Junior) for new companies
 - `lib/seed-holidays.ts` - ensureHolidayAbsenceReason helper
 - `lib/email.ts` - Resend email client (lazy-init), sendInvitationEmail
 - `lib/expense-utils.ts` - Expense formatting helpers
@@ -86,12 +86,14 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `lib/accounting/` - Accounting system adapter pattern + AES-256-GCM credential encryption:
   - `lib/accounting/types.ts` - `AccountingCredentials` type (system, accessToken, refreshToken, tokenExpiresAt, etc.)
   - `lib/accounting/encryption.ts` - `encrypt()`/`decrypt()` using `ACCOUNTING_ENCRYPTION_KEY`
-  - `lib/accounting/economic.ts` - e-conomic REST API adapter (token auth, never expires)
-  - `lib/accounting/billy.ts` - Billy API adapter (X-Access-Token header)
-  - `lib/accounting/dinero.ts` - Dinero API adapter via Visma Connect (OAuth2 + auto-refresh, also supports legacy client_credentials)
+  - `lib/accounting/adapter.ts` - `getAccountingAdapter()` factory function
+  - `lib/accounting/economic.ts` - e-conomic REST API adapter (token auth, never expires). Supports: listEmployees, listCustomers, createInvoiceDraft. Time entry push stubbed (awaiting Projects API v2 discovery).
+  - `lib/accounting/billy.ts` - Billy API adapter (X-Access-Token header). Supports: listCustomers, listAccounts, createInvoiceDraft, pushExpense (bills with receipt attachments).
+  - `lib/accounting/dinero.ts` - Dinero API adapter via Visma Connect (OAuth2 + auto-refresh, also supports legacy client_credentials). Supports: listCustomers, listAccounts, createInvoiceDraft, pushExpense (manual vouchers with receipt attachments).
+  - `lib/accounting/sync.ts` - Shared sync logic: `pushApprovedTimeEntries()`, `pushApprovedExpenses()`. Loads mappings, queries unsynced approved entries, pushes via adapter, updates sync timestamps, creates SyncLog audit trail.
 
-### Database (28 models)
-Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPaymentDays`, `companyAddress`, `companyCvr`, `companyBankAccount`, `companyBankReg`, `invoiceFooterNote`, `accountingSystem`, `accountingCredentials`, `flexStartDate`), User (`isHourly`, `weeklyTarget`, `vacationDays`, `vacationTrackingUnit`, `vacationHoursPerYear`, `deletedAt`, `roleId`, `status`, `invitedAt`, `acceptedAt`, etc.), Project (`estimatedNonBillablePercent`), TimeEntry (`invoiceId`, `invoicedAt`, `externallyInvoiced`), VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense (`invoiceId`, `invoicedAt`), CompanyExpense, ExpenseCategory, AbsenceReason, ResourceAllocation, ProjectMilestone (`type`, `phaseId`, `description`, `icon`, `color` — deadline fields + Phase relation), ProjectActivity, Phase, SupportAccess, CompanyHoliday, Invoice, InvoiceLine, CustomerMapping, OAuthState, Role (`name`, `sortOrder`, `defaultRate`, `color`, `isDefault` — company-scoped employee categories), CompanyEconomics (`avgHourlyRate`, `targetUtilization`, `monthlyFixedCosts`, `avgMonthlySalary`), ImportBatch, Absence
+### Database (32 models)
+Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPaymentDays`, `companyAddress`, `companyCvr`, `companyBankAccount`, `companyBankReg`, `invoiceFooterNote`, `accountingSystem`, `accountingCredentials`, `timeSyncEnabled`, `expenseSyncEnabled`, `flexStartDate`), User (`isHourly`, `weeklyTarget`, `vacationDays`, `vacationTrackingUnit`, `vacationHoursPerYear`, `deletedAt`, `roleId`, `status`, `invitedAt`, `acceptedAt`, etc.), Project (`estimatedNonBillablePercent`), TimeEntry (`invoiceId`, `invoicedAt`, `externallyInvoiced`, `accountingSyncedAt`, `accountingSyncId`), VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense (`invoiceId`, `invoicedAt`, `accountingSyncedAt`, `accountingSyncId`), CompanyExpense, ExpenseCategory, AbsenceReason, ResourceAllocation, ProjectMilestone (`type`, `phaseId`, `description`, `icon`, `color` — deadline fields + Phase relation), ProjectActivity, Phase, SupportAccess, CompanyHoliday, Invoice, InvoiceLine, CustomerMapping, OAuthState, Role (`name`, `sortOrder`, `defaultRate`, `color`, `isDefault` — company-scoped employee categories), CompanyEconomics (`avgHourlyRate`, `targetUtilization`, `monthlyFixedCosts`, `avgMonthlySalary`), ImportBatch, Absence, ProjectMapping (CT project → external accounting project), EmployeeMapping (CT user → external accounting employee), ExpenseCategoryMapping (CT expense category → external account), SyncLog (audit trail for sync/export operations)
 
 ### Tests
 - `__tests__/lib/` - 200 unit tests across 11 suites (Vitest)
@@ -143,10 +145,25 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
   - **OAuthState model**: CSRF protection during OAuth flows — random state token stored in DB with companyId, provider, and 10-minute expiry. Validated on callback.
   - **Test connection**: Works with both manual credentials (Billy) and saved/encrypted credentials (e-conomic, Dinero) via `/api/accounting/test`.
 - **Customer mapping**: Maps Cloud Timer client names to external accounting system customer IDs. Used during invoice sync to push drafts. CRUD via `/api/accounting/mappings`.
+- **Accounting sync (time entries + expenses)**:
+  - **Project mapping**: Maps CT projects → external accounting projects (e-conomic only). CRUD via `/api/accounting/mappings/projects`.
+  - **Employee mapping**: Maps CT users → external accounting employees (e-conomic only). CRUD via `/api/accounting/mappings/employees`.
+  - **Expense category mapping**: Maps CT expense categories → external accounting accounts (Dinero/Billy). CRUD via `/api/accounting/mappings/expense-categories`.
+  - **Time entry sync**: Push approved time entries to accounting system. e-conomic time push stubbed (awaiting Projects API v2 discovery). CSV export fallback for Dinero/Billy (no time entry API). API: `POST /api/accounting/sync/time-entries`, `GET /api/accounting/export/time-entries`.
+  - **Expense sync**: Push approved expenses as vouchers/bills. Dinero: manual vouchers with receipt attachment. Billy: bills with receipt attachment. CSV export fallback for e-conomic. API: `POST /api/accounting/sync/expenses`, `GET /api/accounting/export/expenses`.
+  - **Sync status**: Pending/synced counts + recent SyncLog entries. API: `GET /api/accounting/sync/status`.
+  - **External data**: Load projects/employees/accounts from connected system for mapping dropdowns. API: `GET /api/accounting/projects`, `/employees`, `/accounts`.
+  - **Auto-sync toggles**: `Company.timeSyncEnabled`, `Company.expenseSyncEnabled` (not yet wired to auto-trigger on approval).
 - **Billing settings (BillingSettings component)**:
   - **Company details card**: Labeled "Your Company (Invoice Sender)" / "Dit firma (afsender på faktura)" — address, CVR, bank account/reg, payment terms, invoice prefix, footer note.
   - **Accounting system card**: Shows green "Connected" badge with dark mode support when connected. "Test Connection" and "Disconnect" buttons for connected state. Three provider options (e-conomic, Dinero with OAuth; Billy with manual entry) for unconnected state.
   - **Customer mapping card**: Appears when connected. Table of existing mappings with delete, add new mapping via client name + external customer dropdown.
+  - **Project mapping card** (e-conomic only): CT project → external project dropdown with "Load Projects" button.
+  - **Employee mapping card** (e-conomic only): CT employee → external employee dropdown with "Load Employees" button.
+  - **Expense category mapping card** (Dinero/Billy only): Category → external account dropdown with "Load Accounts" button.
+  - **Time entry sync card**: Pending/synced counts, "Sync Now" button (when system supports push) or CSV export fallback.
+  - **Expense sync card**: Same pattern — push or CSV export based on system capabilities.
+  - **Sync history card** (collapsible): Recent SyncLog entries with status badges, item counts, error counts.
   - **OAuth callback handling**: Reads `?connected=` and `?error=` query params from URL on mount → shows success/error toast, cleans URL.
 - **Sidebar badge**: Shows count of projects with uninvoiced approved billable entries. Badge dismissed after visiting the billing tab; reappears only when new uninvoiced entries are added (localStorage-based seen count).
 - **Externally invoiced section**: Imported entries (from e-conomic import) are marked `externallyInvoiced: true` in TimeEntry. They keep `billingStatus: "billable"` for analytics but are excluded from uninvoiced/invoice creation queries. A green-tinted section on the Uninvoiced tab shows "Already invoiced in [e-conomic/Billy/Dinero]" with per-project hours, amounts, and entry counts. API: `GET /api/invoices/externally-invoiced`.
@@ -249,7 +266,7 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
 
 ### Admin
 - **Overview tab**: Financial stats (revenue, costs, margins), team utilization (1 decimal place), project budgets with allocations, absence reason management, e-conomic CSV export, company settings (currency, universal bill rate, employee roles, expense threshold, AI anonymization, logo, flex start date)
-- **Roller (Employee Roles)**: Inline in Overview tab below universal bill rate. Drag-to-reorder list (@dnd-kit/core + sortable) with inline editing (name + default rate). 4 defaults seeded on company creation (Senior, Medarbejder, Junior, Studerende) via `lib/seed-roles.ts`. API: `GET/POST /api/roles`, `PUT/DELETE /api/roles/[id]`, `PUT /api/roles/reorder`. AdminCategories component.
+- **Roller (Employee Roles)**: Inline in Overview tab below universal bill rate. Toggle switch to enable/disable (greyed out when disabled, hidden from Team tab). Drag-to-reorder list (@dnd-kit/core + sortable) with inline editing (name + default rate). 4 defaults seeded on company creation (Partner, Senior, Medarbejder, Junior) via `lib/seed-roles.ts`. Fully i18n'd via `useTranslations("admin")`. API: `GET/POST /api/roles`, `PUT/DELETE /api/roles/[id]`, `PUT /api/roles/reorder`. AdminCategories component accepts `enabled` prop.
 - **Flex balance start date** (`Company.flexStartDate`): Admin sets a company-wide go-live date. Flex calculations use `max(user.createdAt, flexStartDate)` as the anchor, avoiding massive negative flex balances when starting to use Cloud Timer. Configurable via settings card in Admin Overview with save/clear buttons.
 - **Approvals tab**: Nested Time Entry + Expense sub-tabs with per-day approve/reject, bulk actions
 - **Vacations tab**: Approve/reject vacation requests with status filtering (pending/approved/rejected/cancelled)
