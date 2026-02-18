@@ -30,12 +30,23 @@ export async function GET() {
       where: { expiresAt: { lt: new Date() } },
     });
 
+    // Use the exact registered redirect URL (no query params) —
+    // e-conomic validates redirectUrl against the registered RedirectURL.
+    // Pass state via a secure cookie instead.
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://cloudtimer.dk";
-    const callbackUrl = `${baseUrl}/api/accounting/economic/callback?state=${state}`;
+    const callbackUrl = `${baseUrl}/api/accounting/economic/callback`;
 
     const url = `https://secure.e-conomic.com/secure/api1/requestaccess.aspx?appPublicToken=${encodeURIComponent(appPublicToken)}&redirectUrl=${encodeURIComponent(callbackUrl)}&locale=da-DK`;
 
-    return NextResponse.json({ url });
+    const res = NextResponse.json({ url });
+    res.cookies.set("economic_oauth_state", state, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 600, // 10 minutes
+    });
+    return res;
   } catch (error) {
     console.error("[ECONOMIC_AUTHORIZE]", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
