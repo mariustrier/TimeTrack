@@ -43,6 +43,10 @@ export async function PUT(
       comment,
       billingStatus,
       nonBillableReason,
+      billingType,
+      invoiceLabel,
+      nonBillableCategory,
+      importSource,
       mileageKm,
       mileageStartAddress,
       mileageEndAddress,
@@ -105,6 +109,18 @@ export async function PUT(
     }
     if (nonBillableReason !== undefined) {
       data.nonBillableReason = nonBillableReason || null;
+    }
+    if (billingType !== undefined) {
+      data.billingType = billingType;
+    }
+    if (invoiceLabel !== undefined) {
+      data.invoiceLabel = invoiceLabel || null;
+    }
+    if (nonBillableCategory !== undefined) {
+      data.nonBillableReason = nonBillableCategory || null;
+    }
+    if (importSource !== undefined) {
+      data.importSource = importSource || null;
     }
     // Mileage fields (only editable when draft, like hours/comment)
     if (mileageKm !== undefined && entry.approvalStatus === "draft") {

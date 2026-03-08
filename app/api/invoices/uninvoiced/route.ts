@@ -115,7 +115,77 @@ export async function GET() {
       return new Date(a.oldestEntry).getTime() - new Date(b.oldestEntry).getTime();
     });
 
-    return NextResponse.json({ projects: results });
+    // Fetch OUTSIDE_CONTRACT entries (tillægsydelser) grouped by project
+    const outsideContractResults = [];
+    const allProjects = await db.project.findMany({
+      where: {
+        companyId: user.companyId,
+        systemManaged: false,
+      },
+      select: {
+        id: true,
+        name: true,
+        client: true,
+        color: true,
+        rateMode: true,
+        projectRate: true,
+      },
+    });
+
+    for (const project of allProjects) {
+      const ocEntries = await db.timeEntry.findMany({
+        where: {
+          projectId: project.id,
+          companyId: user.companyId,
+          approvalStatus: "approved",
+          billingType: "OUTSIDE_CONTRACT" as string,
+          invoiceId: null,
+          externallyInvoiced: { not: true },
+        } as Record<string, unknown>,
+        select: {
+          id: true,
+          hours: true,
+          date: true,
+          userId: true,
+          user: { select: { hourlyRate: true } },
+        },
+      });
+
+      if (ocEntries.length === 0) continue;
+
+      const ocHours = ocEntries.reduce((s, e) => s + e.hours, 0);
+      let ocAmount = 0;
+      if (project.rateMode === "EMPLOYEE_RATES") {
+        ocAmount = ocEntries.reduce((s, e) => s + e.hours * (e.user.hourlyRate || 0), 0);
+      } else if (project.rateMode === "PROJECT_RATE" && project.projectRate) {
+        ocAmount = ocHours * project.projectRate;
+      } else {
+        ocAmount = ocHours * (company?.defaultHourlyRate || 0);
+      }
+
+      const uniqueEmployees = new Set(ocEntries.map((e) => e.userId));
+      const dates = ocEntries.map((e) => new Date(e.date).getTime());
+
+      outsideContractResults.push({
+        projectId: project.id,
+        projectName: project.name,
+        client: project.client || "",
+        color: project.color,
+        hours: Math.round(ocHours * 100) / 100,
+        amount: Math.round(ocAmount * 100) / 100,
+        oldestEntry: dates.length > 0 ? new Date(Math.min(...dates)).toISOString() : null,
+        employeeCount: uniqueEmployees.size,
+        entryCount: ocEntries.length,
+      });
+    }
+
+    outsideContractResults.sort((a, b) => {
+      if (!a.oldestEntry) return 1;
+      if (!b.oldestEntry) return -1;
+      return new Date(a.oldestEntry).getTime() - new Date(b.oldestEntry).getTime();
+    });
+
+    return NextResponse.json({ projects: results, outsideContractProjects: outsideContractResults });
   } catch (error) {
     console.error("[UNINVOICED_GET]", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

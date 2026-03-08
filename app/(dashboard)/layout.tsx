@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { MobileNav } from "@/components/layout/MobileNav";
 import { isSuperAdmin } from "@/lib/auth";
 import { Toaster } from "sonner";
 import { LocaleProvider } from "@/lib/i18n";
@@ -63,15 +64,18 @@ export default async function DashboardLayout({
       <GuideProvider dismissedGuides={user.dismissedGuides}>
         {isDemo && <DemoBanner />}
         <div className={`flex overflow-hidden bg-background ${isDemo ? "mt-[40px] h-[calc(100vh-40px)]" : "h-screen"}`}>
-          <Sidebar
-            userRole={user.role}
-            isSuperAdmin={isSuperAdmin(user.email)}
-            supportMode={supportMode}
-            supportCompanyName={supportCompanyName}
-          />
-          <main className="flex-1 overflow-y-auto">
-            <div className="p-6 lg:p-8">{children}</div>
+          <div className="hidden md:flex">
+            <Sidebar
+              userRole={user.role}
+              isSuperAdmin={isSuperAdmin(user.email)}
+              supportMode={supportMode}
+              supportCompanyName={supportCompanyName}
+            />
+          </div>
+          <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
+            <div className="p-4 md:p-6 lg:p-8">{children}</div>
           </main>
+          <MobileNav userRole={user.role} />
           <Toaster richColors />
           <CookieConsent />
           <GuidedTour showTour={!user.tourCompletedAt} userRole={user.role} />

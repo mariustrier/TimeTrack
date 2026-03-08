@@ -13,21 +13,21 @@ model Company {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  currency               String  @default("USD")
-  economicRevenueAccount String?
-  economicCounterAccount String?
-  economicVatCode        String?
-  economicCurrency       String  @default("DKK")
-  defaultHourlyRate      Float?
-  useUniversalRate       Boolean @default(false)
-  aiAnonymization        Boolean @default(true)
+  currency                    String    @default("USD")
+  economicRevenueAccount      String?
+  economicCounterAccount      String?
+  economicVatCode             String?
+  economicCurrency            String    @default("DKK")
+  defaultHourlyRate           Float?
+  useUniversalRate            Boolean   @default(false)
+  aiAnonymization             Boolean   @default(true)
   expenseAutoApproveThreshold Float?
   logoUrl                     String?
-  lastActivityAt              DateTime?  // Track when any user from this company was last active
+  lastActivityAt              DateTime? // Track when any user from this company was last active
 
   // Demo
-  isDemo          Boolean   @default(false)
-  demoExpiresAt   DateTime?
+  isDemo        Boolean   @default(false)
+  demoExpiresAt DateTime?
 
   // Holiday configuration
   disabledHolidays String[] @default([]) // Danish holiday codes that are disabled for this company
@@ -39,76 +39,77 @@ model Company {
   rolesEnabled Boolean @default(true)
 
   // Invoice settings
-  invoicePrefix       String?     // e.g., "CT-" for invoice display (optional)
-  nextInvoiceNumber   Int         @default(1)
-  defaultPaymentDays  Int         @default(8)
-  companyAddress      String?     // Seller address for invoices
-  companyCvr          String?     // Company's own CVR number
-  companyBankAccount  String?     // Bank details for payment
-  companyBankReg      String?     // Registration number
-  invoiceFooterNote   String?     // Default footer text
+  invoicePrefix      String? // e.g., "CT-" for invoice display (optional)
+  nextInvoiceNumber  Int     @default(1)
+  defaultPaymentDays Int     @default(8)
+  companyAddress     String? // Seller address for invoices
+  companyCvr         String? // Company's own CVR number
+  companyBankAccount String? // Bank details for payment
+  companyBankReg     String? // Registration number
+  invoiceFooterNote  String? // Default footer text
 
   // Accounting integration
-  accountingSystem        String?     // "e-conomic" | "billy" | "dinero" | null
-  accountingCredentials   String?     // Encrypted JSON with system-specific credentials
-  timeSyncEnabled         Boolean     @default(false)
-  expenseSyncEnabled      Boolean     @default(false)
+  accountingSystem      String? // "e-conomic" | "billy" | "dinero" | null
+  accountingCredentials String? // Encrypted JSON with system-specific credentials
+  timeSyncEnabled       Boolean @default(false)
+  expenseSyncEnabled    Boolean @default(false)
 
   // Flex balance
-  flexStartDate  DateTime?  // Flex balance calculated from this date (null = use user.createdAt)
+  flexStartDate DateTime? // Flex balance calculated from this date (null = use user.createdAt)
 
-  users               User[]
-  projects            Project[]
-  timeEntries         TimeEntry[]
-  vacationRequests    VacationRequest[]
-  projectAllocations  ProjectAllocation[]
-  resourceAllocations ResourceAllocation[]
-  insights            ContractInsight[]
-  expenses            Expense[]
-  companyExpenses     CompanyExpense[]
-  expenseCategories   ExpenseCategory[]
-  absenceReasons      AbsenceReason[]
-  companyHolidays     CompanyHoliday[]
-  phases              Phase[]
-  supportAccesses     SupportAccess[]
-  invoices            Invoice[]
-  customerMappings    CustomerMapping[]
-  projectActivities   ProjectActivity[]
-  roles               Role[]
-  economics           CompanyEconomics?
-  importBatches       ImportBatch[]
-  absences            Absence[]
-  projectMappings     ProjectMapping[]
-  employeeMappings    EmployeeMapping[]
+  users                   User[]
+  projects                Project[]
+  timeEntries             TimeEntry[]
+  vacationRequests        VacationRequest[]
+  projectAllocations      ProjectAllocation[]
+  resourceAllocations     ResourceAllocation[]
+  insights                ContractInsight[]
+  expenses                Expense[]
+  companyExpenses         CompanyExpense[]
+  expenseCategories       ExpenseCategory[]
+  absenceReasons          AbsenceReason[]
+  nonBillableCategories   NonBillableCategory[]
+  companyHolidays         CompanyHoliday[]
+  phases                  Phase[]
+  supportAccesses         SupportAccess[]
+  invoices                Invoice[]
+  customerMappings        CustomerMapping[]
+  projectActivities       ProjectActivity[]
+  roles                   Role[]
+  economics               CompanyEconomics?
+  importBatches           ImportBatch[]
+  absences                Absence[]
+  projectMappings         ProjectMapping[]
+  employeeMappings        EmployeeMapping[]
   expenseCategoryMappings ExpenseCategoryMapping[]
-  syncLogs            SyncLog[]
+  syncLogs                SyncLog[]
 }
 
 model User {
-  id            String   @id @default(cuid())
-  clerkId       String   @unique
-  email         String
-  firstName     String?
-  lastName      String?
-  imageUrl      String?
-  role           String   @default("employee") // "admin" | "manager" | "employee"
-  employmentType String   @default("employee") // "employee" | "freelancer"
-  hourlyRate     Float    @default(0)
-  costRate      Float    @default(0)
-  weeklyTarget  Float    @default(37)
-  isHourly      Boolean  @default(false)
-  vacationDays  Int      @default(0)
-  vacationTrackingUnit  String   @default("days")  // "days" | "hours"
-  vacationHoursPerYear  Float?                     // annual vacation hour entitlement (e.g., 150 for 30h/week)
-  companyId     String
-  roleId        String?
-  status        String   @default("active") // "placeholder" | "pending" | "invited" | "active"
-  invitedAt     DateTime?
-  acceptedAt    DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                   String    @id @default(cuid())
+  clerkId              String    @unique
+  email                String
+  firstName            String?
+  lastName             String?
+  imageUrl             String?
+  role                 String    @default("employee") // "admin" | "manager" | "employee"
+  employmentType       String    @default("employee") // "employee" | "freelancer"
+  hourlyRate           Float     @default(0)
+  costRate             Float     @default(0)
+  weeklyTarget         Float     @default(37)
+  isHourly             Boolean   @default(false)
+  vacationDays         Int       @default(0)
+  vacationTrackingUnit String    @default("days") // "days" | "hours"
+  vacationHoursPerYear Float? // annual vacation hour entitlement (e.g., 150 for 30h/week)
+  companyId            String
+  roleId               String?
+  status               String    @default("active") // "placeholder" | "pending" | "invited" | "active"
+  invitedAt            DateTime?
+  acceptedAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
-  isDemo               Boolean   @default(false)
+  isDemo Boolean @default(false)
 
   acceptedTermsAt      DateTime?
   tourCompletedAt      DateTime?
@@ -119,10 +120,10 @@ model User {
   deletedAt            DateTime?
 
   // User preferences
-  locale              String   @default("en")    // "en" | "da"
-  notifyApprovals     Boolean  @default(true)
-  notifyVacations     Boolean  @default(true)
-  notifyWeeklyDigest  Boolean  @default(true)
+  locale             String  @default("en") // "en" | "da"
+  notifyApprovals    Boolean @default(true)
+  notifyVacations    Boolean @default(true)
+  notifyWeeklyDigest Boolean @default(true)
 
   company             Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
   companyRole         Role?                @relation(fields: [roleId], references: [id], onDelete: SetNull)
@@ -161,35 +162,35 @@ model Project {
   updatedAt   DateTime @updatedAt
 
   // System-managed projects (e.g., Absence)
-  systemType    String?  // "absence" | null for regular projects
-  systemManaged Boolean  @default(false) // Cannot be deleted/archived if true
+  systemType    String? // "absence" | null for regular projects
+  systemManaged Boolean @default(false) // Cannot be deleted/archived if true
 
   // Lock and archive states
-  locked      Boolean   @default(false)  // Employees can't add entries, admins can still approve
-  lockedAt    DateTime?
-  lockedBy    String?
-  archived    Boolean   @default(false)  // Completely hidden from employees
-  archivedAt  DateTime?
-  archivedBy  String?
+  locked     Boolean   @default(false) // Employees can't add entries, admins can still approve
+  lockedAt   DateTime?
+  lockedBy   String?
+  archived   Boolean   @default(false) // Completely hidden from employees
+  archivedAt DateTime?
+  archivedBy String?
 
   // Project timeline dates
-  startDate   DateTime?
-  endDate     DateTime?
+  startDate DateTime?
+  endDate   DateTime?
 
   // Import tracking
   importBatchId String?
 
   // Analytics estimates
-  estimatedNonBillablePercent  Float?  // 0-100, estimated non-billable overhead percentage
+  estimatedNonBillablePercent Float? // 0-100, estimated non-billable overhead percentage
 
   // Phase tracking
-  phasesEnabled    Boolean   @default(true)   // per-project opt-out when company phases enabled
+  phasesEnabled    Boolean   @default(true) // per-project opt-out when company phases enabled
   currentPhaseId   String?
-  phaseCompleted   Boolean   @default(false)  // all phases done
+  phaseCompleted   Boolean   @default(false) // all phases done
   phaseCompletedAt DateTime?
 
   company             Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  currentPhase         Phase?               @relation("CurrentPhase", fields: [currentPhaseId], references: [id], onDelete: SetNull)
+  currentPhase        Phase?               @relation("CurrentPhase", fields: [currentPhaseId], references: [id], onDelete: SetNull)
   timeEntries         TimeEntry[]
   allocations         ProjectAllocation[]
   resourceAllocations ResourceAllocation[]
@@ -205,57 +206,61 @@ model Project {
 }
 
 model TimeEntry {
-  id        String   @id @default(cuid())
-  hours     Float
-  date      DateTime
-  comment   String?
-  userId    String
-  projectId String
-  companyId String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  hours        Float
+  date         DateTime
+  comment      String?
+  invoiceLabel String? // Short label for invoices when comment is long
+  userId       String
+  projectId    String
+  companyId    String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // Approval workflow
-  approvalStatus    String    @default("draft")     // "draft" | "submitted" | "approved" | "locked"
-  submittedAt       DateTime?
-  submittedBy       String?
-  approvedAt        DateTime?
-  approvedBy        String?
-  rejectedAt        DateTime?
-  rejectedBy        String?
-  lockedAt          DateTime?
-  lockedBy          String?
+  approvalStatus String    @default("draft") // "draft" | "submitted" | "approved" | "locked"
+  submittedAt    DateTime?
+  submittedBy    String?
+  approvedAt     DateTime?
+  approvedBy     String?
+  rejectedAt     DateTime?
+  rejectedBy     String?
+  lockedAt       DateTime?
+  lockedBy       String?
 
   // Billing category
-  billingStatus     String    @default("billable")  // "billable" | "included" | "non_billable" | "internal" | "presales"
+  billingStatus     String  @default("billable") // "billable" | "included" | "non_billable" | "internal" | "presales"
+  // Three-tier billability
+  billingType       String  @default("BILLABLE") // "BILLABLE" | "OUTSIDE_CONTRACT" | "NON_BILLABLE"
   nonBillableReason String?
 
   // Mileage tracking
   mileageKm           Float?
   mileageStartAddress String?
   mileageEndAddress   String?
-  mileageStops        String[]  @default([])  // Intermediate stops
-  mileageRoundTrip    Boolean   @default(false)
-  mileageSource       String?   // "manual" | "calculated"
+  mileageStops        String[] @default([]) // Intermediate stops
+  mileageRoundTrip    Boolean  @default(false)
+  mileageSource       String? // "manual" | "calculated"
 
   // Absence tracking
   absenceReasonId String?
 
   // Phase attribution
   phaseId   String?
-  phaseName String?  // Denormalized snapshot of phase name at time of entry
+  phaseName String? // Denormalized snapshot of phase name at time of entry
 
   // Invoice tracking
-  invoiceId           String?
-  invoicedAt          DateTime?
-  externallyInvoiced  Boolean   @default(false) // True for imported entries already invoiced in external system
+  invoiceId          String?
+  invoicedAt         DateTime?
+  externallyInvoiced Boolean   @default(false) // True for imported entries already invoiced in external system
 
   // Import tracking
   importBatchId String?
+  importSource  String? // "economic" | null - tracks origin for safe upserts
 
   // Accounting sync
-  accountingSyncedAt  DateTime?
-  accountingSyncId    String?
+  accountingSyncedAt DateTime?
+  accountingSyncId   String?
 
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -282,7 +287,7 @@ model VacationRequest {
   startDate  DateTime
   endDate    DateTime
   type       String    @default("vacation") // "vacation" | "sick" | "personal"
-  status     String    @default("pending")  // "pending" | "approved" | "rejected"
+  status     String    @default("pending") // "pending" | "approved" | "rejected"
   note       String?
   reviewedBy String?
   reviewedAt DateTime?
@@ -300,13 +305,13 @@ model VacationRequest {
 model AuditLog {
   id         String   @id @default(cuid())
   companyId  String
-  entityType String   // "TimeEntry"
-  entityId   String   // entry ID or batch identifier
-  action     String   // "SUBMIT" | "APPROVE" | "REJECT" | "LOCK" | "REOPEN" | "EDIT_BILLING"
+  entityType String // "TimeEntry"
+  entityId   String // entry ID or batch identifier
+  action     String // "SUBMIT" | "APPROVE" | "REJECT" | "LOCK" | "REOPEN" | "EDIT_BILLING"
   fromStatus String?
   toStatus   String?
   actorId    String
-  metadata   String?  // JSON string for extra context
+  metadata   String? // JSON string for extra context
   createdAt  DateTime @default(now())
 
   @@index([companyId])
@@ -387,6 +392,8 @@ model ContractInsight {
   seenAt          DateTime?
   createdAt       DateTime        @default(now())
   expiresAt       DateTime?
+  payloadHash     String? // Hash of input data for cache deduplication
+  generatedAt     DateTime? // When this insight batch was generated
 
   contract    Contract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
   company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -432,23 +439,23 @@ model Expense {
   receiptFileName String?
   receiptFileSize Int?
 
-  isFinalized     Boolean   @default(false)
-  finalizedAt     DateTime?
-  isDeleted       Boolean   @default(false)
-  deletedAt       DateTime?
-  deletedBy       String?
+  isFinalized Boolean   @default(false)
+  finalizedAt DateTime?
+  isDeleted   Boolean   @default(false)
+  deletedAt   DateTime?
+  deletedBy   String?
 
   // Invoice tracking
-  invoiceId   String?
-  invoicedAt  DateTime?
+  invoiceId  String?
+  invoicedAt DateTime?
 
   // Accounting sync
-  accountingSyncedAt  DateTime?
-  accountingSyncId    String?
+  accountingSyncedAt DateTime?
+  accountingSyncId   String?
 
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   invoice Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
 
   @@index([companyId, approvalStatus, date])
@@ -473,11 +480,11 @@ model CompanyExpense {
   receiptFileName String?
   receiptFileSize Int?
 
-  isFinalized     Boolean   @default(false)
-  finalizedAt     DateTime?
-  isDeleted       Boolean   @default(false)
-  deletedAt       DateTime?
-  deletedBy       String?
+  isFinalized Boolean   @default(false)
+  finalizedAt DateTime?
+  isDeleted   Boolean   @default(false)
+  deletedAt   DateTime?
+  deletedBy   String?
 
   expenseCategoryId String?
   company           Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -509,8 +516,8 @@ model ExpenseCategory {
 
 model AbsenceReason {
   id        String   @id @default(cuid())
-  name      String   // e.g., "Sygdom", "Ferie"
-  code      String?  // Optional short code
+  name      String // e.g., "Sygdom", "Ferie"
+  code      String? // Optional short code
   isDefault Boolean  @default(false) // System default, cannot be deleted
   sortOrder Int      @default(0)
   active    Boolean  @default(true)
@@ -521,6 +528,21 @@ model AbsenceReason {
   company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
   timeEntries TimeEntry[]
   users       User[]      @relation("UserAbsenceReasons")
+
+  @@unique([companyId, name])
+  @@index([companyId])
+}
+
+model NonBillableCategory {
+  id        String   @id @default(cuid())
+  companyId String
+  name      String
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@unique([companyId, name])
   @@index([companyId])
@@ -564,8 +586,8 @@ model ProjectPhase {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   phase   Phase   @relation(fields: [phaseId], references: [id], onDelete: Cascade)
 
-  @@index([projectId])
   @@unique([projectId, phaseId])
+  @@index([projectId])
 }
 
 // ─── SUPPORT ACCESS ───
@@ -573,13 +595,13 @@ model ProjectPhase {
 model SupportAccess {
   id           String    @id @default(cuid())
   companyId    String
-  requestedBy  String    // User ID of super admin
+  requestedBy  String // User ID of super admin
   status       String    @default("pending") // pending | granted | active | expired
   grantedBy    String?
   grantedAt    DateTime?
   activatedAt  DateTime?
   expiredAt    DateTime?
-  expiryReason String?   // manual_exit | admin_revoked | auto_expired
+  expiryReason String? // manual_exit | admin_revoked | auto_expired
   createdAt    DateTime  @default(now())
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -598,7 +620,7 @@ model ResourceAllocation {
   startDate   DateTime
   endDate     DateTime
   hoursPerDay Float    @default(7.5)
-  totalHours  Float?   // If set, hours roll over when not logged; hoursPerDay is calculated
+  totalHours  Float? // If set, hours roll over when not logged; hoursPerDay is calculated
   status      String   @default("tentative") // "tentative" | "confirmed" | "completed"
   notes       String?
   createdAt   DateTime @default(now())
@@ -627,11 +649,11 @@ model ProjectMilestone {
   createdAt   DateTime  @default(now())
 
   // Deadline fields
-  type        String    @default("custom") // "phase" | "custom"
+  type        String  @default("custom") // "phase" | "custom"
   phaseId     String?
   description String?
-  icon        String?                      // "flag"|"handshake"|"rocket"|"eye"|"calendar"
-  color       String?                      // #hex
+  icon        String? // "flag"|"handshake"|"rocket"|"eye"|"calendar"
+  color       String? // #hex
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   phase   Phase?  @relation(fields: [phaseId], references: [id], onDelete: SetNull)
@@ -646,9 +668,9 @@ model CompanyHoliday {
   id        String   @id @default(cuid())
   companyId String
   name      String
-  month     Int      // 1-12
-  day       Int      // 1-31
-  year      Int?     // null = recurring annually, set = one-time
+  month     Int // 1-12
+  day       Int // 1-31
+  year      Int? // null = recurring annually, set = one-time
   createdAt DateTime @default(now())
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -660,77 +682,77 @@ model CompanyHoliday {
 // ─── INVOICES ───
 // Invoice drafts created from approved time entries + expenses
 model Invoice {
-  id              String          @id @default(cuid())
-  companyId       String
-  company         Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   // Invoice identity
-  invoiceNumber   Int             // Sequential per company
-  status          String          @default("draft") // draft | sent | paid | void
+  invoiceNumber Int // Sequential per company
+  status        String @default("draft") // draft | sent | paid | void
 
   // Client info (denormalized from project)
-  projectId       String
-  project         Project         @relation(fields: [projectId], references: [id])
-  clientName      String
-  clientAddress   String?
-  clientCvr       String?         // Client's CVR number
-  clientEan       String?         // Client's EAN number (public sector)
+  projectId     String
+  project       Project @relation(fields: [projectId], references: [id])
+  clientName    String
+  clientAddress String?
+  clientCvr     String? // Client's CVR number
+  clientEan     String? // Client's EAN number (public sector)
 
   // Dates
-  invoiceDate     DateTime        @default(now())
-  dueDate         DateTime
-  periodStart     DateTime
-  periodEnd       DateTime
+  invoiceDate DateTime @default(now())
+  dueDate     DateTime
+  periodStart DateTime
+  periodEnd   DateTime
 
   // Financials (all amounts in company currency, excl. VAT)
-  subtotal        Float
-  vatRate         Float           @default(25) // Danish MOMS
-  vatAmount       Float
-  total           Float
-  currency        String          @default("DKK")
+  subtotal  Float
+  vatRate   Float  @default(25) // Danish MOMS
+  vatAmount Float
+  total     Float
+  currency  String @default("DKK")
 
   // Payment terms
-  paymentTermsDays Int            @default(8) // Danish standard: "Netto 8 dage"
+  paymentTermsDays Int @default(8) // Danish standard: "Netto 8 dage"
 
   // Optional note
-  note            String?
+  note String?
 
   // Accounting system sync
-  externalId      String?         // ID in the accounting system
-  externalSystem  String?         // "e-conomic" | "billy" | "dinero"
-  syncedAt        DateTime?
+  externalId     String? // ID in the accounting system
+  externalSystem String? // "e-conomic" | "billy" | "dinero"
+  syncedAt       DateTime?
 
   // Relations
-  lines           InvoiceLine[]
-  timeEntries     TimeEntry[]
-  expenses        Expense[]
+  lines       InvoiceLine[]
+  timeEntries TimeEntry[]
+  expenses    Expense[]
 
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
+  @@unique([companyId, invoiceNumber])
   @@index([companyId])
   @@index([projectId])
-  @@unique([companyId, invoiceNumber])
 }
 
 model InvoiceLine {
-  id              String          @id @default(cuid())
-  invoiceId       String
-  invoice         Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
-  sortOrder       Int             @default(0)
-  description     String
-  quantity        Float           // Hours or count
-  unitPrice       Float           // Bill rate
-  amount          Float           // quantity × unitPrice
+  sortOrder   Int    @default(0)
+  description String
+  quantity    Float // Hours or count
+  unitPrice   Float // Bill rate
+  amount      Float // quantity × unitPrice
 
   // Source tracking
-  type            String          @default("time") // "time" | "expense" | "manual"
-  timeEntryIds    String[]        // Array of TimeEntry IDs in this line
-  expenseIds      String[]        // Array of Expense IDs in this line
+  type         String   @default("time") // "time" | "expense" | "manual"
+  timeEntryIds String[] // Array of TimeEntry IDs in this line
+  expenseIds   String[] // Array of Expense IDs in this line
 
   // Optional phase info
-  phaseName       String?
+  phaseName String?
 
   @@index([invoiceId])
 }
@@ -738,15 +760,15 @@ model InvoiceLine {
 // ─── CUSTOMER MAPPING ───
 // Maps Cloud Timer project clients to accounting system customers
 model CustomerMapping {
-  id              String   @id @default(cuid())
-  companyId       String
-  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  clientName      String   // Client name in Cloud Timer
-  externalCustomerId   String   // Customer ID in accounting system
-  externalCustomerName String   // Customer name in accounting system
+  clientName           String // Client name in Cloud Timer
+  externalCustomerId   String // Customer ID in accounting system
+  externalCustomerName String // Customer name in accounting system
 
-  createdAt       DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([companyId, clientName])
   @@index([companyId])
@@ -758,7 +780,7 @@ model OAuthState {
   id        String   @id @default(cuid())
   state     String   @unique
   companyId String
-  provider  String   // "e-conomic" or "dinero"
+  provider  String // "e-conomic" or "dinero"
   expiresAt DateTime
   createdAt DateTime @default(now())
 }
@@ -766,26 +788,26 @@ model OAuthState {
 // ─── PROJECT ACTIVITIES (GANTT CHART) ───
 
 model ProjectActivity {
-  id             String    @id @default(cuid())
+  id             String   @id @default(cuid())
   companyId      String
   projectId      String
   name           String
-  sortOrder      Int       @default(0)
+  sortOrder      Int      @default(0)
   phaseId        String?
   categoryName   String?
   assignedUserId String?
   startDate      DateTime
   endDate        DateTime
-  status         String    @default("not_started") // not_started | in_progress | needs_review | complete
+  status         String   @default("not_started") // not_started | in_progress | needs_review | complete
   color          String?
   note           String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  phase        Phase?   @relation(fields: [phaseId], references: [id], onDelete: SetNull)
-  assignedUser User?    @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
+  company      Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  project      Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phase        Phase?  @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+  assignedUser User?   @relation(fields: [assignedUserId], references: [id], onDelete: SetNull)
 
   @@index([projectId])
   @@index([companyId])
@@ -794,13 +816,13 @@ model ProjectActivity {
 // ─── ROLES ───
 // Company-scoped role definitions for team members (Partner, Senior, Junior, etc.)
 model Role {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   companyId   String
   name        String
   sortOrder   Int
   defaultRate Float?
   color       String?
-  isDefault   Boolean  @default(false)
+  isDefault   Boolean @default(false)
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   users   User[]
@@ -829,12 +851,12 @@ model CompanyEconomics {
 model ImportBatch {
   id             String   @id @default(cuid())
   companyId      String
-  source         String   // "eazyproject" | "timelog" | "harvest" | "generic_csv" | "generic_xlsx"
+  source         String // "eazyproject" | "timelog" | "harvest" | "generic_csv" | "generic_xlsx"
   fileName       String
-  importedBy     String   // userId who performed the import
+  importedBy     String // userId who performed the import
   importedAt     DateTime @default(now())
-  stats          Json     // ImportStats snapshot
-  status         String   // "completed" | "undone" | "partial"
+  stats          Json // ImportStats snapshot
+  status         String // "completed" | "undone" | "partial"
   projectCount   Int
   memberCount    Int
   timeEntryCount Int
@@ -851,15 +873,15 @@ model ImportBatch {
 // ─── ABSENCES ───
 // Imported absence records (vacation, sick, holiday, education, etc.)
 model Absence {
-  id            String    @id @default(cuid())
+  id            String   @id @default(cuid())
   date          DateTime
   hours         Float
-  type          String    // "vacation" | "sick" | "holiday" | "parental" | "education" | "other"
+  type          String // "vacation" | "sick" | "holiday" | "parental" | "education" | "other"
   description   String?
   userId        String
   companyId     String
   importBatchId String?
-  createdAt     DateTime  @default(now())
+  createdAt     DateTime @default(now())
 
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -889,12 +911,12 @@ model ProjectMapping {
 // ─── ACCOUNTING SYNC: EMPLOYEE MAPPING ───
 // Maps Cloud Timer users to external accounting system employees
 model EmployeeMapping {
-  id                    String   @id @default(cuid())
-  companyId             String
-  userId                String
-  externalEmployeeId    String
-  externalEmployeeName  String
-  createdAt             DateTime @default(now())
+  id                   String   @id @default(cuid())
+  companyId            String
+  userId               String
+  externalEmployeeId   String
+  externalEmployeeName String
+  createdAt            DateTime @default(now())
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -908,7 +930,7 @@ model EmployeeMapping {
 model ExpenseCategoryMapping {
   id                  String   @id @default(cuid())
   companyId           String
-  category            String   // CT expense category name
+  category            String // CT expense category name
   externalAccountId   String
   externalAccountName String
   createdAt           DateTime @default(now())
@@ -924,14 +946,14 @@ model ExpenseCategoryMapping {
 model SyncLog {
   id          String    @id @default(cuid())
   companyId   String
-  syncType    String    // "time_entries" | "expenses"
-  direction   String    // "push" | "export"
-  system      String    // "e-conomic" | "dinero" | "billy"
-  status      String    // "success" | "partial" | "error"
+  syncType    String // "time_entries" | "expenses"
+  direction   String // "push" | "export"
+  system      String // "e-conomic" | "dinero" | "billy"
+  status      String // "success" | "partial" | "error"
   itemCount   Int
   errorCount  Int       @default(0)
-  errors      String?   // JSON array of error details
-  triggeredBy String    // user ID
+  errors      String? // JSON array of error details
+  triggeredBy String // user ID
   startedAt   DateTime  @default(now())
   completedAt DateTime?
 

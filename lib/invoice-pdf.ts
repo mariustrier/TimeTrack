@@ -22,7 +22,7 @@ interface InvoicePdfData {
   clientCvr?: string | null;
   clientEan?: string | null;
 
-  // Lines
+  // Lines (description should prefer invoiceLabel over comment when available)
   lines: {
     description: string;
     quantity: number;

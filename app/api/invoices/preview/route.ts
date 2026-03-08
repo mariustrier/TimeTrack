@@ -97,7 +97,7 @@ export async function POST(req: Request) {
     } else if (groupBy === "description") {
       const byComment: Record<string, typeof entries> = {};
       for (const e of entries) {
-        const key = e.comment || "Work";
+        const key = (e as Record<string, unknown>).invoiceLabel as string || e.comment || "Work";
         if (!byComment[key]) byComment[key] = [];
         byComment[key].push(e);
       }

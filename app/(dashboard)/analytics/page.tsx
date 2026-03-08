@@ -134,6 +134,22 @@ export default function AnalyticsPage() {
   const isDemo = useIsDemo();
 
   const [activeTab, setActiveTab] = useState("employee");
+
+  // Set default tab based on user role (admin/manager → Company, employee → Employee)
+  useEffect(() => {
+    async function fetchRole() {
+      try {
+        const res = await fetch("/api/user/me");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.role === "admin" || data.role === "manager") {
+            setActiveTab("company");
+          }
+        }
+      } catch {}
+    }
+    fetchRole();
+  }, []);
   const [granularity, setGranularity] = useState<"monthly" | "weekly">(
     "monthly"
   );

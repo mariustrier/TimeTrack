@@ -23,6 +23,11 @@ export const createTimeEntrySchema = z.object({
   phaseId: z.string().optional().nullable(),
   // Admin: log on behalf of employee
   userId: z.string().min(1).optional(),
+  // Three-tier billability fields
+  billingType: z.enum(["BILLABLE", "OUTSIDE_CONTRACT", "NON_BILLABLE"]).optional(),
+  invoiceLabel: z.string().max(200).optional().nullable(),
+  nonBillableCategory: z.string().max(500).optional().nullable(),
+  importSource: z.string().max(100).optional().nullable(),
 });
 
 export const updateTimeEntrySchema = z.object({
@@ -32,6 +37,11 @@ export const updateTimeEntrySchema = z.object({
     .enum(["billable", "included", "non_billable", "internal", "presales"])
     .optional(),
   nonBillableReason: z.string().max(500).optional().nullable(),
+  // Three-tier billability fields
+  billingType: z.enum(["BILLABLE", "OUTSIDE_CONTRACT", "NON_BILLABLE"]).optional(),
+  invoiceLabel: z.string().max(200).optional().nullable(),
+  nonBillableCategory: z.string().max(500).optional().nullable(),
+  importSource: z.string().max(100).optional().nullable(),
   // Mileage fields
   mileageKm: z.coerce.number().nonnegative().max(9999).optional().nullable(),
   mileageStartAddress: z.string().max(500).optional().nullable(),

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileText, Clock, Banknote, Users, Receipt, CheckCircle2 } from "lucide-react";
+import { FileText, Clock, Banknote, Users, Receipt, CheckCircle2, AlertCircle } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
 import { InvoiceCreateDialog } from "./InvoiceCreateDialog";
 
@@ -20,6 +20,18 @@ interface UninvoicedProject {
   employeeCount: number;
   entryCount: number;
   expenseCount: number;
+}
+
+interface OutsideContractProject {
+  projectId: string;
+  projectName: string;
+  client: string;
+  color: string;
+  hours: number;
+  amount: number;
+  oldestEntry: string | null;
+  employeeCount: number;
+  entryCount: number;
 }
 
 interface ExternallyInvoicedProject {
@@ -43,6 +55,7 @@ export function UninvoicedTab() {
   const [createClient, setCreateClient] = useState("");
   const [createOldestEntry, setCreateOldestEntry] = useState<string | null>(null);
 
+  const [outsideContractProjects, setOutsideContractProjects] = useState<OutsideContractProject[]>([]);
   const [externalProjects, setExternalProjects] = useState<ExternallyInvoicedProject[]>([]);
   const [externalSystem, setExternalSystem] = useState<string | null>(null);
 
@@ -53,6 +66,7 @@ export function UninvoicedTab() {
       if (res.ok) {
         const data = await res.json();
         setProjects(data.projects || []);
+        setOutsideContractProjects(data.outsideContractProjects || []);
       }
     } catch (error) {
       console.error("Failed to fetch uninvoiced:", error);
@@ -162,6 +176,82 @@ export function UninvoicedTab() {
               </CardContent>
             </Card>
           ))}
+        </div>
+      )}
+
+      {/* Tillægsydelser / Outside Contract section */}
+      {outsideContractProjects.length > 0 && (
+        <div className="mt-8 space-y-4">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            <h2 className="text-lg font-semibold text-foreground">
+              {t("outsideContract") || "Tillægsydelser / Outside Contract"}
+            </h2>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {t("outsideContractDesc") || "These entries are outside the standard contract and require a supplementary invoice (tillægsfaktura)."}
+          </p>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {outsideContractProjects.map((p) => (
+              <Card key={`oc-${p.projectId}`} className="border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/30">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 w-3 rounded-full" style={{ backgroundColor: p.color }} />
+                    <h3 className="font-semibold text-foreground">{p.projectName}</h3>
+                  </div>
+                  {p.client && (
+                    <p className="mt-1 text-sm text-muted-foreground">{p.client}</p>
+                  )}
+
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-lg font-bold text-foreground">{p.hours}{tc("hourAbbrev")}</p>
+                        <p className="text-[10px] text-muted-foreground">{t("hours")}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Banknote className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-lg font-bold text-foreground">{p.amount.toLocaleString("da-DK")}</p>
+                        <p className="text-[10px] text-muted-foreground">{t("amount")}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{p.employeeCount}</p>
+                        <p className="text-[10px] text-muted-foreground">{t("employees")}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{p.entryCount}</p>
+                        <p className="text-[10px] text-muted-foreground">{t("entries") || "Entries"}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button
+                    className="mt-4 w-full"
+                    variant="outline"
+                    onClick={() => {
+                      setCreateProjectId(p.projectId);
+                      setCreateProjectName(p.projectName);
+                      setCreateClient(p.client);
+                      setCreateOldestEntry(p.oldestEntry);
+                    }}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    {t("createSupplementaryInvoice") || "Create Supplementary Invoice"}
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       )}
 

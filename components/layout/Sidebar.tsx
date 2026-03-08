@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   Palmtree,
   FolderKanban,
-  Users,
   BarChart3,
   TrendingUp,
   Sparkles,
@@ -38,11 +37,10 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { labelKey: "dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { labelKey: "admin", href: "/admin", icon: BarChart3, roles: ["admin"], badge: true },
-  { labelKey: "team", href: "/team", icon: Users, roles: ["admin", "manager"] },
-  { labelKey: "projects", href: "/projects", icon: FolderKanban, roles: ["admin", "manager"] },
-  { labelKey: "aiAssistant", href: "/ai", icon: Sparkles, roles: ["admin", "manager"], badge: true },
+  { labelKey: "management", href: "/admin", icon: BarChart3, badge: true, roles: ["admin", "manager"] },
+  { labelKey: "projects", href: "/projects", icon: FolderKanban },
   { labelKey: "analytics", href: "/analytics", icon: TrendingUp, roles: ["admin", "manager"] },
+  { labelKey: "aiAssistant", href: "/ai", icon: Sparkles, roles: ["admin", "manager"], badge: true },
   { labelKey: "billing", href: "/billing", icon: FileText, roles: ["admin", "manager"], badge: true },
   { labelKey: "expenses", href: "/expenses", icon: Receipt },
   { labelKey: "vacations", href: "/vacations", icon: Palmtree },
@@ -79,13 +77,13 @@ export function Sidebar({ userRole, isSuperAdmin: superAdmin, supportMode, suppo
           .then((res) => (res.ok ? res.json() : { counts: {} }))
           .then((data) => {
             const counts = data.counts || {};
-            const adminCount = (counts.approvals || 0) + (counts.expenseApprovals || 0) + (counts.vacationManagement || 0);
+            const managementCount = (counts.approvals || 0) + (counts.expenseApprovals || 0) + (counts.vacationManagement || 0);
             // Billing: only show badge if count increased since last visit
             const rawBilling = counts.billing || 0;
             rawBillingRef.current = rawBilling;
             const seenBilling = parseInt(localStorage.getItem("cloudtimer:seenBillingCount") || "0", 10);
             counts.billing = rawBilling > seenBilling ? rawBilling - seenBilling : 0;
-            setBadgeCounts({ ...counts, admin: adminCount });
+            setBadgeCounts({ ...counts, management: managementCount });
           })
           .catch(() => {});
       };

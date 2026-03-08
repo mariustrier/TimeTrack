@@ -35,6 +35,9 @@ import {
   Layers,
   ArrowUpDown,
   CalendarCheck,
+  Settings,
+  Eye,
+  ChevronUp,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -113,7 +116,10 @@ interface TimeEntry {
   project: Project;
   approvalStatus: "draft" | "submitted" | "approved" | "locked";
   billingStatus: "billable" | "included" | "non_billable" | "internal" | "presales";
+  billingType?: "BILLABLE" | "OUTSIDE_CONTRACT" | "NON_BILLABLE" | null;
   nonBillableReason: string | null;
+  nonBillableCategory?: string | null;
+  invoiceLabel?: string | null;
   mileageKm: number | null;
   mileageStartAddress: string | null;
   mileageEndAddress: string | null;
@@ -225,6 +231,22 @@ export default function DashboardPage() {
   // Phase selection state
   const [companyPhases, setCompanyPhases] = useState<CompanyPhase[]>([]);
   const [selectedPhaseId, setSelectedPhaseId] = useState("");
+  const [skipPhase, setSkipPhase] = useState(false);
+  // Billing type (new three-tier model)
+  const [billingType, setBillingType] = useState<"BILLABLE" | "OUTSIDE_CONTRACT" | "NON_BILLABLE">("BILLABLE");
+  const [nonBillableCategory, setNonBillableCategory] = useState("");
+  const [nonBillableCategories, setNonBillableCategories] = useState<{ id: string; name: string }[]>([]);
+  // Invoice label for long comments
+  const [invoiceLabel, setInvoiceLabel] = useState("");
+  const [useFullTextForInvoice, setUseFullTextForInvoice] = useState(false);
+  // Billing section collapsed state
+  const [billingSectionOpen, setBillingSectionOpen] = useState(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("cloudtimer:billingExpanded");
+      if (stored !== null) return stored === "true";
+    }
+    return false; // default collapsed for employee, overridden after userRole loads
+  });
   // Holiday config
   const [disabledHolidayCodes, setDisabledHolidayCodes] = useState<string[]>([]);
   const [customHolidays, setCustomHolidays] = useState<CustomHoliday[]>([]);
@@ -239,6 +261,23 @@ export default function DashboardPage() {
   const [userRole, setUserRole] = useState<string>("employee");
   const [teamMembers, setTeamMembers] = useState<{ id: string; firstName: string | null; lastName: string | null; email: string }[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
+  const [showViewAs, setShowViewAs] = useState(false);
+  // Stat card toggle
+  const [showAllStats, setShowAllStats] = useState(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("cloudtimer:showAllStats") === "true";
+    return false;
+  });
+  // Timesheet column visibility
+  const [timesheetColumns, setTimesheetColumns] = useState<{ budget: boolean; planned: boolean }>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("cloudtimer:timesheetColumns");
+        if (saved) return JSON.parse(saved);
+      } catch {}
+    }
+    return { budget: true, planned: true };
+  });
+  const [columnsPopoverOpen, setColumnsPopoverOpen] = useState(false);
 
   const weekStart = useMemo(() => startOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
   const weekEnd = useMemo(() => endOfWeek(currentWeek, { weekStartsOn: 1 }), [currentWeek]);
@@ -423,6 +462,28 @@ export default function DashboardPage() {
       .catch(() => {});
   }, []);
 
+  // Set billing section default based on role
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("cloudtimer:billingExpanded");
+      if (stored === null) {
+        // Default: expanded for admin/manager, collapsed for employee
+        const defaultOpen = userRole === "admin" || userRole === "manager";
+        setBillingSectionOpen(defaultOpen);
+      }
+    }
+  }, [userRole]);
+
+  // Fetch non-billable categories
+  useEffect(() => {
+    fetch("/api/non-billable-categories")
+      .then((res) => res.ok ? res.json() : [])
+      .then((data) => {
+        if (Array.isArray(data)) setNonBillableCategories(data);
+      })
+      .catch(() => {});
+  }, []);
+
   // Fetch rejection/reopen notes for current week
   useEffect(() => {
     setWeekNote(null);
@@ -519,6 +580,24 @@ export default function DashboardPage() {
       setSelectedAbsenceReasonId(entry.absenceReasonId || "");
       // Phase
       setSelectedPhaseId(entry.phaseId || "");
+      setSkipPhase(!entry.phaseId);
+      // Billing type (new three-tier model) - use stored billingType or map from legacy billingStatus
+      if (entry.billingType) {
+        setBillingType(entry.billingType);
+      } else {
+        const legacyStatus = entry.billingStatus;
+        if (legacyStatus === "non_billable" || legacyStatus === "internal" || legacyStatus === "presales") {
+          setBillingType("NON_BILLABLE");
+        } else if (legacyStatus === "included") {
+          setBillingType("OUTSIDE_CONTRACT");
+        } else {
+          setBillingType("BILLABLE");
+        }
+      }
+      setNonBillableCategory(entry.nonBillableCategory || "");
+      // Invoice label
+      setInvoiceLabel(entry.invoiceLabel || "");
+      setUseFullTextForInvoice(!entry.invoiceLabel);
     } else {
       setEditingEntry(null);
       setHours("");
@@ -539,6 +618,13 @@ export default function DashboardPage() {
       setSelectedAbsenceReasonId("");
       // Default phase from project's current phase
       setSelectedPhaseId(proj?.currentPhase?.id || "");
+      setSkipPhase(false);
+      // Default billing type from project
+      setBillingType(proj?.billable !== false ? "BILLABLE" : "NON_BILLABLE");
+      setNonBillableCategory("");
+      // Reset invoice label
+      setInvoiceLabel("");
+      setUseFullTextForInvoice(false);
     }
     setModalOpen(true);
   }
@@ -553,25 +639,38 @@ export default function DashboardPage() {
     }
     setSaving(true);
 
+    // Map billingType to legacy billingStatus for backward compatibility
+    const mappedBillingStatus = billingType === "NON_BILLABLE" ? "non_billable" : "billable";
+    // Compute invoice label: null if comment ≤ 20 chars, toggle is on, or billingType changed
+    const computedInvoiceLabel = (comment.length > 20 && !useFullTextForInvoice && invoiceLabel.trim())
+      ? invoiceLabel.trim()
+      : null;
     try {
       let res: Response;
+      const commonPayload = {
+        hours,
+        comment,
+        billingStatus: mappedBillingStatus,
+        billingType,
+        nonBillableReason: mappedBillingStatus !== "billable" ? nonBillableReason : null,
+        nonBillableCategory: billingType === "NON_BILLABLE" ? nonBillableCategory || null : null,
+        invoiceLabel: computedInvoiceLabel,
+        mileageKm: mileageKm ? parseFloat(mileageKm) : null,
+        mileageStartAddress: mileageStartAddress || null,
+        mileageEndAddress: mileageEndAddress || null,
+        mileageStops: mileageStops.filter((s) => s.trim()),
+        mileageRoundTrip,
+        mileageSource: mileageSource || null,
+        absenceReasonId: isAbsenceProject(selectedProjectId) ? selectedAbsenceReasonId : null,
+      };
       if (editingEntry) {
         res = await fetch(`/api/time-entries/${editingEntry.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            hours,
-            comment,
-            billingStatus,
-            nonBillableReason: billingStatus !== "billable" ? nonBillableReason : null,
-            mileageKm: mileageKm ? parseFloat(mileageKm) : null,
-            mileageStartAddress: mileageStartAddress || null,
-            mileageEndAddress: mileageEndAddress || null,
-            mileageStops: mileageStops.filter((s) => s.trim()),
-            mileageRoundTrip,
-            mileageSource: mileageSource || null,
-            absenceReasonId: isAbsenceProject(selectedProjectId) ? selectedAbsenceReasonId : null,
-            ...(shouldShowPhaseSelector(selectedProjectId) && selectedPhaseId && { phaseId: selectedPhaseId }),
+            ...commonPayload,
+            ...(shouldShowPhaseSelector(selectedProjectId) && !skipPhase && selectedPhaseId && { phaseId: selectedPhaseId }),
+            ...(skipPhase && { phaseId: null }),
           }),
         });
       } else {
@@ -579,19 +678,11 @@ export default function DashboardPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            hours,
+            ...commonPayload,
             date: selectedDate,
             projectId: selectedProjectId,
-            comment,
-            billingStatus,
-            mileageKm: mileageKm ? parseFloat(mileageKm) : null,
-            mileageStartAddress: mileageStartAddress || null,
-            mileageEndAddress: mileageEndAddress || null,
-            mileageStops: mileageStops.filter((s) => s.trim()),
-            mileageRoundTrip,
-            mileageSource: mileageSource || null,
-            absenceReasonId: isAbsenceProject(selectedProjectId) ? selectedAbsenceReasonId : null,
-            ...(shouldShowPhaseSelector(selectedProjectId) && selectedPhaseId && { phaseId: selectedPhaseId }),
+            ...(shouldShowPhaseSelector(selectedProjectId) && !skipPhase && selectedPhaseId && { phaseId: selectedPhaseId }),
+            ...(skipPhase && { phaseId: null }),
             ...(selectedEmployeeId && { userId: selectedEmployeeId }),
           }),
         });
@@ -821,23 +912,46 @@ export default function DashboardPage() {
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
           {(userRole === "admin" || userRole === "manager") && teamMembers.length > 0 && (
-            <Select
-              value={selectedEmployeeId || "__self__"}
-              onValueChange={(val) => setSelectedEmployeeId(val === "__self__" ? "" : val)}
-            >
-              <SelectTrigger className="w-[220px]">
-                <Users className="h-4 w-4 mr-2 text-muted-foreground" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__self__">{t("myTimesheet")}</SelectItem>
-                {teamMembers.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.firstName && m.lastName ? `${m.firstName} ${m.lastName}` : m.email}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="relative">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowViewAs(!showViewAs)}
+                className="gap-1.5"
+              >
+                <Eye className="h-4 w-4" />
+                {selectedEmployeeId ? (() => {
+                  const m = teamMembers.find((m) => m.id === selectedEmployeeId);
+                  return m?.firstName && m?.lastName ? `${m.firstName} ${m.lastName}` : m?.email || "";
+                })() : (t("viewAs") || "View as...")}
+              </Button>
+              {showViewAs && (
+                <div className="absolute top-full left-0 mt-1 z-50">
+                  <Select
+                    open={showViewAs}
+                    onOpenChange={setShowViewAs}
+                    value={selectedEmployeeId || "__self__"}
+                    onValueChange={(val) => {
+                      setSelectedEmployeeId(val === "__self__" ? "" : val);
+                      setShowViewAs(false);
+                    }}
+                  >
+                    <SelectTrigger className="w-[220px]">
+                      <Users className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__self__">{t("myTimesheet")}</SelectItem>
+                      {teamMembers.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.firstName && m.lastName ? `${m.firstName} ${m.lastName}` : m.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -983,59 +1097,79 @@ export default function DashboardPage() {
           />
         </div>
       ) : (
-        <div data-tour="stat-cards" className="grid grid-cols-2 gap-4 lg:grid-cols-4 xl:grid-cols-7">
-          <StatCard
-            title={t("target")}
-            value={`${weeklyTarget}${tc("hourAbbrev")}`}
-            icon={Target}
-            color="bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
-          />
-          <StatCard
-            title={t("planned")}
-            value={`${(plannedHours?.totalPlanned ?? 0).toFixed(1)}${tc("hourAbbrev")}`}
-            icon={CalendarCheck}
-            color="bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400"
-            subtitle={plannedHours?.totalPlanned
-              ? t("plannedProjects", { count: Object.keys(plannedHours.byProject).length.toString() })
-              : t("noPlannedHours")}
-          />
-          <StatCard
-            title={t("billableHours")}
-            value={`${billableTotal.toFixed(1)}${tc("hourAbbrev")}`}
-            icon={DollarSign}
-            color="bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
-          />
-          <StatCard
-            title={t("vacation")}
-            value={isVacationHours ? `${vacationHoursUsed.toFixed(1)}${tc("hourAbbrev")}` : `${vacationDaysUsed.toFixed(1)}d`}
-            icon={Palmtree}
-            color="bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400"
-            subtitle={isVacationHours ? t("hoursUsedStat") : t("daysUsed")}
-          />
-          <StatCard
-            title={t("totalHours")}
-            value={`${grandTotal.toFixed(1)}${tc("hourAbbrev")}`}
-            icon={Clock}
-            color="bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400"
-          />
-          <StatCard
-            title={t("timeBalance")}
-            value={`${timeBalance >= 0 ? "+" : ""}${timeBalance.toFixed(1)}${tc("hourAbbrev")}`}
-            icon={TrendingUp}
-            color={timeBalance >= 0
-              ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
-              : "bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400"
-            }
-          />
-          <StatCard
-            title={isVacationHours ? t("vacationHours") : t("vacationDays")}
-            value={isVacationHours
-              ? `${(vacationHoursTotal - vacationHoursUsed).toFixed(1)}${tc("hourAbbrev")}`
-              : `${(vacationDaysTotal - vacationDaysUsed).toFixed(1)}`}
-            icon={CalendarDays}
-            color="bg-sky-50 text-sky-600 dark:bg-sky-950 dark:text-sky-400"
-            subtitle={t("remaining")}
-          />
+        <div data-tour="stat-cards">
+          <div className={cn("grid grid-cols-2 gap-4 lg:grid-cols-4", showAllStats && "xl:grid-cols-7")}>
+            <StatCard
+              title={t("target")}
+              value={`${weeklyTarget}${tc("hourAbbrev")}`}
+              icon={Target}
+              color="bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
+            />
+            <StatCard
+              title={t("totalHours")}
+              value={`${grandTotal.toFixed(1)}${tc("hourAbbrev")}`}
+              icon={Clock}
+              color="bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400"
+            />
+            <StatCard
+              title={t("timeBalance")}
+              value={`${timeBalance >= 0 ? "+" : ""}${timeBalance.toFixed(1)}${tc("hourAbbrev")}`}
+              icon={TrendingUp}
+              color={timeBalance >= 0
+                ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
+                : "bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-400"
+              }
+            />
+            <StatCard
+              title={t("billableHours")}
+              value={`${billableTotal.toFixed(1)}${tc("hourAbbrev")}`}
+              icon={DollarSign}
+              color="bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
+            />
+            {showAllStats && (
+              <>
+                <StatCard
+                  title={t("planned")}
+                  value={`${(plannedHours?.totalPlanned ?? 0).toFixed(1)}${tc("hourAbbrev")}`}
+                  icon={CalendarCheck}
+                  color="bg-indigo-50 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-400"
+                  subtitle={plannedHours?.totalPlanned
+                    ? t("plannedProjects", { count: Object.keys(plannedHours.byProject).length.toString() })
+                    : t("noPlannedHours")}
+                />
+                <StatCard
+                  title={t("vacation")}
+                  value={isVacationHours ? `${vacationHoursUsed.toFixed(1)}${tc("hourAbbrev")}` : `${vacationDaysUsed.toFixed(1)}d`}
+                  icon={Palmtree}
+                  color="bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400"
+                  subtitle={isVacationHours ? t("hoursUsedStat") : t("daysUsed")}
+                />
+                <StatCard
+                  title={isVacationHours ? t("vacationHours") : t("vacationDays")}
+                  value={isVacationHours
+                    ? `${(vacationHoursTotal - vacationHoursUsed).toFixed(1)}${tc("hourAbbrev")}`
+                    : `${(vacationDaysTotal - vacationDaysUsed).toFixed(1)}`}
+                  icon={CalendarDays}
+                  color="bg-sky-50 text-sky-600 dark:bg-sky-950 dark:text-sky-400"
+                  subtitle={t("remaining")}
+                />
+              </>
+            )}
+          </div>
+          <button
+            onClick={() => {
+              const next = !showAllStats;
+              setShowAllStats(next);
+              localStorage.setItem("cloudtimer:showAllStats", String(next));
+            }}
+            className="mt-2 text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+          >
+            {showAllStats ? (
+              <><ChevronUp className="h-3 w-3" />{t("showLess") || "Show less"}</>
+            ) : (
+              <><ChevronDown className="h-3 w-3" />{t("showMore") || "Show more"}</>
+            )}
+          </button>
         </div>
       )}
 
@@ -1073,6 +1207,42 @@ export default function DashboardPage() {
                   <SelectItem value="oldest">{t("sortOldest")}</SelectItem>
                 </SelectContent>
               </Select>
+              <Popover open={columnsPopoverOpen} onOpenChange={setColumnsPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Settings className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-48 p-3" align="end">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">{t("columns") || "Columns"}</p>
+                  <label className="flex items-center gap-2 text-sm cursor-pointer py-1">
+                    <input
+                      type="checkbox"
+                      checked={timesheetColumns.budget}
+                      onChange={(e) => {
+                        const next = { ...timesheetColumns, budget: e.target.checked };
+                        setTimesheetColumns(next);
+                        localStorage.setItem("cloudtimer:timesheetColumns", JSON.stringify(next));
+                      }}
+                      className="rounded border-border"
+                    />
+                    {t("budget") || "Budget"}
+                  </label>
+                  <label className="flex items-center gap-2 text-sm cursor-pointer py-1">
+                    <input
+                      type="checkbox"
+                      checked={timesheetColumns.planned}
+                      onChange={(e) => {
+                        const next = { ...timesheetColumns, planned: e.target.checked };
+                        setTimesheetColumns(next);
+                        localStorage.setItem("cloudtimer:timesheetColumns", JSON.stringify(next));
+                      }}
+                      className="rounded border-border"
+                    />
+                    {t("planned") || "Planned"}
+                  </label>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
         </CardHeader>
@@ -1114,7 +1284,7 @@ export default function DashboardPage() {
                         </th>
                       );
                     })}
-                    {projects.some((p) => p.myAllocation != null || p.budgetTotalHours != null) && (
+                    {timesheetColumns.budget && projects.some((p) => p.myAllocation != null || p.budgetTotalHours != null) && (
                       <th className="px-2 py-3 text-center font-medium text-muted-foreground w-24">
                         {t("budget")}
                       </th>
@@ -1122,7 +1292,7 @@ export default function DashboardPage() {
                     <th className="px-4 py-3 text-center font-medium text-muted-foreground w-20">
                       {t("total")}
                     </th>
-                    {plannedHours && plannedHours.totalPlanned > 0 && (
+                    {timesheetColumns.planned && plannedHours && plannedHours.totalPlanned > 0 && (
                       <th className="px-2 py-3 text-center font-medium text-indigo-600 dark:text-indigo-400 w-20">
                         {t("planned")}
                       </th>
@@ -1161,7 +1331,7 @@ export default function DashboardPage() {
                         project.locked && "opacity-70"
                       )}
                     >
-                      <td className="px-4 py-2">
+                      <td className="px-4 py-2 sticky left-0 bg-card z-10">
                         <div className="flex items-center gap-2">
                           <div
                             className="h-3 w-3 rounded-full"
@@ -1243,7 +1413,7 @@ export default function DashboardPage() {
                           </td>
                         );
                       })}
-                      {projects.some((p) => p.myAllocation != null || p.budgetTotalHours != null) && (
+                      {timesheetColumns.budget && projects.some((p) => p.myAllocation != null || p.budgetTotalHours != null) && (
                         <td className="px-2 py-1">
                           {(() => {
                             // Skip budget display for system-managed projects (Absence etc.)
@@ -1285,7 +1455,7 @@ export default function DashboardPage() {
                       <td className="px-4 py-2 text-center font-semibold text-foreground">
                         {getRowTotal(project.id).toFixed(1)}
                       </td>
-                      {plannedHours && plannedHours.totalPlanned > 0 && (
+                      {timesheetColumns.planned && plannedHours && plannedHours.totalPlanned > 0 && (
                         <td className="px-2 py-2 text-center text-sm text-indigo-600 dark:text-indigo-400">
                           {(plannedHours.byProject[project.id]?.planned ?? 0) > 0
                             ? plannedHours.byProject[project.id].planned.toFixed(1)
@@ -1297,7 +1467,7 @@ export default function DashboardPage() {
                 </tbody>
                 <tfoot>
                   <tr className="bg-muted/50">
-                    <td className="px-4 py-3 font-semibold text-foreground">{t("dailyTotal")}</td>
+                    <td className="px-4 py-3 font-semibold text-foreground sticky left-0 bg-muted/50 z-10">{t("dailyTotal")}</td>
                     {weekDays.map((day) => (
                       <td
                         key={day.toISOString()}
@@ -1309,20 +1479,20 @@ export default function DashboardPage() {
                         {getColumnTotal(day).toFixed(1)}
                       </td>
                     ))}
-                    {projects.some((p) => p.myAllocation != null || p.budgetTotalHours != null) && (
+                    {timesheetColumns.budget && projects.some((p) => p.myAllocation != null || p.budgetTotalHours != null) && (
                       <td className="px-2 py-3" />
                     )}
                     <td className="px-4 py-3 text-center font-bold text-brand-600">
                       {grandTotal.toFixed(1)}
                     </td>
-                    {plannedHours && plannedHours.totalPlanned > 0 && (
+                    {timesheetColumns.planned && plannedHours && plannedHours.totalPlanned > 0 && (
                       <td className="px-2 py-3" />
                     )}
                   </tr>
                   {/* Planned Hours row */}
-                  {plannedHours && plannedHours.totalPlanned > 0 && (
+                  {timesheetColumns.planned && plannedHours && plannedHours.totalPlanned > 0 && (
                   <tr className="bg-indigo-50/30 dark:bg-indigo-950/20 border-t border-dashed">
-                    <td className="px-4 py-2 text-sm text-indigo-600 dark:text-indigo-400 font-medium">
+                    <td className="px-4 py-2 text-sm text-indigo-600 dark:text-indigo-400 font-medium sticky left-0 bg-card z-10">
                       {t("plannedHoursLabel")}
                     </td>
                     {weekDays.map((day) => {
@@ -1342,7 +1512,7 @@ export default function DashboardPage() {
                         </td>
                       );
                     })}
-                    {projects.some((p) => p.myAllocation != null || p.budgetTotalHours != null) && (
+                    {timesheetColumns.budget && projects.some((p) => p.myAllocation != null || p.budgetTotalHours != null) && (
                       <td className="px-2 py-2" />
                     )}
                     <td className="px-4 py-2 text-center text-xs font-bold text-indigo-600 dark:text-indigo-400">
@@ -1354,7 +1524,7 @@ export default function DashboardPage() {
                   {/* Flex Balance row (hidden for hourly employees) */}
                   {!isHourly && (
                   <tr className="bg-muted/30 border-t border-dashed">
-                    <td className="px-4 py-2 text-sm text-muted-foreground">{t("flexBalance")}</td>
+                    <td className="px-4 py-2 text-sm text-muted-foreground sticky left-0 bg-card z-10">{t("flexBalance")}</td>
                     {weekDays.map((day, i) => {
                       const balance = flexBalances[i];
                       const isFuture = day > today;
@@ -1371,7 +1541,7 @@ export default function DashboardPage() {
                         </td>
                       );
                     })}
-                    {projects.some((p) => p.myAllocation != null || p.budgetTotalHours != null) && (
+                    {timesheetColumns.budget && projects.some((p) => p.myAllocation != null || p.budgetTotalHours != null) && (
                       <td className="px-2 py-2" />
                     )}
                     <td className={cn(
@@ -1380,14 +1550,14 @@ export default function DashboardPage() {
                     )}>
                       {timeBalance >= 0 ? "+" : ""}{timeBalance.toFixed(1)}
                     </td>
-                    {plannedHours && plannedHours.totalPlanned > 0 && (
+                    {timesheetColumns.planned && plannedHours && plannedHours.totalPlanned > 0 && (
                       <td className="px-2 py-2" />
                     )}
                   </tr>
                   )}
                   {/* Daily Submit Buttons row */}
                   {<tr className="bg-muted/30">
-                    <td className="px-4 py-2 text-sm text-muted-foreground">{t("submitDay")}</td>
+                    <td className="px-4 py-2 text-sm text-muted-foreground sticky left-0 bg-card z-10">{t("submitDay")}</td>
                     {weekDays.map((day) => {
                       const hasDrafts = dayHasDraftEntries(day);
                       const dateStr = format(day, "yyyy-MM-dd");
@@ -1418,11 +1588,11 @@ export default function DashboardPage() {
                         </td>
                       );
                     })}
-                    {projects.some((p) => p.myAllocation != null || p.budgetTotalHours != null) && (
+                    {timesheetColumns.budget && projects.some((p) => p.myAllocation != null || p.budgetTotalHours != null) && (
                       <td className="px-2 py-2" />
                     )}
                     <td className="px-4 py-2" />
-                    {plannedHours && plannedHours.totalPlanned > 0 && (
+                    {timesheetColumns.planned && plannedHours && plannedHours.totalPlanned > 0 && (
                       <td className="px-2 py-2" />
                     )}
                   </tr>}
@@ -1525,35 +1695,56 @@ export default function DashboardPage() {
             {/* Phase Selector - only shown for phase-enabled non-absence projects */}
             {shouldShowPhaseSelector(selectedProjectId) && (
               <div className="space-y-2">
-                <Label>{t("phase")}</Label>
-                {editingEntry?.phaseName && !companyPhases.find(p => p.id === editingEntry.phaseId) ? (
-                  <div className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm text-muted-foreground">
-                    {editingEntry.phaseName}
-                    <span className="rounded border px-1.5 py-0.5 text-xs">{t("phaseInactive")}</span>
-                  </div>
-                ) : (
-                  <Select
-                    value={selectedPhaseId || "__no_phase__"}
-                    onValueChange={(val) => setSelectedPhaseId(val === "__no_phase__" ? "" : val)}
-                    disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={t("selectPhase")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {companyPhases.map((phase) => (
-                        <SelectItem key={phase.id} value={phase.id}>
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="h-2.5 w-2.5 rounded-full"
-                              style={{ backgroundColor: phase.color }}
-                            />
-                            {phase.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="flex items-center justify-between">
+                  <Label>{t("phase")}</Label>
+                  {/* Skip phase checkbox */}
+                  {!(editingEntry && isEntryReadOnly(editingEntry)) && (
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={skipPhase}
+                        onChange={(e) => {
+                          setSkipPhase(e.target.checked);
+                          if (e.target.checked) setSelectedPhaseId("");
+                        }}
+                        className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                      />
+                      <span className="text-sm text-muted-foreground">Spring fase over</span>
+                    </label>
+                  )}
+                </div>
+                {!skipPhase && (
+                  <>
+                    {editingEntry?.phaseName && !companyPhases.find(p => p.id === editingEntry.phaseId) ? (
+                      <div className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm text-muted-foreground">
+                        {editingEntry.phaseName}
+                        <span className="rounded border px-1.5 py-0.5 text-xs">{t("phaseInactive")}</span>
+                      </div>
+                    ) : (
+                      <Select
+                        value={selectedPhaseId || "__no_phase__"}
+                        onValueChange={(val) => setSelectedPhaseId(val === "__no_phase__" ? "" : val)}
+                        disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={t("selectPhase")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {companyPhases.map((phase) => (
+                            <SelectItem key={phase.id} value={phase.id}>
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="h-2.5 w-2.5 rounded-full"
+                                  style={{ backgroundColor: phase.color }}
+                                />
+                                {phase.name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </>
                 )}
               </div>
             )}
@@ -1607,64 +1798,149 @@ export default function DashboardPage() {
               />
             </div>
 
-            {/* Billing Status */}
-            <div className="space-y-2">
-              <Label>{t("billing")}</Label>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setBillingStatus(billingStatus === "billable" ? "non_billable" : "billable")}
-                  disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
-                  className={cn(
-                    "relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors",
-                    billingStatus === "billable" ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600",
-                    editingEntry && isEntryReadOnly(editingEntry) ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform",
-                      billingStatus === "billable" ? "translate-x-5" : "translate-x-0"
-                    )}
-                  />
-                </button>
-                <span className="text-sm text-muted-foreground">
-                  {billingStatus === "billable" ? tc("billable") : t("notBillable")}
-                </span>
-              </div>
-            </div>
-
-            {/* Category selector when not billable */}
-            {billingStatus !== "billable" && (
+            {/* Invoice Label - shown when comment > 20 chars */}
+            {comment.length > 20 && (
               <div className="space-y-2">
-                <Label>{t("category")}</Label>
-                <Select
-                  value={billingStatus}
-                  onValueChange={setBillingStatus}
-                  disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="included">{t("includedContract")}</SelectItem>
-                    <SelectItem value="non_billable">{tc("nonBillable")}</SelectItem>
-                    <SelectItem value="internal">{tc("internal")}</SelectItem>
-                    <SelectItem value="presales">{tc("preSales")}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Billing status badge for existing entries */}
-            {editingEntry && editingEntry.billingStatus !== "billable" && (
-              <div className="flex items-center gap-2">
-                <Badge variant="outline">{BILLING_LABELS[editingEntry.billingStatus]}</Badge>
-                {editingEntry.nonBillableReason && (
-                  <span className="text-xs text-muted-foreground">{editingEntry.nonBillableReason}</span>
+                <div className="flex items-center justify-between">
+                  <Label>Fakturatekst (2 ord)</Label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={useFullTextForInvoice}
+                      onChange={(e) => setUseFullTextForInvoice(e.target.checked)}
+                      disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
+                      className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                    />
+                    <span className="text-xs text-muted-foreground">Brug fuld tekst</span>
+                  </label>
+                </div>
+                {!useFullTextForInvoice && (
+                  <Input
+                    value={invoiceLabel}
+                    onChange={(e) => setInvoiceLabel(e.target.value.slice(0, 30))}
+                    placeholder="F.eks. 'Opstartsmøde Borgergade'"
+                    maxLength={30}
+                    disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
+                  />
+                )}
+                {!useFullTextForInvoice && (
+                  <p className="text-xs text-muted-foreground">
+                    Kort tekst til faktura ({invoiceLabel.length}/30 tegn)
+                  </p>
                 )}
               </div>
             )}
+
+            {/* Billing & Classification - Collapsible Section */}
+            <div className="rounded-lg border border-border">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !billingSectionOpen;
+                  setBillingSectionOpen(next);
+                  localStorage.setItem("cloudtimer:billingExpanded", String(next));
+                }}
+                className="flex w-full items-center justify-between p-3 text-sm font-medium hover:bg-muted/50"
+              >
+                <span className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Fakturering &amp; Klassificering
+                  <Badge variant="secondary" className="ml-1">
+                    {billingType === "BILLABLE" ? "Fakturerbar" : billingType === "OUTSIDE_CONTRACT" ? "Udenfor kontrakt" : "Ikke fakturerbar"}
+                  </Badge>
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 text-muted-foreground transition-transform",
+                    billingSectionOpen && "rotate-180"
+                  )}
+                />
+              </button>
+
+              {billingSectionOpen && (
+                <div className="space-y-3 border-t p-3">
+                  {/* Three-tier billing type pills */}
+                  <div className="space-y-2">
+                    <Label>Faktureringstype</Label>
+                    <div className="flex gap-2">
+                      {([
+                        { value: "BILLABLE" as const, label: "Fakturerbar", color: "bg-emerald-500 text-white" },
+                        { value: "OUTSIDE_CONTRACT" as const, label: "Udenfor kontrakt", color: "bg-amber-500 text-white" },
+                        { value: "NON_BILLABLE" as const, label: "Ikke fakturerbar", color: "bg-gray-500 text-white" },
+                      ]).map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => {
+                            setBillingType(option.value);
+                            // Sync legacy billingStatus
+                            if (option.value === "NON_BILLABLE") {
+                              setBillingStatus("non_billable");
+                            } else {
+                              setBillingStatus("billable");
+                            }
+                          }}
+                          disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
+                          className={cn(
+                            "flex-1 rounded-md px-3 py-2 text-xs font-medium transition-all border-2",
+                            billingType === option.value
+                              ? cn(option.color, "border-transparent shadow-sm")
+                              : "bg-background text-foreground border-border hover:bg-muted",
+                            editingEntry && isEntryReadOnly(editingEntry) && "opacity-50 cursor-not-allowed"
+                          )}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Non-billable category dropdown */}
+                  {billingType === "NON_BILLABLE" && nonBillableCategories.length > 0 && (
+                    <div className="space-y-2">
+                      <Label>Kategori</Label>
+                      <Select
+                        value={nonBillableCategory}
+                        onValueChange={setNonBillableCategory}
+                        disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Vælg kategori..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {nonBillableCategories.map((cat) => (
+                            <SelectItem key={cat.id} value={cat.name}>
+                              {cat.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Non-billable reason (legacy, kept for backward compat) */}
+                  {billingType === "NON_BILLABLE" && (
+                    <div className="space-y-2">
+                      <Label>{t("category")}</Label>
+                      <Select
+                        value={billingStatus}
+                        onValueChange={setBillingStatus}
+                        disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="non_billable">{tc("nonBillable")}</SelectItem>
+                          <SelectItem value="internal">{tc("internal")}</SelectItem>
+                          <SelectItem value="presales">{tc("preSales")}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Mileage Section */}
             <div className="rounded-lg border border-border">

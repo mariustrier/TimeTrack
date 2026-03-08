@@ -34,6 +34,7 @@ export interface EconomicImportData {
   totalInvoiced: number;
   taskCategories: EconomicTaskCategory[];
   timeEntries: EconomicTimeEntry[];
+  aggregatedTimeEntries: EconomicTimeEntry[]; // Pre-aggregated for safe upsert
   uniqueEmployees: string[];
   totalHours: number;
   totalCost: number;
@@ -255,6 +256,8 @@ export function parseEconomicFile(buffer: ArrayBuffer): EconomicImportData {
   const totalCost = timeEntries.reduce((sum, e) => sum + e.costPrice, 0);
   const totalSales = timeEntries.reduce((sum, e) => sum + e.salesPrice, 0);
 
+  const aggregatedTimeEntries = aggregateEntries(timeEntries);
+
   return {
     sourceCompanyId,
     sourceCompanyName,
@@ -264,9 +267,30 @@ export function parseEconomicFile(buffer: ArrayBuffer): EconomicImportData {
     totalInvoiced,
     taskCategories,
     timeEntries,
+    aggregatedTimeEntries,
     uniqueEmployees: Array.from(employeeSet).sort(),
     totalHours,
     totalCost,
     totalSales,
   };
+}
+
+/**
+ * Aggregates parsed entries by (employeeName, date, categoryNumber) to prevent
+ * duplicate rows from causing data loss during upsert operations.
+ */
+export function aggregateEntries(entries: EconomicTimeEntry[]): EconomicTimeEntry[] {
+  const aggregated = new Map<string, EconomicTimeEntry>();
+  for (const entry of entries) {
+    const key = `${entry.employeeName}|${entry.date}|${entry.categoryNumber}`;
+    if (aggregated.has(key)) {
+      const existing = aggregated.get(key)!;
+      existing.hours += entry.hours;
+      existing.costPrice += entry.costPrice;
+      existing.salesPrice += entry.salesPrice;
+    } else {
+      aggregated.set(key, { ...entry });
+    }
+  }
+  return Array.from(aggregated.values());
 }

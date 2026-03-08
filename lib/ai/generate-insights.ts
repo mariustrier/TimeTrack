@@ -4,103 +4,97 @@ import { checkBudget, trackUsage } from "./cost-tracking";
 import { gatherInsightData, InsightDataPackage } from "./insight-data-gatherer";
 import { anonymizeInsightData, deanonymizeInsights, AnonymizationMap } from "./anonymize";
 
-const INSIGHTS_MODEL = "claude-sonnet-4-20250514";
+const INSIGHTS_MODEL = "claude-opus-4-6";
 
-const SYSTEM_PROMPT = `You are a friendly, supportive business advisor for a professional services company. Analyze the provided team and project data to generate helpful insights.
+const SYSTEM_PROMPT = `You are the AI analyst for Cloud Timer, a professional services time-tracking platform used by Danish companies. Your job is to deliver a morning briefing to the company's admin or managing partner — the kind of analysis a sharp, experienced financial controller would give if they had reviewed all the data overnight.
 
-Your tone should be warm and encouraging - like a trusted colleague, not a stern auditor. Use phrases like "Great opportunity", "Worth noting", "Nice work" rather than "WARNING" or "ALERT".
+You have access to the company's complete operational data: time entries with billability type (fakturerbar / udenfor kontrakt / ikke fakturerbar), project budgets and burn rates, resource allocations, employee utilization, invoices and payment status, expense records, vacation and absence patterns, milestone progress, and flex balances. You will receive this data as structured JSON.
 
-## Data You'll Receive
+## Your job
 
-You'll receive structured data about:
-- Team members and their weekly targets/utilization
-- Workload patterns (overtime, weekend work, underutilization)
-- Project status (budget usage, team distribution)
-- Vacation schedules and capacity forecasts
-- Productivity metrics (billable %, approval backlog)
-- Optional: Contract data if available
+Surface the 4–7 most important things happening in the business RIGHT NOW — things that require attention, carry financial risk, or represent an opportunity. Rank them by urgency and financial impact.
 
-## Insight Categories
+Do not summarize data the user can already see on their analytics dashboard. Do not restate numbers in prose. Your value is in CONNECTING signals across datasets that a human wouldn't naturally cross-reference, and translating those connections into a specific, named, actionable finding.
 
-Generate insights using these categories:
-- CELEBRATION: Recognize achievements and positive trends
-- OPPORTUNITY: Highlight capacity, growth potential, or efficiency gains
-- INSIGHT: Provide non-obvious observations from the data
-- SUGGESTION: Actionable recommendations for improvement
-- HEADS_UP: Early warnings that need attention (not alarmist)
+A great insight answers three questions at once:
+1. What is happening? (specific, named, quantified)
+2. Why does it matter? (business or financial consequence)
+3. What should I do about it? (one concrete next action)
 
-## Guidelines
+## Insight types to look for
 
-1. Generate ONLY insights that provide real value - could be 1-2 or up to 8 depending on what's genuinely useful
-2. If nothing important to report, it's fine to generate just 1-2 insights or even none
-3. Don't pad with filler insights - quality over quantity
-4. Prioritize by impact: wellbeing issues > project risks > productivity > celebrations
-3. For small teams (1-5 people): Focus on individual patterns and personal workload
-4. For larger teams (6+ people): Focus on team-wide patterns and distribution
-5. Always include at least one positive insight if the data supports it
-6. Be specific: use names, numbers, and dates when relevant
-7. Make suggestions actionable and realistic
-8. If data is sparse (new company, few entries), acknowledge this and suggest building habits
+**Budget trajectory — catch it before it's too late**
+Compare hours logged at role rates against budget remaining, then look at resource allocations for remaining work. If a project will exhaust its budget before the allocated work is complete, surface the estimated overrun in DKK, the days until budget is gone at current burn rate, and when the last invoice was issued. This is the highest-value finding you can produce.
 
-## DO NOT suggest these (they are unhelpful/obvious):
-- "Focus on fewer projects" or "reduce context switching" - multiple projects is normal
-- "Track your time more" - they're already using a time tracking app
-- "Consider using time tracking" - obviously they already do
-- Generic productivity advice that applies to everyone
-- Suggestions that require hiring or major business changes
+**Silent scope creep — two types**
+Type 1: Entries with billingType OUTSIDE_CONTRACT that have been accumulating for more than 14 days without a supplementary invoice. These are extra services being delivered without payment. Name the project, the total hours, and the estimated DKK value.
+Type 2: Phases where hours are accumulating but there has been no budget amendment or new invoice. Name the project, the phase, the unbilled hours, and the estimated value at the employee's billing rate.
 
-## Key Patterns to Look For
+**Capacity collisions**
+Cross-reference resource allocations for the next 6 weeks against approved vacation days and current utilization levels. Flag weeks where a specific role or person is double-booked, or where a project requires someone who will be on vacation. Be specific about the week, the person or role, and which projects are affected.
 
-Wellbeing:
-- Overwork: >40h/week for 3+ weeks = HEADS_UP
-- Underutilization: <70% for 3+ weeks = OPPORTUNITY (available capacity)
-- Weekend work: 3+ weekend days/month = HEADS_UP
-- Missing time entries = SUGGESTION (gentle reminder)
+**Overload and burnout signals**
+Find employees who have been above 110% utilization for 3 or more consecutive weeks, especially combined with: a shrinking or deeply negative flex balance, rising non-billable hours, or a pattern of weekend entries. Frame this as a delivery and retention risk, not a personal criticism.
 
-Team Capacity:
-- Uneven workload distribution = SUGGESTION (rebalance)
-- Upcoming vacation gaps = HEADS_UP
-- Available capacity = OPPORTUNITY
+**Client concentration and cash flow risk**
+If a single client represents more than 30% of billable hours AND has overdue invoices, connect those two facts. Calculate the cash flow exposure in DKK if the overdue amount is delayed a further 30 days.
 
-Projects:
-- Budget >80% used = HEADS_UP
-- Fast burn rate = INSIGHT
-- Single-person dependency >80% = HEADS_UP (risk)
+**Pricing and estimation patterns**
+If you have 6+ completed projects, look for systematic underestimation in specific project types, phases, or clients. Quantify the average overrun percentage and give a concrete recommendation: adjust estimate template, switch to T&M billing, or flag specific client.
 
-Productivity:
-- Declining billable % = INSIGHT
-- High billable week >85% = CELEBRATION
-- Large approval backlog = SUGGESTION
+**Unbilled work aging**
+Time entries older than the company's standard payment terms that haven't been invoiced. Group by project and client. Surface the total DKK sitting unbilled and the oldest entry date.
 
-Resource Planning:
-- Overbooked users (allocated > capacity) = HEADS_UP with specific names
-- Available capacity (users with 50%+ free time) = OPPORTUNITY (suggest projects)
-- Understaffed projects (allocation < burn rate) = SUGGESTION (assign more resources)
-- Low team utilization forecast = OPPORTUNITY (capacity for new work)
-- Allocation gaps = SUGGESTION (fill specific days/weeks)
+**Milestone and deadline risk**
+Upcoming milestones or deadlines within 14 days where budget burn or hours logged suggest the team is behind, combined with whether responsible team members have capacity in the remaining days.
 
-Project Phases (if phase data is provided):
-- Project stuck in same phase for 2+ weeks with no progress = HEADS_UP
-- Phase with disproportionate hours vs others = INSIGHT (bottleneck)
-- Project completing final phase = CELEBRATION
-- Uneven hour distribution across phases = SUGGESTION
+## Tone and format
 
-## Output Format
+Write like a trusted advisor, not a data dump. Be direct and specific. Use the actual names of projects, clients, and employees. Quantify everything in DKK where possible.
 
-Return ONLY a JSON array. Each insight:
+Each insight follows this structure:
+
+**[Urgency emoji] [Short headline — project or person name first]**
+One to two sentences: what the data shows and why it matters.
+*Anbefaling: one specific action, ideally today or this week.*
+
+Urgency emojis:
+🔴 Immediate — financial risk or deadline within 7 days
+🟡 This week — developing risk, needs attention before it compounds
+🟢 Opportunity — positive signal or forward-looking recommendation
+📋 FYI — low urgency but worth knowing
+
+After all insights, add a **Pulse** paragraph (3–4 sentences max): an honest qualitative read on the overall health of the business this week. Not a summary of the insights above — a higher-level take. Is the business in a strong position? Is there a systemic pattern? What should the managing partner focus on this week?
+
+## What NOT to do
+
+- Do not produce insights obvious from the analytics dashboard (e.g. "Your billable utilization was 87%")
+- Do not produce more than 7 insights — ruthlessly prioritize
+- Do not hedge excessively: "this project will exhaust its budget in ~9 days" not "there may potentially be budget pressure"
+- Do not give generic advice — every recommendation must reference a specific project, client, employee, or date
+- Do not fabricate numbers — if data is insufficient, skip the finding
+- Do not repeat the same insight type twice unless the second is significantly more urgent
+
+## Data payload structure
+
+The user message contains a JSON object:
+
 {
-  "category": "OPPORTUNITY" | "INSIGHT" | "SUGGESTION" | "HEADS_UP" | "CELEBRATION",
-  "title": "Short, friendly title (max 60 chars)",
-  "description": "1-2 sentences explaining the insight",
-  "suggestion": "Optional actionable recommendation",
-  "relatedHours": Optional number if hours-related,
-  "relatedAmount": Optional number if money-related
-}`;
+  "company": { "currency", "language", "flexStartDate", "standardPaymentTermsDays" },
+  "employees": [{ "name", "role", "contractType", "weeklyHours", "currentUtilization", "flexBalance", "allocations" }],
+  "projects": [{ "name", "client", "budget", "budgetUsed", "budgetRemaining", "phases", "milestones", "lastInvoiceDate", "status" }],
+  "timeEntries": [{ "employeeName", "projectName", "phaseName", "hours", "date", "billingType", "billingRate", "invoiceLabel" }],
+  "resourceAllocations": [{ "employeeName", "projectName", "weekStart", "allocatedHours", "confirmed" }],
+  "invoices": [{ "projectName", "client", "amount", "issuedDate", "dueDate", "paidDate", "status" }],
+  "expenses": [{ "employeeName", "projectName", "amount", "date", "approved" }],
+  "vacations": [{ "employeeName", "startDate", "endDate", "status", "days" }],
+  "outsideContractEntries": [{ "employeeName", "projectName", "hours", "date", "billingRate", "daysSinceOldest" }],
+  "today": "YYYY-MM-DD"
+}
 
-const SYSTEM_PROMPT_ANONYMIZED = SYSTEM_PROMPT.replace(
-  "6. Be specific: use names, numbers, and dates when relevant",
-  "6. Be specific: use the provided identifier labels (Employee A, Project Alpha, etc.) when referencing team members and projects. Use numbers and dates when relevant."
-);
+Note: IDs are stripped from the payload — use names throughout. Analyze this data and produce your briefing immediately, without preamble.`;
+
+const SYSTEM_PROMPT_ANONYMIZED = SYSTEM_PROMPT + "\n\nIMPORTANT: The data has been anonymized. Use the provided identifier labels (Employee A, Project Alpha, etc.) when referencing team members and projects.";
 
 interface GeneratedInsight {
   category: "OPPORTUNITY" | "INSIGHT" | "SUGGESTION" | "HEADS_UP" | "CELEBRATION";
@@ -112,133 +106,122 @@ interface GeneratedInsight {
 }
 
 function buildUserPrompt(data: InsightDataPackage): string {
-  const teamSizeContext =
-    data.team.members.length <= 5
-      ? "This is a small team - focus on individual patterns and personal workload."
-      : data.team.members.length <= 15
-        ? "This is a medium-sized team - balance individual and team-wide insights."
-        : "This is a larger team - focus on team-wide trends and significant outliers.";
+  const today = new Date().toISOString().split("T")[0];
 
-  const sections: string[] = [];
-
-  // Company context
-  sections.push(`## Company: ${data.company.name}
-${teamSizeContext}
-Team size: ${data.team.members.length} members
-Total weekly capacity: ${data.team.totalCapacityHoursWeekly} hours`);
-
-  // Team members
-  if (data.team.members.length > 0) {
-    sections.push(`## Team Members
-${JSON.stringify(
-  data.team.members.map((m) => ({
+  // Build employees array
+  const employees = data.team.members.map((m) => ({
     name: m.name,
-    weeklyTarget: m.weeklyTarget,
-    avgHoursLast4Weeks: m.avgHoursLast4Weeks,
-    utilizationPercent: m.utilizationPercent,
-  })),
-  null,
-  2
-)}`);
-  }
+    role: null,
+    contractType: null,
+    weeklyHours: m.weeklyTarget,
+    currentUtilization: m.utilizationPercent,
+    flexBalance: null,
+    allocations: data.resourcePlanning.allocations
+      .filter((a) => a.userName === m.name)
+      .map((a) => ({
+        projectName: a.projectName,
+        startDate: a.startDate,
+        endDate: a.endDate,
+        hoursPerDay: a.hoursPerDay,
+        status: a.status,
+      })),
+  }));
 
-  // Workload alerts
-  const hasWorkloadIssues =
-    data.workloadMetrics.usersOverworked.length > 0 ||
-    data.workloadMetrics.usersUnderutilized.length > 0 ||
-    data.workloadMetrics.weekendWorkers.length > 0;
+  // Build projects array
+  const projects = data.projects.active.map((p) => ({
+    name: p.name,
+    client: null,
+    budget: p.budgetHours,
+    budgetUsed: p.hoursUsed,
+    budgetRemaining: p.budgetHours ? p.budgetHours - p.hoursUsed : null,
+    phases: data.phases?.projectPhases
+      .filter((pp) => pp.projectName === p.name)
+      .map((pp) => ({
+        currentPhase: pp.phaseCompleted ? "Completed" : (pp.currentPhase || "Unassigned"),
+        hoursPerPhase: pp.hoursPerPhase,
+      }))[0] || null,
+    milestones: null,
+    lastInvoiceDate: null,
+    status: "active",
+    weeklyBurnRate: p.weeklyBurnRate,
+    teamMembers: p.teamMembers,
+  }));
 
-  if (hasWorkloadIssues) {
-    sections.push(`## Workload Alerts
-${data.workloadMetrics.usersOverworked.length > 0 ? `Overworked (>40h/week, 3+ weeks): ${JSON.stringify(data.workloadMetrics.usersOverworked)}` : ""}
-${data.workloadMetrics.usersUnderutilized.length > 0 ? `Underutilized (<70%): ${JSON.stringify(data.workloadMetrics.usersUnderutilized)}` : ""}
-${data.workloadMetrics.weekendWorkers.length > 0 ? `Weekend workers (3+ days this month): ${JSON.stringify(data.workloadMetrics.weekendWorkers)}` : ""}`);
-  }
+  // Build time entries summary (from workload metrics weekly data)
+  const timeEntries = data.workloadMetrics.weeklyHoursByUser.map((w) => ({
+    employeeName: w.userName,
+    projectName: null,
+    phaseName: null,
+    hours: w.hours,
+    date: w.weekStart,
+    billingType: null,
+    billingRate: null,
+    invoiceLabel: null,
+  }));
 
-  // Vacations
-  if (data.vacations.upcoming.length > 0 || data.vacations.capacityReductions.length > 0) {
-    sections.push(`## Upcoming Vacations & Capacity
-${data.vacations.upcoming.length > 0 ? `Upcoming: ${JSON.stringify(data.vacations.upcoming)}` : "No upcoming vacations"}
-${data.vacations.capacityReductions.length > 0 ? `Reduced capacity days: ${JSON.stringify(data.vacations.capacityReductions)}` : ""}`);
-  }
+  // Build resource allocations
+  const resourceAllocations = data.resourcePlanning.allocations.map((a) => ({
+    employeeName: a.userName,
+    projectName: a.projectName,
+    weekStart: a.startDate,
+    allocatedHours: a.hoursPerDay * 5,
+    confirmed: a.status === "confirmed",
+  }));
 
-  // Projects
-  if (data.projects.active.length > 0) {
-    const projectsWithBudget = data.projects.active.filter((p) => p.budgetHours);
-    const projectsSummary = data.projects.active.map((p) => ({
-      name: p.name,
-      budgetHours: p.budgetHours,
-      hoursUsed: p.hoursUsed,
-      percentUsed: p.percentUsed,
-      weeklyBurnRate: p.weeklyBurnRate,
-      teamSize: p.teamMembers.length,
-    }));
+  // Build vacations
+  const vacations = data.vacations.upcoming.map((v) => ({
+    employeeName: v.userName,
+    startDate: v.startDate,
+    endDate: v.endDate,
+    status: "approved",
+    days: v.businessDays,
+  }));
 
-    sections.push(`## Active Projects (${data.projects.active.length})
-${JSON.stringify(projectsSummary, null, 2)}
-${data.projects.singlePersonRisks.length > 0 ? `\nSingle-person dependency risks: ${JSON.stringify(data.projects.singlePersonRisks)}` : ""}`);
-  }
+  // Build expenses (not available in current data gatherer, send empty)
+  const expenses: unknown[] = [];
 
-  // Productivity
-  sections.push(`## Productivity Metrics
-Pending approvals: ${data.productivity.pendingApprovals}
-${data.productivity.usersWithEntryGaps.length > 0 ? `Users with entry gaps (missed 3+ of last 5 days): ${JSON.stringify(data.productivity.usersWithEntryGaps)}` : ""}
-${data.productivity.billablePercentByWeek.length > 0 ? `Billable % trend (last 4 weeks): ${JSON.stringify(data.productivity.billablePercentByWeek.slice(-4))}` : ""}`);
+  // Build invoices (not available in current data gatherer, send empty)
+  const invoices: unknown[] = [];
 
-  // Contracts (optional)
-  if (data.contracts.length > 0) {
-    sections.push(`## Contracts (${data.contracts.length})
-${JSON.stringify(data.contracts, null, 2)}`);
-  }
+  // Build outsideContractEntries (not available in current data, send empty)
+  const outsideContractEntries: unknown[] = [];
 
-  // Resource Planning
-  const hasResourcePlanningData =
-    data.resourcePlanning.allocations.length > 0 ||
-    data.resourcePlanning.unassignedUsers.length > 0 ||
-    data.resourcePlanning.understaffedProjects.length > 0;
+  const payload = {
+    company: {
+      currency: data.company.currency,
+      language: null,
+      flexStartDate: null,
+      standardPaymentTermsDays: null,
+    },
+    employees,
+    projects,
+    timeEntries,
+    resourceAllocations,
+    invoices,
+    expenses,
+    vacations,
+    outsideContractEntries,
+    today,
+    // Additional context not in spec but useful for analysis
+    _extra: {
+      workloadAlerts: {
+        overworked: data.workloadMetrics.usersOverworked,
+        underutilized: data.workloadMetrics.usersUnderutilized,
+        weekendWorkers: data.workloadMetrics.weekendWorkers,
+      },
+      capacityReductions: data.vacations.capacityReductions,
+      singlePersonRisks: data.projects.singlePersonRisks,
+      pendingApprovals: data.productivity.pendingApprovals,
+      usersWithEntryGaps: data.productivity.usersWithEntryGaps,
+      billablePercentByWeek: data.productivity.billablePercentByWeek,
+      contracts: data.contracts,
+      capacityForecast: data.resourcePlanning.capacityForecast,
+      unassignedUsers: data.resourcePlanning.unassignedUsers,
+      understaffedProjects: data.resourcePlanning.understaffedProjects,
+    },
+  };
 
-  if (hasResourcePlanningData) {
-    const resourcePlanningParts: string[] = [];
-
-    if (data.resourcePlanning.allocations.length > 0) {
-      resourcePlanningParts.push(`Current allocations (next 4 weeks): ${JSON.stringify(data.resourcePlanning.allocations.slice(0, 20))}`);
-    }
-
-    if (data.resourcePlanning.capacityForecast.length > 0) {
-      resourcePlanningParts.push(`Capacity forecast issues: ${JSON.stringify(data.resourcePlanning.capacityForecast)}`);
-    }
-
-    if (data.resourcePlanning.unassignedUsers.length > 0) {
-      resourcePlanningParts.push(`Users with available capacity this week: ${JSON.stringify(data.resourcePlanning.unassignedUsers)}`);
-    }
-
-    if (data.resourcePlanning.understaffedProjects.length > 0) {
-      resourcePlanningParts.push(`Projects needing more resources: ${JSON.stringify(data.resourcePlanning.understaffedProjects)}`);
-    }
-
-    sections.push(`## Resource Planning
-${resourcePlanningParts.join("\n")}`);
-  }
-
-  // Phases
-  if (data.phases?.enabled && data.phases.definitions.length > 0) {
-    const phaseParts: string[] = [];
-    phaseParts.push(`Phase definitions: ${data.phases.definitions.map((p) => p.name).join(" → ")}`);
-
-    if (data.phases.projectPhases.length > 0) {
-      const phaseSummary = data.phases.projectPhases.map((p) => ({
-        project: p.projectName,
-        currentPhase: p.phaseCompleted ? "Completed" : (p.currentPhase || "Unassigned"),
-        hoursPerPhase: p.hoursPerPhase,
-      }));
-      phaseParts.push(`Project phases: ${JSON.stringify(phaseSummary, null, 2)}`);
-    }
-
-    sections.push(`## Project Phases
-${phaseParts.join("\n")}`);
-  }
-
-  return sections.join("\n\n");
+  return JSON.stringify(payload);
 }
 
 export async function generateInsights(companyId: string) {
@@ -283,7 +266,8 @@ export async function generateInsights(companyId: string) {
     const client = getAnthropicClient();
     const response = await client.messages.create({
       model: INSIGHTS_MODEL,
-      max_tokens: 2048,
+      max_tokens: 1500,
+      temperature: 0,
       system: shouldAnonymize ? SYSTEM_PROMPT_ANONYMIZED : SYSTEM_PROMPT,
       messages: [
         {

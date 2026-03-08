@@ -5,11 +5,10 @@ import { FileText, Info } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
 import { UninvoicedTab } from "@/components/billing/UninvoicedTab";
 import { InvoicesTab } from "@/components/billing/InvoicesTab";
-import { BillingSettings } from "@/components/billing/BillingSettings";
 
 export default function BillingPage() {
   const t = useTranslations("billing");
-  const [activeTab, setActiveTab] = useState<"uninvoiced" | "invoices" | "settings">("uninvoiced");
+  const [activeTab, setActiveTab] = useState<"uninvoiced" | "invoices">("uninvoiced");
 
   return (
     <div className="space-y-6">
@@ -26,7 +25,7 @@ export default function BillingPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-border">
-        {(["uninvoiced", "invoices", "settings"] as const).map((tab) => (
+        {(["uninvoiced", "invoices"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -44,7 +43,6 @@ export default function BillingPage() {
       {/* Tab Content */}
       {activeTab === "uninvoiced" && <UninvoicedTab />}
       {activeTab === "invoices" && <InvoicesTab />}
-      {activeTab === "settings" && <BillingSettings />}
     </div>
   );
 }
