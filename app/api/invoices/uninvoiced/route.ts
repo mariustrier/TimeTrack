@@ -39,9 +39,10 @@ export async function GET() {
           companyId: user.companyId,
           approvalStatus: "approved",
           billingStatus: "billable",
+          billingType: { not: "OUTSIDE_CONTRACT" },
           invoiceId: null,
           externallyInvoiced: { not: true },
-        },
+        } as Record<string, unknown>,
         select: {
           id: true,
           hours: true,

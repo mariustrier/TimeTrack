@@ -12,7 +12,7 @@ export async function GET() {
 
     const counts: Record<string, number> = {};
 
-    if (user.role === "admin") {
+    if (user.role === "admin" || user.role === "manager") {
       // Only count submitted time entries where Friday (or later) is included
       // This prevents notifications for partial week submissions
       const submittedEntries = await db.timeEntry.findMany({
@@ -94,16 +94,17 @@ export async function GET() {
       });
       counts.aiAssistant = insightCount;
 
-      // Count projects with uninvoiced approved billable entries
+      // Count projects with uninvoiced approved billable entries (excluding OUTSIDE_CONTRACT)
       const uninvoicedProjects = await db.timeEntry.groupBy({
         by: ["projectId"],
         where: {
           companyId: user.companyId,
           approvalStatus: "approved",
           billingStatus: "billable",
+          billingType: { not: "OUTSIDE_CONTRACT" },
           invoiceId: null,
           externallyInvoiced: { not: true },
-        },
+        } as Record<string, unknown>,
       });
       if (uninvoicedProjects.length > 0) {
         counts.billing = uninvoicedProjects.length;

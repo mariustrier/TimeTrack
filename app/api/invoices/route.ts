@@ -64,6 +64,7 @@ export async function POST(req: Request) {
       companyId: user.companyId,
       approvalStatus: "approved",
       billingStatus: "billable",
+      billingType: { not: "OUTSIDE_CONTRACT" },
       invoiceId: null,
       externallyInvoiced: { not: true },
       date: { gte: new Date(periodStart), lte: new Date(periodEnd) },
