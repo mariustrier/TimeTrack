@@ -37,13 +37,13 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { labelKey: "dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { labelKey: "management", href: "/admin", icon: BarChart3, badge: true, roles: ["admin", "manager"] },
+  { labelKey: "management", href: "/management", icon: BarChart3, badge: true, roles: ["admin", "manager"] },
   { labelKey: "projects", href: "/projects", icon: FolderKanban },
   { labelKey: "analytics", href: "/analytics", icon: TrendingUp, roles: ["admin", "manager"] },
   { labelKey: "aiAssistant", href: "/ai", icon: Sparkles, roles: ["admin", "manager"], badge: true },
   { labelKey: "billing", href: "/billing", icon: FileText, roles: ["admin", "manager"], badge: true },
   { labelKey: "expenses", href: "/expenses", icon: Receipt },
-  { labelKey: "vacations", href: "/vacations", icon: Palmtree },
+  { labelKey: "vacations", href: "/vacations", icon: Palmtree, roles: ["employee"] },
   { labelKey: "settings", href: "/settings", icon: Settings },
   { labelKey: "platform", href: "/super-admin", icon: Shield, superAdminOnly: true },
 ];
