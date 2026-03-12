@@ -21,6 +21,8 @@ export const createTimeEntrySchema = z.object({
   absenceReasonId: z.string().optional().nullable(),
   // Phase override (defaults to project's current phase if not provided)
   phaseId: z.string().optional().nullable(),
+  // Tilbud category
+  tilbudCategoryId: z.string().optional().nullable(),
   // Admin: log on behalf of employee
   userId: z.string().min(1).optional(),
   // Three-tier billability fields
@@ -53,6 +55,8 @@ export const updateTimeEntrySchema = z.object({
   absenceReasonId: z.string().optional().nullable(),
   // Phase override (defaults to entry's current phase if not provided)
   phaseId: z.string().optional().nullable(),
+  // Tilbud category
+  tilbudCategoryId: z.string().optional().nullable(),
 });
 
 // --- Projects ---
@@ -476,4 +480,31 @@ export const expenseCategoryMappingSchema = z.object({
 
 export const syncRequestSchema = z.object({
   entryIds: z.array(z.string()).optional(),
+});
+
+// --- Tilbud (Quote) ---
+
+export const tilbudConfirmSchema = z.object({
+  tilbudId: z.string().min(1),
+  hourlyRate: z.number().positive(),
+  hourlyRateInclMoms: z.number().positive().optional(),
+  categories: z.array(z.object({
+    faseNumber: z.number().int().optional(),
+    name: z.string().min(1).max(200),
+    description: z.string().max(500).optional(),
+    quotedHours: z.number().min(0).optional(),
+    isTimeloen: z.boolean(),
+    timeloenEstimate: z.string().max(50).optional(),
+    isRecurring: z.boolean().default(false),
+    recurringUnit: z.enum(["month", "week"]).optional(),
+    sortOrder: z.number().int(),
+    children: z.array(z.object({
+      name: z.string().min(1).max(200),
+      description: z.string().max(500).optional(),
+      quotedHours: z.number().min(0).optional(),
+      isTimeloen: z.boolean(),
+      timeloenEstimate: z.string().max(50).optional(),
+      sortOrder: z.number().int(),
+    })).optional(),
+  })).min(1),
 });

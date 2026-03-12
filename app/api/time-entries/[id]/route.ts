@@ -53,6 +53,7 @@ export async function PUT(
       mileageStops,
       mileageRoundTrip,
       mileageSource,
+      tilbudCategoryId,
       phaseId: requestedPhaseId,
     } = result.data;
 
@@ -163,6 +164,25 @@ export async function PUT(
         }
         data.phaseId = phase.id;
         data.phaseName = phase.name;
+      }
+    }
+
+    // Tilbud category override (only editable when draft)
+    if (tilbudCategoryId !== undefined && entry.approvalStatus === "draft") {
+      if (tilbudCategoryId === null) {
+        data.tilbudCategoryId = null;
+      } else {
+        // Validate category belongs to project and is active
+        const category = await db.tilbudCategory.findFirst({
+          where: { id: tilbudCategoryId, projectId: entry.projectId, isActive: true },
+        });
+        if (!category) {
+          return NextResponse.json(
+            { error: "Tilbud category not found or inactive" },
+            { status: 400 }
+          );
+        }
+        data.tilbudCategoryId = category.id;
       }
     }
 

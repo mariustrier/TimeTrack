@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { FolderKanban, Plus, Pencil, Trash2, FileText, Layers, Filter, Upload, Settings2, ArrowUp, ArrowDown, Eye, EyeOff, RotateCcw } from "lucide-react";
+import { FolderKanban, Plus, Pencil, Trash2, FileText, Layers, Filter, Upload, Settings2, ArrowUp, ArrowDown, Eye, EyeOff, RotateCcw, Receipt } from "lucide-react";
 import { getProjectStatus, PROJECT_STATUS_CONFIG, type ProjectStatus } from "@/lib/project-utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,8 @@ import { ContractSection } from "@/components/contracts/contract-section";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { PhaseProgress } from "@/components/projects/PhaseProgress";
 import { EconomicImport } from "@/components/projects/EconomicImport";
+import { TilbudDialog } from "@/components/tilbud/TilbudDialog";
+import { TilbudOverview } from "@/components/tilbud/TilbudOverview";
 
 interface Phase {
   id: string;
@@ -118,6 +120,7 @@ export function ProjectsList() {
   const tc = useTranslations("common");
   const tContracts = useTranslations("contracts");
   const tp = useTranslations("phases");
+  const tTilbud = useTranslations("tilbud");
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -143,6 +146,8 @@ export function ProjectsList() {
   const [estimatedNonBillable, setEstimatedNonBillable] = useState("");
   const [userRole, setUserRole] = useState("employee");
   const [contractProjectId, setContractProjectId] = useState<string | null>(null);
+  const [tilbudProjectId, setTilbudProjectId] = useState<string | null>(null);
+  const [tilbudProjectHasTilbud, setTilbudProjectHasTilbud] = useState(false);
   const [companyPhasesEnabled, setCompanyPhasesEnabled] = useState(false);
   const [companyPhases, setCompanyPhases] = useState<Phase[]>([]);
   const [projectPhasesEnabled, setProjectPhasesEnabled] = useState(true);
@@ -595,6 +600,28 @@ export function ProjectsList() {
                             <FileText className="h-4 w-4" />
                           </button>
                         )}
+                        {(userRole === "admin" || userRole === "manager") && !project.systemManaged && (
+                          <button
+                            onClick={async () => {
+                              setTilbudProjectId(project.id);
+                              try {
+                                const res = await fetch(`/api/projects/${project.id}/tilbud`);
+                                if (res.ok) {
+                                  const data = await res.json();
+                                  setTilbudProjectHasTilbud(!!data.tilbud && data.tilbud.status === "ready");
+                                } else {
+                                  setTilbudProjectHasTilbud(false);
+                                }
+                              } catch {
+                                setTilbudProjectHasTilbud(false);
+                              }
+                            }}
+                            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                            title={tTilbud("title")}
+                          >
+                            <Receipt className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -848,6 +875,39 @@ export function ProjectsList() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Tilbud Dialog — shows upload wizard or overview depending on state */}
+      {tilbudProjectId && !tilbudProjectHasTilbud && (
+        <TilbudDialog
+          projectId={tilbudProjectId}
+          open={!!tilbudProjectId && !tilbudProjectHasTilbud}
+          onOpenChange={(open) => {
+            if (!open) {
+              setTilbudProjectId(null);
+              setTilbudProjectHasTilbud(false);
+            }
+          }}
+          onConfirmed={() => {
+            setTilbudProjectHasTilbud(true);
+            fetchProjects();
+          }}
+        />
+      )}
+      {tilbudProjectId && tilbudProjectHasTilbud && (
+        <Dialog open onOpenChange={(open) => {
+          if (!open) {
+            setTilbudProjectId(null);
+            setTilbudProjectHasTilbud(false);
+          }
+        }}>
+          <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{tTilbud("overviewTab")}</DialogTitle>
+            </DialogHeader>
+            <TilbudOverview projectId={tilbudProjectId} />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

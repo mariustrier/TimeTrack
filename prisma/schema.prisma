@@ -83,6 +83,7 @@ model Company {
   employeeMappings        EmployeeMapping[]
   expenseCategoryMappings ExpenseCategoryMapping[]
   syncLogs                SyncLog[]
+  tilbudDocuments         TilbudDocument[]
 }
 
 model User {
@@ -201,6 +202,8 @@ model Project {
   invoices            Invoice[]
   activities          ProjectActivity[]
   projectMappings     ProjectMapping[]
+  tilbudDocuments     TilbudDocument[]
+  tilbudCategories    TilbudCategory[]
 
   @@index([companyId])
 }
@@ -249,6 +252,9 @@ model TimeEntry {
   phaseId   String?
   phaseName String? // Denormalized snapshot of phase name at time of entry
 
+  // Tilbud (quote) category
+  tilbudCategoryId String?
+
   // Invoice tracking
   invoiceId          String?
   invoicedAt         DateTime?
@@ -262,13 +268,14 @@ model TimeEntry {
   accountingSyncedAt DateTime?
   accountingSyncId   String?
 
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  absenceReason AbsenceReason? @relation(fields: [absenceReasonId], references: [id], onDelete: SetNull)
-  phase         Phase?         @relation(fields: [phaseId], references: [id], onDelete: SetNull)
-  invoice       Invoice?       @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
-  importBatch   ImportBatch?   @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project         Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  absenceReason   AbsenceReason?   @relation(fields: [absenceReasonId], references: [id], onDelete: SetNull)
+  phase           Phase?           @relation(fields: [phaseId], references: [id], onDelete: SetNull)
+  invoice         Invoice?         @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  importBatch     ImportBatch?     @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+  tilbudCategory  TilbudCategory?  @relation(fields: [tilbudCategoryId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([projectId])
@@ -278,6 +285,7 @@ model TimeEntry {
   @@index([companyId, approvalStatus, date])
   @@index([phaseId])
   @@index([importBatchId])
+  @@index([tilbudCategoryId])
 }
 
 model VacationRequest {
@@ -960,4 +968,74 @@ model SyncLog {
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId, startedAt])
+}
+
+// ─── TILBUD (QUOTE) DOCUMENTS ───
+// Uploaded project quotes with AI-extracted budget categories
+model TilbudDocument {
+  id                 String   @id @default(cuid())
+  projectId          String
+  project            Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  companyId          String
+  company            Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  fileName           String
+  fileUrl            String
+  status             String   @default("processing") // "processing" | "ready" | "error"
+  hourlyRate         Float?
+  hourlyRateInclMoms Float?
+  totalQuotedHours   Float?
+  totalQuotedAmount  Float?
+  currency           String   @default("DKK")
+  rawExtractionJson  Json?
+  notes              String?
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  categories         TilbudCategory[]
+
+  @@index([projectId])
+  @@index([companyId])
+}
+
+// ─── TILBUD CATEGORIES ───
+// Hierarchical budget categories extracted from tilbud documents (faser → tasks)
+model TilbudCategory {
+  id                String   @id @default(cuid())
+  tilbudId          String
+  tilbud            TilbudDocument @relation(fields: [tilbudId], references: [id], onDelete: Cascade)
+  projectId         String
+  project           Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  companyId         String
+
+  // Hierarchy
+  parentId          String?
+  parent            TilbudCategory?  @relation("TilbudCategoryParent", fields: [parentId], references: [id])
+  children          TilbudCategory[] @relation("TilbudCategoryParent")
+
+  // Content
+  faseNumber        Int?
+  name              String
+  description       String?
+  quotedHours       Float?
+  isTimeloen        Boolean @default(false)
+  timeloenEstimate  String?
+  isRecurring       Boolean @default(false)
+  recurringUnit     String?
+
+  // Display
+  sortOrder         Int      @default(0)
+  color             String?
+  isActive          Boolean  @default(true)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  timeEntries       TimeEntry[]
+
+  @@index([tilbudId])
+  @@index([projectId])
+  @@index([parentId])
+  @@index([companyId])
 }

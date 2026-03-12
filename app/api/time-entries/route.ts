@@ -171,6 +171,7 @@ export async function POST(req: Request) {
       mileageRoundTrip,
       mileageSource,
       absenceReasonId,
+      tilbudCategoryId,
       phaseId: requestedPhaseId,
       userId: targetUserId,
     } = result.data;
@@ -279,6 +280,52 @@ export async function POST(req: Request) {
       }
     }
 
+    // Tilbud category validation
+    let entryTilbudCategoryId: string | null = null;
+    if (!isAbsenceProject) {
+      // Check if project has an active tilbud with categories
+      const activeTilbud = await db.tilbudDocument.findFirst({
+        where: {
+          projectId,
+          companyId: user.companyId,
+          status: "ready",
+        },
+        include: {
+          categories: {
+            where: { isActive: true },
+            select: { id: true },
+            take: 1,
+          },
+        },
+      });
+
+      const hasTilbudCategories =
+        activeTilbud && activeTilbud.categories.length > 0;
+
+      if (tilbudCategoryId) {
+        // Validate the category belongs to this project and is active
+        const category = await db.tilbudCategory.findFirst({
+          where: {
+            id: tilbudCategoryId,
+            projectId,
+            isActive: true,
+          },
+        });
+        if (!category) {
+          return NextResponse.json(
+            { error: "Tilbud category not found or inactive" },
+            { status: 400 }
+          );
+        }
+        entryTilbudCategoryId = category.id;
+      } else if (hasTilbudCategories) {
+        return NextResponse.json(
+          { error: "Tilbudskategori er påkrævet for dette projekt" },
+          { status: 400 }
+        );
+      }
+    }
+
     // Default billing status from project's billable flag
     // Absence entries are always non-billable
     const defaultBillingStatus = isAbsenceProject
@@ -307,6 +354,7 @@ export async function POST(req: Request) {
           phaseId: entryPhaseId,
           phaseName: entryPhaseName,
         }),
+        ...(entryTilbudCategoryId && { tilbudCategoryId: entryTilbudCategoryId }),
         ...(billingType && { billingType }),
         ...(invoiceLabel !== undefined && { invoiceLabel: invoiceLabel || null }),
         ...(nonBillableCategory !== undefined && { nonBillableReason: nonBillableCategory || null }),

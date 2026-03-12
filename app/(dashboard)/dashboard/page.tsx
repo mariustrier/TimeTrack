@@ -70,6 +70,7 @@ import { PageGuide } from "@/components/ui/page-guide";
 import { useCompanyLogo, useIsDemo } from "@/lib/company-context";
 import { isCompanyHoliday, getCompanyHolidayName, type CustomHoliday } from "@/lib/holidays";
 import { getDailyTarget } from "@/lib/calculations";
+import { TilbudCategoryDropdown } from "@/components/tilbud/TilbudCategoryDropdown";
 
 interface Project {
   id: string;
@@ -129,6 +130,7 @@ interface TimeEntry {
   phaseId: string | null;
   phaseName: string | null;
   absenceReasonId: string | null;
+  tilbudCategoryId?: string | null;
 }
 
 interface StatCardProps {
@@ -232,6 +234,13 @@ export default function DashboardPage() {
   const [companyPhases, setCompanyPhases] = useState<CompanyPhase[]>([]);
   const [selectedPhaseId, setSelectedPhaseId] = useState("");
   const [skipPhase, setSkipPhase] = useState(false);
+  // Tilbud category state
+  const [tilbudCategories, setTilbudCategories] = useState<Array<{
+    id: string; name: string; faseNumber?: number; parentId?: string; parentName?: string;
+    quotedHours?: number; isTimeloen: boolean; timeloenEstimate?: string;
+    usedHours: number; isRecurring: boolean; sortOrder: number;
+  }>>([]);
+  const [selectedTilbudCategoryId, setSelectedTilbudCategoryId] = useState("");
   // Billing type (new three-tier model)
   const [billingType, setBillingType] = useState<"BILLABLE" | "OUTSIDE_CONTRACT" | "NON_BILLABLE">("BILLABLE");
   const [nonBillableCategory, setNonBillableCategory] = useState("");
@@ -581,6 +590,8 @@ export default function DashboardPage() {
       // Phase
       setSelectedPhaseId(entry.phaseId || "");
       setSkipPhase(!entry.phaseId);
+      // Tilbud category
+      setSelectedTilbudCategoryId(entry.tilbudCategoryId || "");
       // Billing type (new three-tier model) - use stored billingType or map from legacy billingStatus
       if (entry.billingType) {
         setBillingType(entry.billingType);
@@ -625,6 +636,17 @@ export default function DashboardPage() {
       // Reset invoice label
       setInvoiceLabel("");
       setUseFullTextForInvoice(false);
+      // Reset tilbud category
+      setSelectedTilbudCategoryId("");
+    }
+    // Fetch tilbud categories for the selected project
+    if (projectId) {
+      fetch(`/api/projects/${projectId}/tilbud/categories`)
+        .then((res) => res.ok ? res.json() : { categories: [] })
+        .then((data) => setTilbudCategories(data.categories || []))
+        .catch(() => setTilbudCategories([]));
+    } else {
+      setTilbudCategories([]);
     }
     setModalOpen(true);
   }
@@ -671,6 +693,7 @@ export default function DashboardPage() {
             ...commonPayload,
             ...(shouldShowPhaseSelector(selectedProjectId) && !skipPhase && selectedPhaseId && { phaseId: selectedPhaseId }),
             ...(skipPhase && { phaseId: null }),
+            ...(tilbudCategories.length > 0 && selectedTilbudCategoryId && { tilbudCategoryId: selectedTilbudCategoryId }),
           }),
         });
       } else {
@@ -683,6 +706,7 @@ export default function DashboardPage() {
             projectId: selectedProjectId,
             ...(shouldShowPhaseSelector(selectedProjectId) && !skipPhase && selectedPhaseId && { phaseId: selectedPhaseId }),
             ...(skipPhase && { phaseId: null }),
+            ...(tilbudCategories.length > 0 && selectedTilbudCategoryId && { tilbudCategoryId: selectedTilbudCategoryId }),
             ...(selectedEmployeeId && { userId: selectedEmployeeId }),
           }),
         });
@@ -1647,6 +1671,12 @@ export default function DashboardPage() {
                   // Update phase default when project changes
                   const proj = projects.find((p) => p.id === val);
                   setSelectedPhaseId(proj?.currentPhase?.id || "");
+                  // Fetch tilbud categories for new project
+                  setSelectedTilbudCategoryId("");
+                  fetch(`/api/projects/${val}/tilbud/categories`)
+                    .then((res) => res.ok ? res.json() : { categories: [] })
+                    .then((data) => setTilbudCategories(data.categories || []))
+                    .catch(() => setTilbudCategories([]));
                 }}
                 disabled={!!editingEntry}
               >
@@ -1747,6 +1777,17 @@ export default function DashboardPage() {
                   </>
                 )}
               </div>
+            )}
+
+            {/* Tilbud Category Dropdown — shown when project has tilbud categories */}
+            {tilbudCategories.length > 0 && !isAbsenceProject(selectedProjectId) && (
+              <TilbudCategoryDropdown
+                projectId={selectedProjectId}
+                value={selectedTilbudCategoryId || null}
+                onChange={(val) => setSelectedTilbudCategoryId(val || "")}
+                disabled={!!(editingEntry && isEntryReadOnly(editingEntry))}
+                categories={tilbudCategories}
+              />
             )}
 
             <div className="space-y-2">
