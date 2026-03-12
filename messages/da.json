@@ -47,7 +47,9 @@
     "error": "Fejl",
     "holiday": "Helligdag",
     "loading": "Indlæser...",
-    "cancelled": "Annulleret"
+    "cancelled": "Annulleret",
+    "next": "Næste",
+    "back": "Tilbage"
   },
   "nav": {
     "timetrack": "Cloud Timer",

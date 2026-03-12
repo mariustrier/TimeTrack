@@ -47,7 +47,9 @@
     "error": "Error",
     "holiday": "Holiday",
     "loading": "Loading...",
-    "cancelled": "Cancelled"
+    "cancelled": "Cancelled",
+    "next": "Next",
+    "back": "Back"
   },
   "nav": {
     "timetrack": "Cloud Timer",
