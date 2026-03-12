@@ -508,3 +508,25 @@ export const tilbudConfirmSchema = z.object({
     })).optional(),
   })).min(1),
 });
+
+// --- e-conomic Sync ---
+
+export const economicSyncConfirmSchema = z.object({
+  projectId: z.string().optional().nullable(),
+  newProject: z.object({
+    name: z.string().min(1).max(200),
+    projectNumber: z.string().optional(),
+    clientName: z.string().optional(),
+    color: z.string().optional(),
+    budgetHours: z.number().optional(),
+  }).optional(),
+  employeeMappings: z.record(z.string(), z.string()),
+  activityClassifications: z.record(z.string(), z.object({
+    billingStatus: z.enum(["billable", "nonBillable", "mixed"]),
+    tilbudCategoryId: z.string().optional().nullable(),
+  })),
+  invoiceMappings: z.record(z.string(), z.number().nullable()).optional(),
+  projektkortData: z.any(),
+  omsaetningData: z.any().optional(),
+  categoryMappings: z.record(z.string(), z.string()).optional(),
+});

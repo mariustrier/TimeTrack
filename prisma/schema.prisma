@@ -268,6 +268,13 @@ model TimeEntry {
   accountingSyncedAt DateTime?
   accountingSyncId   String?
 
+  // e-conomic activity data (from projektkort import)
+  economicActivityNumber Int?
+  economicActivityName   String?
+  economicSalgspris      Float?
+  economicKostpris       Float?
+  economicBilag          String?
+
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   project         Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
   company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -870,6 +877,17 @@ model ImportBatch {
   timeEntryCount Int
   absenceCount   Int
   totalHours     Float
+
+  // e-conomic sync fields
+  omsaetningData          Json?
+  activityClassifications Json?
+  tilbudMappings          Json?
+  invoiceMappings         Json?
+  totalRegisteredHours    Float?
+  totalBillableHours      Float?
+  totalNonBillableHours   Float?
+  totalInvoicedHours      Float?
+  totalInvoicedAmount     Float?
 
   company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
   timeEntries TimeEntry[]

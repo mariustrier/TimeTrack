@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { FolderKanban, Plus, Pencil, Trash2, FileText, Layers, Filter, Upload, Settings2, ArrowUp, ArrowDown, Eye, EyeOff, RotateCcw, Receipt } from "lucide-react";
+import { FolderKanban, Plus, Pencil, Trash2, FileText, Layers, Filter, Upload, Settings2, ArrowUp, ArrowDown, Eye, EyeOff, RotateCcw, Receipt, BarChart3 } from "lucide-react";
 import { getProjectStatus, PROJECT_STATUS_CONFIG, type ProjectStatus } from "@/lib/project-utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,8 @@ import { ContractSection } from "@/components/contracts/contract-section";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { PhaseProgress } from "@/components/projects/PhaseProgress";
 import { EconomicImport } from "@/components/projects/EconomicImport";
+import { EconomicSyncWizard } from "@/components/economic-sync/EconomicSyncWizard";
+import { BillingStatusOverview } from "@/components/economic-sync/BillingStatusOverview";
 import { TilbudDialog } from "@/components/tilbud/TilbudDialog";
 import { TilbudOverview } from "@/components/tilbud/TilbudOverview";
 
@@ -154,6 +156,9 @@ export function ProjectsList() {
   const [statusFilter, setStatusFilter] = useState<"all" | ProjectStatus>("all");
   const [phaseFilter, setPhaseFilter] = useState("all");
   const [importOpen, setImportOpen] = useState(false);
+  const [syncWizardOpen, setSyncWizardOpen] = useState(false);
+  const [syncWizardProjectId, setSyncWizardProjectId] = useState<string | undefined>(undefined);
+  const [billingProjectId, setBillingProjectId] = useState<string | null>(null);
   const [columnConfig, setColumnConfig] = useState<ColumnConfig>({ order: [...DEFAULT_COLUMNS], hidden: [] });
 
   useEffect(() => {
@@ -412,6 +417,12 @@ export function ProjectsList() {
               {t("importEconomic")}
             </Button>
           )}
+          {(userRole === "admin" || userRole === "manager") && (
+            <Button variant="outline" onClick={() => { setSyncWizardProjectId(undefined); setSyncWizardOpen(true); }}>
+              <Upload className="mr-2 h-4 w-4" />
+              {t("economicSync")}
+            </Button>
+          )}
           <Button onClick={openCreateModal} data-tour="projects-create-btn">
             <Plus className="mr-2 h-4 w-4" />
             {t("newProject")}
@@ -620,6 +631,15 @@ export function ProjectsList() {
                             title={tTilbud("title")}
                           >
                             <Receipt className="h-4 w-4" />
+                          </button>
+                        )}
+                        {(userRole === "admin" || userRole === "manager") && !project.systemManaged && (
+                          <button
+                            onClick={() => setBillingProjectId(project.id)}
+                            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                            title={t("billingStatus")}
+                          >
+                            <BarChart3 className="h-4 w-4" />
                           </button>
                         )}
                       </div>
@@ -905,6 +925,31 @@ export function ProjectsList() {
               <DialogTitle>{tTilbud("overviewTab")}</DialogTitle>
             </DialogHeader>
             <TilbudOverview projectId={tilbudProjectId} />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* e-conomic Sync Wizard */}
+      <EconomicSyncWizard
+        open={syncWizardOpen}
+        onOpenChange={setSyncWizardOpen}
+        projectId={syncWizardProjectId}
+        onComplete={() => {
+          setSyncWizardOpen(false);
+          fetchProjects();
+        }}
+      />
+
+      {/* Billing Status Overview */}
+      {billingProjectId && (
+        <Dialog open onOpenChange={(open) => {
+          if (!open) setBillingProjectId(null);
+        }}>
+          <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{t("billingStatus")}</DialogTitle>
+            </DialogHeader>
+            <BillingStatusOverview projectId={billingProjectId} />
           </DialogContent>
         </Dialog>
       )}
