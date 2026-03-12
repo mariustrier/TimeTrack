@@ -72,6 +72,8 @@ interface ActivityClassification {
 interface ProjectFileData {
   file: File;
   projektkortData: ProjektkortData;
+  omsaetningFile?: File;
+  omsaetningData?: OmsaetningData | null;
   // Project config
   useExisting: boolean;
   selectedProjectId: string;
@@ -110,12 +112,10 @@ export const EconomicSyncWizard = ({
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
 
-  // Step 1: Upload — multiple files
-  const [projektkortFiles, setProjektkortFiles] = useState<File[]>([]);
-  const [omsaetningFile, setOmsaetningFile] = useState<File | null>(null);
-  const [omsaetningData, setOmsaetningData] = useState<OmsaetningData | null>(null);
+  // Step 1: Upload — all files in one drop zone
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
 
-  // Parsed project data (one per file)
+  // Parsed project data (one per Projektkort file)
   const [projects, setProjects] = useState<ProjectFileData[]>([]);
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [existingProjects, setExistingProjects] = useState<ExistingProject[]>([]);
@@ -128,15 +128,13 @@ export const EconomicSyncWizard = ({
   const [expandedProject, setExpandedProject] = useState<number>(0);
 
   // Derived
-  const hasOmsaetning = !!omsaetningData;
+  const hasOmsaetning = projects.some((p) => !!p.omsaetningData);
   const visibleSteps = STEPS.filter((s) => s.key !== "invoicing" || hasOmsaetning);
   const currentStepKey = visibleSteps[step]?.key || "upload";
 
   const resetWizard = () => {
     setStep(0);
-    setProjektkortFiles([]);
-    setOmsaetningFile(null);
-    setOmsaetningData(null);
+    setUploadedFiles([]);
     setProjects([]);
     setTeam([]);
     setExistingProjects([]);
@@ -151,26 +149,43 @@ export const EconomicSyncWizard = ({
     const newFiles = Array.from(files).filter(
       (f) => f.name.endsWith(".xlsx") || f.name.endsWith(".xls")
     );
-    setProjektkortFiles((prev) => [...prev, ...newFiles]);
+    setUploadedFiles((prev) => [...prev, ...newFiles]);
   }, []);
 
   const removeFile = (index: number) => {
-    setProjektkortFiles((prev) => prev.filter((_, i) => i !== index));
+    setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleParse = async () => {
-    if (projektkortFiles.length === 0) return;
+    if (uploadedFiles.length === 0) return;
     setLoading(true);
 
     try {
+      // Classify files: Projektkort vs Omsætningsstatistik by filename
+      const projektkortFiles: File[] = [];
+      const omsaetningFiles: File[] = [];
+      for (const file of uploadedFiles) {
+        const lower = file.name.toLowerCase();
+        if (lower.includes("omsætning") || lower.includes("omsaetning") || lower.includes("revenue")) {
+          omsaetningFiles.push(file);
+        } else {
+          projektkortFiles.push(file);
+        }
+      }
+
+      if (projektkortFiles.length === 0) {
+        toast.error(t("parseError"));
+        setLoading(false);
+        return;
+      }
+
       const parsedProjects: ProjectFileData[] = [];
       const allEmployeeMappings: Record<string, string> = {};
 
-      // Parse each file via the API
+      // Parse each Projektkort via the API
       for (const file of projektkortFiles) {
         const formData = new FormData();
         formData.append("projektkort", file);
-        if (omsaetningFile) formData.append("omsaetning", omsaetningFile);
         if (initialProjectId) formData.append("projectId", initialProjectId);
 
         const res = await fetch("/api/projects/import/economic-sync", {
@@ -187,11 +202,6 @@ export const EconomicSyncWizard = ({
         const result = await res.json();
         const projektkortData = result.projektkortData as ProjektkortData;
 
-        // Set omsaetning data from first successful parse
-        if (result.omsaetningData && !omsaetningData) {
-          setOmsaetningData(result.omsaetningData);
-        }
-
         // Save team from first response
         if (result.team && team.length === 0) {
           setTeam(result.team);
@@ -204,16 +214,6 @@ export const EconomicSyncWizard = ({
             billingStatus: act.suggestedBillingStatus,
           };
         });
-
-        // Build invoice mappings from suggestions
-        const iMappings: Record<string, number | null> = {};
-        if (result.suggestedMappings?.invoiceCategories) {
-          result.suggestedMappings.invoiceCategories.forEach(
-            (m: { categoryNumber: number; suggestedActivityNumber: number | null }) => {
-              iMappings[String(m.categoryNumber)] = m.suggestedActivityNumber;
-            }
-          );
-        }
 
         // Collect employee mappings
         if (result.suggestedMappings?.employees) {
@@ -235,7 +235,7 @@ export const EconomicSyncWizard = ({
           projectNumber: projektkortData.projectNumber || "",
           clientName: "",
           activityClassifications: classifications,
-          invoiceMappings: iMappings,
+          invoiceMappings: {},
           suggestedEmployeeMappings: result.suggestedMappings?.employees || [],
         });
       }
@@ -244,6 +244,59 @@ export const EconomicSyncWizard = ({
         toast.error(t("parseError"));
         setLoading(false);
         return;
+      }
+
+      // Match Omsætningsstatistik files to projects by project number in filename
+      for (const oFile of omsaetningFiles) {
+        const formData = new FormData();
+        // Send a dummy projektkort (we only need omsaetning parsing)
+        // Actually, send it as omsaetning to the first projektkort
+        formData.append("projektkort", projektkortFiles[0]);
+        formData.append("omsaetning", oFile);
+
+        const res = await fetch("/api/projects/import/economic-sync", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) continue;
+        const result = await res.json();
+        if (!result.omsaetningData) continue;
+
+        const omsData = result.omsaetningData as OmsaetningData;
+
+        // Match to project by project number in filename
+        const numMatch = oFile.name.match(/(\d{4,})/);
+        const fileProjectNum = numMatch?.[1] || "";
+
+        let matched = false;
+        if (fileProjectNum) {
+          const proj = parsedProjects.find((p) => p.projectNumber === fileProjectNum);
+          if (proj) {
+            proj.omsaetningData = omsData;
+            proj.omsaetningFile = oFile;
+            // Build invoice mappings from suggestions
+            if (result.suggestedMappings?.invoiceCategories) {
+              const iMappings: Record<string, number | null> = {};
+              result.suggestedMappings.invoiceCategories.forEach(
+                (m: { categoryNumber: number; suggestedActivityNumber: number | null }) => {
+                  iMappings[String(m.categoryNumber)] = m.suggestedActivityNumber;
+                }
+              );
+              proj.invoiceMappings = iMappings;
+            }
+            matched = true;
+          }
+        }
+
+        // If no match by number, assign to first project without omsaetning
+        if (!matched) {
+          const proj = parsedProjects.find((p) => !p.omsaetningData);
+          if (proj) {
+            proj.omsaetningData = omsData;
+            proj.omsaetningFile = oFile;
+          }
+        }
       }
 
       setProjects(parsedProjects);
@@ -309,8 +362,8 @@ export const EconomicSyncWizard = ({
           };
         }
 
-        if (omsaetningData) {
-          body.omsaetningData = omsaetningData;
+        if (proj.omsaetningData) {
+          body.omsaetningData = proj.omsaetningData;
           body.invoiceMappings = proj.invoiceMappings;
         }
 
@@ -353,7 +406,7 @@ export const EconomicSyncWizard = ({
 
   // --- Navigation ---
   const canGoNext = (): boolean => {
-    if (currentStepKey === "upload") return projektkortFiles.length > 0;
+    if (currentStepKey === "upload") return uploadedFiles.length > 0;
     if (currentStepKey === "project") {
       return projects.every((p) =>
         p.useExisting ? !!p.selectedProjectId : !!p.projectName.trim()
@@ -475,134 +528,96 @@ export const EconomicSyncWizard = ({
     </div>
   );
 
-  const renderUploadStep = () => (
-    <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">{t("description")}</p>
+  const renderUploadStep = () => {
+    // Classify uploaded files by type for display
+    const projektkortCount = uploadedFiles.filter((f) => {
+      const l = f.name.toLowerCase();
+      return !l.includes("omsætning") && !l.includes("omsaetning") && !l.includes("revenue");
+    }).length;
+    const omsaetningCount = uploadedFiles.length - projektkortCount;
 
-      {/* Projektkort upload — multiple files */}
-      <div className="space-y-2">
-        <Label className="font-medium">
-          {t("uploadProjektkort")}{" "}
-          <Badge variant="destructive" className="ml-1 text-xs">
-            {t("uploadProjektkortRequired")}
-          </Badge>
-        </Label>
-        <p className="text-xs text-muted-foreground">{t("uploadProjektkortDesc")}</p>
-        <div
-          className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-            projektkortFiles.length > 0
-              ? "border-green-500 bg-green-50 dark:bg-green-950/20"
-              : "border-muted-foreground/25 hover:border-primary/50"
-          }`}
-          onClick={() => {
-            const input = document.createElement("input");
-            input.type = "file";
-            input.accept = ".xlsx,.xls";
-            input.multiple = true;
-            input.onchange = (e) => {
-              const files = (e.target as HTMLInputElement).files;
-              if (files) addFiles(files);
-            };
-            input.click();
-          }}
-          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onDrop={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            addFiles(e.dataTransfer.files);
-          }}
-        >
-          {projektkortFiles.length > 0 ? (
-            <div className="space-y-2">
-              {projektkortFiles.map((file, idx) => (
-                <div key={idx} className="flex items-center justify-center gap-2 text-green-600">
-                  <FileSpreadsheet className="h-4 w-4 flex-shrink-0" />
-                  <span className="text-sm font-medium truncate max-w-[300px]">{file.name}</span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeFile(idx);
-                    }}
-                    className="p-1 rounded hover:bg-muted flex-shrink-0"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
-              <p className="text-xs text-muted-foreground mt-2">
-                {projektkortFiles.length} {projektkortFiles.length === 1 ? "fil" : "filer"} — klik eller træk for at tilføje flere
-              </p>
-            </div>
-          ) : (
-            <div>
-              <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">
-                Træk og slip eller klik for at vælge (en eller flere filer)
-              </p>
-            </div>
-          )}
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground">{t("description")}</p>
+
+        {/* Unified drop zone for all files */}
+        <div className="space-y-2">
+          <Label className="font-medium">
+            Upload filer
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            Træk alle Projektkort- og Omsætningsstatistik-filer herind. Filerne matches automatisk efter projektnummer.
+          </p>
+          <div
+            className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+              uploadedFiles.length > 0
+                ? "border-green-500 bg-green-50 dark:bg-green-950/20"
+                : "border-muted-foreground/25 hover:border-primary/50"
+            }`}
+            onClick={() => {
+              const input = document.createElement("input");
+              input.type = "file";
+              input.accept = ".xlsx,.xls";
+              input.multiple = true;
+              input.onchange = (e) => {
+                const files = (e.target as HTMLInputElement).files;
+                if (files) addFiles(files);
+              };
+              input.click();
+            }}
+            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              addFiles(e.dataTransfer.files);
+            }}
+          >
+            {uploadedFiles.length > 0 ? (
+              <div className="space-y-1.5">
+                {uploadedFiles.map((file, idx) => {
+                  const lower = file.name.toLowerCase();
+                  const isOms = lower.includes("omsætning") || lower.includes("omsaetning") || lower.includes("revenue");
+                  return (
+                    <div key={idx} className="flex items-center justify-center gap-2">
+                      <FileSpreadsheet className={`h-4 w-4 flex-shrink-0 ${isOms ? "text-blue-500" : "text-green-600"}`} />
+                      <span className={`text-sm font-medium truncate max-w-[300px] ${isOms ? "text-blue-600" : "text-green-600"}`}>
+                        {file.name}
+                      </span>
+                      <Badge variant="outline" className="text-xs flex-shrink-0">
+                        {isOms ? "Omsætning" : "Projektkort"}
+                      </Badge>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeFile(idx);
+                        }}
+                        className="p-1 rounded hover:bg-muted flex-shrink-0"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  );
+                })}
+                <p className="text-xs text-muted-foreground mt-2">
+                  {projektkortCount} projektkort{omsaetningCount > 0 ? `, ${omsaetningCount} omsætningsstatistik` : ""} — klik eller træk for at tilføje flere
+                </p>
+              </div>
+            ) : (
+              <div>
+                <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  Træk og slip Projektkort + Omsætningsstatistik filer her
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Flere projekter ad gangen — filerne matches automatisk
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-
-      {/* Omsaetning upload */}
-      <div className="space-y-2">
-        <Label className="font-medium">
-          {t("uploadOmsaetning")}{" "}
-          <Badge variant="secondary" className="ml-1 text-xs">
-            {t("uploadOmsaetningOptional")}
-          </Badge>
-        </Label>
-        <p className="text-xs text-muted-foreground">{t("uploadOmsaetningDesc")}</p>
-        <div
-          className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
-            omsaetningFile
-              ? "border-green-500 bg-green-50 dark:bg-green-950/20"
-              : "border-muted-foreground/25 hover:border-primary/50"
-          }`}
-          onClick={() => {
-            const input = document.createElement("input");
-            input.type = "file";
-            input.accept = ".xlsx,.xls";
-            input.onchange = (e) => {
-              const file = (e.target as HTMLInputElement).files?.[0];
-              if (file) setOmsaetningFile(file);
-            };
-            input.click();
-          }}
-          onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-          onDrop={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const file = e.dataTransfer.files[0];
-            if (file) setOmsaetningFile(file);
-          }}
-        >
-          {omsaetningFile ? (
-            <div className="flex items-center justify-center gap-2 text-green-600">
-              <FileSpreadsheet className="h-4 w-4" />
-              <span className="text-sm font-medium">{omsaetningFile.name}</span>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOmsaetningFile(null);
-                }}
-                className="p-1 rounded hover:bg-muted"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </div>
-          ) : (
-            <div>
-              <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-1" />
-              <p className="text-sm text-muted-foreground">
-                Træk og slip eller klik for at vælge
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderProjectStep = () => (
     <div className="space-y-4">
@@ -948,10 +963,8 @@ export const EconomicSyncWizard = ({
   );
 
   const renderInvoicingStep = () => {
-    if (!omsaetningData || projects.length === 0) return null;
-    // For invoicing, use first project's activities (or all combined)
-    const allActivities = projects.flatMap((p) => p.projektkortData.activities);
-    const proj = projects[0]; // Invoice mappings stored on first project for now
+    const projectsWithOms = projects.filter((p) => !!p.omsaetningData);
+    if (projectsWithOms.length === 0) return null;
 
     return (
       <div className="space-y-4">
@@ -959,53 +972,66 @@ export const EconomicSyncWizard = ({
           <p className="text-sm font-medium">{t("mapInvoiceCategories")}</p>
           <p className="text-xs text-muted-foreground">{t("mapInvoiceDesc")}</p>
         </div>
-        <div className="space-y-3 max-h-[400px] overflow-y-auto">
-          {omsaetningData.categories.map((cat) => (
-            <div key={cat.number} className="flex items-center gap-3 p-3 border rounded-lg">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium">
-                  {cat.number} - {cat.name}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {cat.subtotal.hours.toFixed(1)}t &middot;{" "}
-                  {cat.subtotal.revenue.toLocaleString("da-DK")} kr
-                </p>
+        <div className="space-y-4 max-h-[400px] overflow-y-auto">
+          {projectsWithOms.map((proj) => {
+            const projIdx = projects.indexOf(proj);
+            const omsData = proj.omsaetningData!;
+            return (
+              <div key={projIdx} className="space-y-2">
+                {projectsWithOms.length > 1 && (
+                  <p className="text-sm font-medium text-muted-foreground border-b pb-1">
+                    {proj.projectName || proj.projectNumber}
+                  </p>
+                )}
+                {omsData.categories.map((cat) => (
+                  <div key={cat.number} className="flex items-center gap-3 p-3 border rounded-lg">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">
+                        {cat.number} - {cat.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {cat.subtotal.hours.toFixed(1)}t &middot;{" "}
+                        {cat.subtotal.revenue.toLocaleString("da-DK")} kr
+                      </p>
+                    </div>
+                    <Select
+                      value={
+                        proj.invoiceMappings[String(cat.number)] != null
+                          ? String(proj.invoiceMappings[String(cat.number)])
+                          : ""
+                      }
+                      onValueChange={(val) => {
+                        const updated = { ...proj.invoiceMappings };
+                        updated[String(cat.number)] = val ? parseInt(val) : null;
+                        updateProject(projIdx, { invoiceMappings: updated });
+                      }}
+                    >
+                      <SelectTrigger className="w-[220px]">
+                        <SelectValue placeholder={t("noActivityMatch")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">
+                          {t("noActivityMatch")}
+                        </SelectItem>
+                        {proj.projektkortData.activities.map((act) => (
+                          <SelectItem key={act.number} value={String(act.number)}>
+                            {act.number} - {act.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+                {omsData.totals && (
+                  <div className="text-right text-xs font-medium text-muted-foreground">
+                    Total: {omsData.totals.hours.toFixed(1)}t &middot;{" "}
+                    {omsData.totals.revenue.toLocaleString("da-DK")} kr
+                  </div>
+                )}
               </div>
-              <Select
-                value={
-                  proj.invoiceMappings[String(cat.number)] != null
-                    ? String(proj.invoiceMappings[String(cat.number)])
-                    : ""
-                }
-                onValueChange={(val) => {
-                  const updated = { ...proj.invoiceMappings };
-                  updated[String(cat.number)] = val ? parseInt(val) : null;
-                  updateProject(0, { invoiceMappings: updated });
-                }}
-              >
-                <SelectTrigger className="w-[220px]">
-                  <SelectValue placeholder={t("noActivityMatch")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">
-                    {t("noActivityMatch")}
-                  </SelectItem>
-                  {allActivities.map((act) => (
-                    <SelectItem key={act.number} value={String(act.number)}>
-                      {act.number} - {act.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ))}
+            );
+          })}
         </div>
-        {omsaetningData.totals && (
-          <div className="text-right text-sm font-medium text-muted-foreground">
-            Total: {omsaetningData.totals.hours.toFixed(1)}t &middot;{" "}
-            {omsaetningData.totals.revenue.toLocaleString("da-DK")} kr
-          </div>
-        )}
       </div>
     );
   };
