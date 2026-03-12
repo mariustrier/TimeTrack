@@ -15,6 +15,8 @@ import {
   ClipboardCheck,
   X,
   Loader2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import {
   Dialog,
@@ -66,6 +68,24 @@ interface ActivityClassification {
   tilbudCategoryId?: string | null;
 }
 
+/** Per-project data parsed from a Projektkort file */
+interface ProjectFileData {
+  file: File;
+  projektkortData: ProjektkortData;
+  // Project config
+  useExisting: boolean;
+  selectedProjectId: string;
+  projectName: string;
+  projectNumber: string;
+  clientName: string;
+  // Per-project activity classifications
+  activityClassifications: Record<string, ActivityClassification>;
+  // Per-project invoice mappings
+  invoiceMappings: Record<string, number | null>;
+  // Suggested employee mappings from this file
+  suggestedEmployeeMappings: { economicName: string; suggestedUserId: string | null }[];
+}
+
 const STEPS = [
   { key: "upload", icon: FileSpreadsheet },
   { key: "project", icon: FolderKanban },
@@ -88,33 +108,24 @@ export const EconomicSyncWizard = ({
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
 
-  // Step 1: Upload
-  const [projektkortFile, setProjektkortFile] = useState<File | null>(null);
+  // Step 1: Upload — multiple files
+  const [projektkortFiles, setProjektkortFiles] = useState<File[]>([]);
   const [omsaetningFile, setOmsaetningFile] = useState<File | null>(null);
-  const [projektkortData, setProjektkortData] = useState<ProjektkortData | null>(null);
   const [omsaetningData, setOmsaetningData] = useState<OmsaetningData | null>(null);
-  const [team, setTeam] = useState<TeamMember[]>([]);
 
-  // Step 2: Project
-  const [useExisting, setUseExisting] = useState(!!initialProjectId);
-  const [selectedProjectId, setSelectedProjectId] = useState(initialProjectId || "");
-  const [projectName, setProjectName] = useState("");
-  const [projectNumber, setProjectNumber] = useState("");
-  const [clientName, setClientName] = useState("");
+  // Parsed project data (one per file)
+  const [projects, setProjects] = useState<ProjectFileData[]>([]);
+  const [team, setTeam] = useState<TeamMember[]>([]);
   const [existingProjects, setExistingProjects] = useState<ExistingProject[]>([]);
 
-  // Step 3: Employees
+  // Step 3: Shared employee mappings
   const [employeeMappings, setEmployeeMappings] = useState<Record<string, string>>({});
   const [skippedEmployees, setSkippedEmployees] = useState<Set<string>>(new Set());
 
-  // Step 4: Activities
-  const [activityClassifications, setActivityClassifications] = useState<
-    Record<string, ActivityClassification>
-  >({});
-
-  // Step 5: Invoicing
-  const [invoiceMappings, setInvoiceMappings] = useState<Record<string, number | null>>({});
+  // UI state
+  const [expandedProject, setExpandedProject] = useState<number>(0);
 
   // Derived
   const hasOmsaetning = !!omsaetningData;
@@ -123,98 +134,120 @@ export const EconomicSyncWizard = ({
 
   const resetWizard = () => {
     setStep(0);
-    setProjektkortFile(null);
+    setProjektkortFiles([]);
     setOmsaetningFile(null);
-    setProjektkortData(null);
     setOmsaetningData(null);
+    setProjects([]);
     setTeam([]);
-    setUseExisting(!!initialProjectId);
-    setSelectedProjectId(initialProjectId || "");
-    setProjectName("");
-    setProjectNumber("");
-    setClientName("");
+    setExistingProjects([]);
     setEmployeeMappings({});
     setSkippedEmployees(new Set());
-    setActivityClassifications({});
-    setInvoiceMappings({});
+    setExpandedProject(0);
+    setImportProgress(0);
   };
 
   // --- Step 1: Upload & Parse ---
-  const handleFileUpload = useCallback(
-    async (type: "projektkort" | "omsaetning", file: File) => {
-      if (type === "projektkort") setProjektkortFile(file);
-      else setOmsaetningFile(file);
-    },
-    []
-  );
+  const addFiles = useCallback((files: FileList | File[]) => {
+    const newFiles = Array.from(files).filter(
+      (f) => f.name.endsWith(".xlsx") || f.name.endsWith(".xls")
+    );
+    setProjektkortFiles((prev) => [...prev, ...newFiles]);
+  }, []);
+
+  const removeFile = (index: number) => {
+    setProjektkortFiles((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleParse = async () => {
-    if (!projektkortFile) return;
+    if (projektkortFiles.length === 0) return;
     setLoading(true);
 
     try {
-      const formData = new FormData();
-      formData.append("projektkort", projektkortFile);
-      if (omsaetningFile) formData.append("omsaetning", omsaetningFile);
-      if (initialProjectId) formData.append("projectId", initialProjectId);
+      const parsedProjects: ProjectFileData[] = [];
+      const allEmployeeMappings: Record<string, string> = {};
 
-      const res = await fetch("/api/projects/import/economic-sync", {
-        method: "POST",
-        body: formData,
-      });
+      // Parse each file via the API
+      for (const file of projektkortFiles) {
+        const formData = new FormData();
+        formData.append("projektkort", file);
+        if (omsaetningFile) formData.append("omsaetning", omsaetningFile);
+        if (initialProjectId) formData.append("projectId", initialProjectId);
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Parse failed");
-      }
+        const res = await fetch("/api/projects/import/economic-sync", {
+          method: "POST",
+          body: formData,
+        });
 
-      const result = await res.json();
-
-      setProjektkortData(result.projektkortData);
-      setOmsaetningData(result.omsaetningData || null);
-      setTeam(result.team || []);
-
-      // Pre-fill project info
-      if (result.projektkortData) {
-        setProjectName(result.projektkortData.projectName || "");
-        setProjectNumber(result.projektkortData.projectNumber || "");
-        if (result.omsaetningData?.categories?.[0]?.projectEntries?.[0]?.customerName) {
-          setClientName(result.omsaetningData.categories[0].projectEntries[0].customerName);
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          toast.error(`${file.name}: ${err.error || t("parseError")}`);
+          continue;
         }
-      }
 
-      // Pre-fill employee mappings
-      if (result.suggestedMappings?.employees) {
-        const mappings: Record<string, string> = {};
-        result.suggestedMappings.employees.forEach(
-          (m: { economicName: string; suggestedUserId: string | null }) => {
-            if (m.suggestedUserId) mappings[m.economicName] = m.suggestedUserId;
-          }
-        );
-        setEmployeeMappings(mappings);
-      }
+        const result = await res.json();
+        const projektkortData = result.projektkortData as ProjektkortData;
 
-      // Pre-fill activity classifications
-      if (result.projektkortData?.activities) {
+        // Set omsaetning data from first successful parse
+        if (result.omsaetningData && !omsaetningData) {
+          setOmsaetningData(result.omsaetningData);
+        }
+
+        // Save team from first response
+        if (result.team && team.length === 0) {
+          setTeam(result.team);
+        }
+
+        // Build activity classifications from suggestions
         const classifications: Record<string, ActivityClassification> = {};
-        result.projektkortData.activities.forEach((act: ProjektkortActivity) => {
+        projektkortData.activities.forEach((act: ProjektkortActivity) => {
           classifications[String(act.number)] = {
             billingStatus: act.suggestedBillingStatus,
           };
         });
-        setActivityClassifications(classifications);
+
+        // Build invoice mappings from suggestions
+        const iMappings: Record<string, number | null> = {};
+        if (result.suggestedMappings?.invoiceCategories) {
+          result.suggestedMappings.invoiceCategories.forEach(
+            (m: { categoryNumber: number; suggestedActivityNumber: number | null }) => {
+              iMappings[String(m.categoryNumber)] = m.suggestedActivityNumber;
+            }
+          );
+        }
+
+        // Collect employee mappings
+        if (result.suggestedMappings?.employees) {
+          result.suggestedMappings.employees.forEach(
+            (m: { economicName: string; suggestedUserId: string | null }) => {
+              if (m.suggestedUserId && !allEmployeeMappings[m.economicName]) {
+                allEmployeeMappings[m.economicName] = m.suggestedUserId;
+              }
+            }
+          );
+        }
+
+        parsedProjects.push({
+          file,
+          projektkortData,
+          useExisting: !!initialProjectId,
+          selectedProjectId: initialProjectId || "",
+          projectName: projektkortData.projectName || "",
+          projectNumber: projektkortData.projectNumber || "",
+          clientName: "",
+          activityClassifications: classifications,
+          invoiceMappings: iMappings,
+          suggestedEmployeeMappings: result.suggestedMappings?.employees || [],
+        });
       }
 
-      // Pre-fill invoice mappings
-      if (result.suggestedMappings?.invoiceCategories) {
-        const iMappings: Record<string, number | null> = {};
-        result.suggestedMappings.invoiceCategories.forEach(
-          (m: { categoryNumber: number; suggestedActivityNumber: number | null }) => {
-            iMappings[String(m.categoryNumber)] = m.suggestedActivityNumber;
-          }
-        );
-        setInvoiceMappings(iMappings);
+      if (parsedProjects.length === 0) {
+        toast.error(t("parseError"));
+        setLoading(false);
+        return;
       }
+
+      setProjects(parsedProjects);
+      setEmployeeMappings(allEmployeeMappings);
 
       // Fetch existing projects for mapping
       const projRes = await fetch("/api/projects");
@@ -240,56 +273,72 @@ export const EconomicSyncWizard = ({
 
   // --- Step 6: Confirm Import ---
   const handleImport = async () => {
-    if (!projektkortData) return;
+    if (projects.length === 0) return;
     setImporting(true);
+    setImportProgress(0);
+
+    let successCount = 0;
+    let totalEntries = 0;
 
     try {
-      // Build filtered employee mappings (exclude skipped)
-      const filteredMappings: Record<string, string> = {};
-      Object.entries(employeeMappings).forEach(([name, userId]) => {
-        if (!skippedEmployees.has(name) && userId) {
-          filteredMappings[name] = userId;
-        }
-      });
+      for (let i = 0; i < projects.length; i++) {
+        const proj = projects[i];
+        setImportProgress(i + 1);
 
-      const body: Record<string, unknown> = {
-        employeeMappings: filteredMappings,
-        activityClassifications,
-        projektkortData,
-      };
+        // Build filtered employee mappings (exclude skipped)
+        const filteredMappings: Record<string, string> = {};
+        Object.entries(employeeMappings).forEach(([name, userId]) => {
+          if (!skippedEmployees.has(name) && userId) {
+            filteredMappings[name] = userId;
+          }
+        });
 
-      if (useExisting && selectedProjectId) {
-        body.projectId = selectedProjectId;
-      } else {
-        body.newProject = {
-          name: projectName,
-          projectNumber,
-          clientName,
+        const body: Record<string, unknown> = {
+          employeeMappings: filteredMappings,
+          activityClassifications: proj.activityClassifications,
+          projektkortData: proj.projektkortData,
         };
+
+        if (proj.useExisting && proj.selectedProjectId) {
+          body.projectId = proj.selectedProjectId;
+        } else {
+          body.newProject = {
+            name: proj.projectName,
+            projectNumber: proj.projectNumber,
+            clientName: proj.clientName,
+          };
+        }
+
+        if (omsaetningData) {
+          body.omsaetningData = omsaetningData;
+          body.invoiceMappings = proj.invoiceMappings;
+        }
+
+        const res = await fetch("/api/projects/import/economic-sync", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+        if (res.ok) {
+          const result = await res.json();
+          successCount++;
+          totalEntries += result.stats?.createdEntries || 0;
+        } else {
+          const err = await res.json().catch(() => ({}));
+          toast.error(`${proj.projectName}: ${err.error || t("importError")}`);
+        }
       }
 
-      if (omsaetningData) {
-        body.omsaetningData = omsaetningData;
-        body.invoiceMappings = invoiceMappings;
+      if (successCount > 0) {
+        toast.success(
+          t("importSuccessDesc")
+            .replace("{entries}", String(totalEntries))
+            .replace("{project}", successCount === 1
+              ? projects[0].projectName
+              : `${successCount} projekter`)
+        );
       }
-
-      const res = await fetch("/api/projects/import/economic-sync", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Import failed");
-      }
-
-      const result = await res.json();
-      toast.success(
-        t("importSuccessDesc")
-          .replace("{entries}", String(result.stats?.createdEntries || 0))
-          .replace("{project}", projectName || "projekt")
-      );
 
       onOpenChange(false);
       resetWizard();
@@ -304,13 +353,15 @@ export const EconomicSyncWizard = ({
 
   // --- Navigation ---
   const canGoNext = (): boolean => {
-    if (currentStepKey === "upload") return !!projektkortFile;
+    if (currentStepKey === "upload") return projektkortFiles.length > 0;
     if (currentStepKey === "project") {
-      return useExisting ? !!selectedProjectId : !!projectName.trim();
+      return projects.every((p) =>
+        p.useExisting ? !!p.selectedProjectId : !!p.projectName.trim()
+      );
     }
     if (currentStepKey === "employees") {
-      const economicNames = getEconomicNames();
-      return economicNames.some(
+      const names = getAllEconomicNames();
+      return names.some(
         (name) => !skippedEmployees.has(name) && employeeMappings[name]
       );
     }
@@ -330,74 +381,65 @@ export const EconomicSyncWizard = ({
   };
 
   // --- Helpers ---
-  const getEconomicNames = (): string[] => {
-    if (!projektkortData) return [];
-    return Array.from(
-      new Set(
-        projektkortData.activities.flatMap((a) =>
-          a.entries.map((e) => e.employeeName)
-        )
-      )
-    ).filter(Boolean);
+  const getAllEconomicNames = (): string[] => {
+    const names = new Set<string>();
+    projects.forEach((proj) => {
+      proj.projektkortData.activities.forEach((a) => {
+        a.entries.forEach((e) => {
+          if (e.employeeName) names.add(e.employeeName);
+        });
+      });
+    });
+    return Array.from(names);
   };
 
-  const getEmployeeEntryCount = (name: string): number => {
-    if (!projektkortData) return 0;
-    return projektkortData.activities.reduce(
-      (sum, a) => sum + a.entries.filter((e) => e.employeeName === name).length,
-      0
-    );
-  };
-
-  const getEmployeeHours = (name: string): number => {
-    if (!projektkortData) return 0;
-    return projektkortData.activities.reduce(
-      (sum, a) =>
-        sum + a.entries.filter((e) => e.employeeName === name).reduce((s, e) => s + e.hours, 0),
-      0
-    );
+  const getEmployeeStats = (name: string): { entries: number; hours: number } => {
+    let entries = 0, hours = 0;
+    projects.forEach((proj) => {
+      proj.projektkortData.activities.forEach((a) => {
+        a.entries.forEach((e) => {
+          if (e.employeeName === name) {
+            entries++;
+            hours += e.hours;
+          }
+        });
+      });
+    });
+    return { entries, hours };
   };
 
   const getActivityEmployees = (activity: ProjektkortActivity): string[] => {
     return Array.from(new Set(activity.entries.map((e) => e.employeeName)));
   };
 
-  // --- Totals for confirm step ---
-  const computeTotals = () => {
-    if (!projektkortData) return { total: 0, billable: 0, nonBillable: 0, invoiced: 0, entries: 0 };
+  const updateProject = (index: number, updates: Partial<ProjectFileData>) => {
+    setProjects((prev) =>
+      prev.map((p, i) => (i === index ? { ...p, ...updates } : p))
+    );
+  };
 
+  // --- Totals ---
+  const computeGrandTotals = () => {
     let total = 0, billable = 0, nonBillable = 0, entries = 0;
-
-    projektkortData.activities.forEach((act) => {
-      const cls = activityClassifications[String(act.number)];
-      act.entries.forEach((entry) => {
-        if (skippedEmployees.has(entry.employeeName) || !employeeMappings[entry.employeeName]) return;
-        entries++;
-        total += entry.hours;
-        if (!cls || cls.billingStatus === "nonBillable") {
-          nonBillable += entry.hours;
-        } else if (cls.billingStatus === "billable") {
-          billable += entry.hours;
-        } else {
-          // Mixed
-          if (entry.salgspris > 0) billable += entry.hours;
-          else nonBillable += entry.hours;
-        }
+    projects.forEach((proj) => {
+      proj.projektkortData.activities.forEach((act) => {
+        const cls = proj.activityClassifications[String(act.number)];
+        act.entries.forEach((entry) => {
+          if (skippedEmployees.has(entry.employeeName) || !employeeMappings[entry.employeeName]) return;
+          entries++;
+          total += entry.hours;
+          if (!cls || cls.billingStatus === "nonBillable") {
+            nonBillable += entry.hours;
+          } else if (cls.billingStatus === "billable") {
+            billable += entry.hours;
+          } else {
+            if (entry.salgspris > 0) billable += entry.hours;
+            else nonBillable += entry.hours;
+          }
+        });
       });
     });
-
-    // Calculate invoiced hours from invoice mappings
-    let invoiced = 0;
-    if (omsaetningData && invoiceMappings) {
-      Object.entries(invoiceMappings).forEach(([catNumStr, actNum]) => {
-        if (actNum == null) return;
-        const catNum = parseInt(catNumStr);
-        const cat = omsaetningData.categories.find((c) => c.number === catNum);
-        if (cat) invoiced += cat.subtotal.hours;
-      });
-    }
-
-    return { total, billable, nonBillable, invoiced, entries };
+    return { total, billable, nonBillable, entries };
   };
 
   // --- Render Steps ---
@@ -437,7 +479,7 @@ export const EconomicSyncWizard = ({
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">{t("description")}</p>
 
-      {/* Projektkort upload */}
+      {/* Projektkort upload — multiple files */}
       <div className="space-y-2">
         <Label className="font-medium">
           {t("uploadProjektkort")}{" "}
@@ -448,7 +490,7 @@ export const EconomicSyncWizard = ({
         <p className="text-xs text-muted-foreground">{t("uploadProjektkortDesc")}</p>
         <div
           className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
-            projektkortFile
+            projektkortFiles.length > 0
               ? "border-green-500 bg-green-50 dark:bg-green-950/20"
               : "border-muted-foreground/25 hover:border-primary/50"
           }`}
@@ -456,9 +498,10 @@ export const EconomicSyncWizard = ({
             const input = document.createElement("input");
             input.type = "file";
             input.accept = ".xlsx,.xls";
+            input.multiple = true;
             input.onchange = (e) => {
-              const file = (e.target as HTMLInputElement).files?.[0];
-              if (file) handleFileUpload("projektkort", file);
+              const files = (e.target as HTMLInputElement).files;
+              if (files) addFiles(files);
             };
             input.click();
           }}
@@ -466,29 +509,35 @@ export const EconomicSyncWizard = ({
           onDrop={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            const file = e.dataTransfer.files[0];
-            if (file) handleFileUpload("projektkort", file);
+            addFiles(e.dataTransfer.files);
           }}
         >
-          {projektkortFile ? (
-            <div className="flex items-center justify-center gap-2 text-green-600">
-              <FileSpreadsheet className="h-5 w-5" />
-              <span className="text-sm font-medium">{projektkortFile.name}</span>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setProjektkortFile(null);
-                }}
-                className="ml-2 p-1 rounded hover:bg-muted"
-              >
-                <X className="h-3 w-3" />
-              </button>
+          {projektkortFiles.length > 0 ? (
+            <div className="space-y-2">
+              {projektkortFiles.map((file, idx) => (
+                <div key={idx} className="flex items-center justify-center gap-2 text-green-600">
+                  <FileSpreadsheet className="h-4 w-4 flex-shrink-0" />
+                  <span className="text-sm font-medium truncate max-w-[300px]">{file.name}</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeFile(idx);
+                    }}
+                    className="p-1 rounded hover:bg-muted flex-shrink-0"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+              <p className="text-xs text-muted-foreground mt-2">
+                {projektkortFiles.length} {projektkortFiles.length === 1 ? "fil" : "filer"} — klik eller træk for at tilføje flere
+              </p>
             </div>
           ) : (
             <div>
               <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
               <p className="text-sm text-muted-foreground">
-                Træk og slip eller klik for at vælge
+                Træk og slip eller klik for at vælge (en eller flere filer)
               </p>
             </div>
           )}
@@ -505,7 +554,7 @@ export const EconomicSyncWizard = ({
         </Label>
         <p className="text-xs text-muted-foreground">{t("uploadOmsaetningDesc")}</p>
         <div
-          className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+          className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
             omsaetningFile
               ? "border-green-500 bg-green-50 dark:bg-green-950/20"
               : "border-muted-foreground/25 hover:border-primary/50"
@@ -516,7 +565,7 @@ export const EconomicSyncWizard = ({
             input.accept = ".xlsx,.xls";
             input.onchange = (e) => {
               const file = (e.target as HTMLInputElement).files?.[0];
-              if (file) handleFileUpload("omsaetning", file);
+              if (file) setOmsaetningFile(file);
             };
             input.click();
           }}
@@ -525,26 +574,26 @@ export const EconomicSyncWizard = ({
             e.preventDefault();
             e.stopPropagation();
             const file = e.dataTransfer.files[0];
-            if (file) handleFileUpload("omsaetning", file);
+            if (file) setOmsaetningFile(file);
           }}
         >
           {omsaetningFile ? (
             <div className="flex items-center justify-center gap-2 text-green-600">
-              <FileSpreadsheet className="h-5 w-5" />
+              <FileSpreadsheet className="h-4 w-4" />
               <span className="text-sm font-medium">{omsaetningFile.name}</span>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   setOmsaetningFile(null);
                 }}
-                className="ml-2 p-1 rounded hover:bg-muted"
+                className="p-1 rounded hover:bg-muted"
               >
                 <X className="h-3 w-3" />
               </button>
             </div>
           ) : (
             <div>
-              <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+              <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-1" />
               <p className="text-sm text-muted-foreground">
                 Træk og slip eller klik for at vælge
               </p>
@@ -557,92 +606,127 @@ export const EconomicSyncWizard = ({
 
   const renderProjectStep = () => (
     <div className="space-y-4">
-      {projektkortData && (
-        <div className="rounded-lg border p-3 bg-muted/30">
-          <p className="text-sm font-medium">
-            {projektkortData.projectName} ({projektkortData.projectNumber})
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {projektkortData.companyName} &middot;{" "}
-            {projektkortData.period.from} → {projektkortData.period.to}
-          </p>
-        </div>
-      )}
+      <p className="text-sm text-muted-foreground">
+        {projects.length === 1
+          ? t("projectSetup") || "Konfigurer projektet"
+          : `${projects.length} projekter fundet — konfigurer hver`}
+      </p>
 
-      <div className="flex gap-2">
-        <Button
-          variant={!useExisting ? "default" : "outline"}
-          size="sm"
-          onClick={() => setUseExisting(false)}
-        >
-          {t("createNew")}
-        </Button>
-        <Button
-          variant={useExisting ? "default" : "outline"}
-          size="sm"
-          onClick={() => setUseExisting(true)}
-        >
-          {t("linkExisting")}
-        </Button>
+      <div className="space-y-3 max-h-[400px] overflow-y-auto">
+        {projects.map((proj, idx) => {
+          const isExpanded = expandedProject === idx || projects.length === 1;
+          return (
+            <div key={idx} className="border rounded-lg overflow-hidden">
+              {/* Header — click to expand if multiple */}
+              <button
+                onClick={() => setExpandedProject(isExpanded && projects.length > 1 ? -1 : idx)}
+                className="w-full flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 text-left"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <Badge variant="outline" className="flex-shrink-0">{proj.projectNumber || `#${idx + 1}`}</Badge>
+                  <span className="font-medium text-sm truncate">
+                    {proj.projectName || proj.file.name}
+                  </span>
+                  <span className="text-xs text-muted-foreground flex-shrink-0">
+                    {proj.projektkortData.totals.registeredHours.toFixed(1)}t
+                  </span>
+                </div>
+                {projects.length > 1 && (
+                  isExpanded ? <ChevronUp className="h-4 w-4 flex-shrink-0" /> : <ChevronDown className="h-4 w-4 flex-shrink-0" />
+                )}
+              </button>
+
+              {/* Expanded content */}
+              {isExpanded && (
+                <div className="p-3 space-y-3 border-t">
+                  {/* Parsed info */}
+                  <div className="text-xs text-muted-foreground">
+                    {proj.projektkortData.companyName} &middot;{" "}
+                    {proj.projektkortData.period.from} → {proj.projektkortData.period.to} &middot;{" "}
+                    {proj.projektkortData.activities.length} aktiviteter
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant={!proj.useExisting ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => updateProject(idx, { useExisting: false })}
+                    >
+                      {t("createNew")}
+                    </Button>
+                    <Button
+                      variant={proj.useExisting ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => updateProject(idx, { useExisting: true })}
+                    >
+                      {t("linkExisting")}
+                    </Button>
+                  </div>
+
+                  {proj.useExisting ? (
+                    <div className="space-y-2">
+                      <Label>{tc("project")}</Label>
+                      <Select
+                        value={proj.selectedProjectId}
+                        onValueChange={(val) => updateProject(idx, { selectedProjectId: val })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Vælg projekt..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {existingProjects.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.name}{p.client ? ` (${p.client})` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs">{t("projectName")}</Label>
+                          <Input
+                            value={proj.projectName}
+                            onChange={(e) => updateProject(idx, { projectName: e.target.value })}
+                            placeholder="f.eks. Blidahpark 5"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">{t("projectNumber")}</Label>
+                          <Input
+                            value={proj.projectNumber}
+                            onChange={(e) => updateProject(idx, { projectNumber: e.target.value })}
+                            placeholder="f.eks. 2025017"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">{t("clientName")}</Label>
+                        <Input
+                          value={proj.clientName}
+                          onChange={(e) => updateProject(idx, { clientName: e.target.value })}
+                          placeholder="f.eks. Jørgen Kolind Knudsen"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      {useExisting ? (
-        <div className="space-y-2">
-          <Label>{tc("project")}</Label>
-          <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Vælg projekt..." />
-            </SelectTrigger>
-            <SelectContent>
-              {existingProjects.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}{p.client ? ` (${p.client})` : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <div className="space-y-2">
-            <Label>{t("projectName")}</Label>
-            <Input
-              value={projectName}
-              onChange={(e) => setProjectName(e.target.value)}
-              placeholder="f.eks. Blidahpark 5"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>{t("projectNumber")}</Label>
-            <Input
-              value={projectNumber}
-              onChange={(e) => setProjectNumber(e.target.value)}
-              placeholder="f.eks. 2025017"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>{t("clientName")}</Label>
-            <Input
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-              placeholder="f.eks. Jørgen Kolind Knudsen"
-            />
-          </div>
-        </div>
-      )}
-
-      {projektkortData && (
-        <div className="rounded-lg border p-3 text-sm bg-muted/20">
-          <p className="text-muted-foreground">
-            {t("reimportWarning")}
-          </p>
-        </div>
-      )}
+      <div className="rounded-lg border p-3 text-sm bg-muted/20">
+        <p className="text-muted-foreground">{t("reimportWarning")}</p>
+      </div>
     </div>
   );
 
   const renderEmployeeStep = () => {
-    const names = getEconomicNames();
+    const names = getAllEconomicNames();
     return (
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">{t("employeeMapping")}</p>
@@ -650,6 +734,7 @@ export const EconomicSyncWizard = ({
           {names.map((name) => {
             const isSkipped = skippedEmployees.has(name);
             const isMatched = !!employeeMappings[name];
+            const stats = getEmployeeStats(name);
             return (
               <div
                 key={name}
@@ -664,7 +749,7 @@ export const EconomicSyncWizard = ({
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {getEmployeeEntryCount(name)} entries &middot; {getEmployeeHours(name).toFixed(1)}t
+                    {stats.entries} entries &middot; {stats.hours.toFixed(1)}t
                   </p>
                 </div>
                 <Select
@@ -720,97 +805,42 @@ export const EconomicSyncWizard = ({
   };
 
   const renderActivityStep = () => {
-    if (!projektkortData) return null;
+    if (projects.length === 0) return null;
+
+    // Single project — show flat list
+    if (projects.length === 1) {
+      return renderProjectActivities(projects[0], 0);
+    }
+
+    // Multiple projects — collapsible sections
     return (
       <div className="space-y-4">
         <div>
           <p className="text-sm font-medium">{t("classifyActivities")}</p>
           <p className="text-xs text-muted-foreground">{t("classifyDesc")}</p>
         </div>
-        <div className="space-y-3 max-h-[400px] overflow-y-auto">
-          {projektkortData.activities.map((activity) => {
-            const cls = activityClassifications[String(activity.number)] || {
-              billingStatus: activity.suggestedBillingStatus,
-            };
-            const employees = getActivityEmployees(activity);
-            const totalHours = activity.entries.reduce((s, e) => s + e.hours, 0);
-            const totalSalgspris = activity.entries.reduce((s, e) => s + e.salgspris, 0);
-
+        <div className="space-y-2 max-h-[400px] overflow-y-auto">
+          {projects.map((proj, idx) => {
+            const isExpanded = expandedProject === idx;
             return (
-              <div key={activity.number} className="border rounded-lg p-4 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-medium text-sm">
-                      {activity.number} - {activity.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {totalHours.toFixed(1)}t &middot; {activity.entries.length} entries &middot;{" "}
-                      {employees.join(", ")}
-                    </p>
-                  </div>
-                  <Badge
-                    variant={
-                      totalSalgspris > 0
-                        ? activity.suggestedBillingStatus === "mixed"
-                          ? "secondary"
-                          : "default"
-                        : "outline"
-                    }
-                  >
-                    {totalSalgspris > 0
-                      ? `${t("salgspris")}: ${totalSalgspris.toLocaleString("da-DK")} kr`
-                      : t("allSalgsprisZero")}
-                  </Badge>
-                </div>
-
-                {activity.suggestedBillingStatus === "mixed" && (
-                  <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/20 p-2 rounded">
-                    <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
-                    {t("mixedWarning")
-                      .replace(
-                        "{billable}",
-                        activity.entries
-                          .filter((e) => e.salgspris > 0)
-                          .reduce((s, e) => s + e.hours, 0)
-                          .toFixed(1)
-                      )
-                      .replace(
-                        "{nonBillable}",
-                        activity.entries
-                          .filter((e) => e.salgspris === 0)
-                          .reduce((s, e) => s + e.hours, 0)
-                          .toFixed(1)
-                      )}
+              <div key={idx} className="border rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setExpandedProject(isExpanded ? -1 : idx)}
+                  className="w-full flex items-center justify-between p-3 bg-muted/20 hover:bg-muted/30 text-left"
+                >
+                  <span className="font-medium text-sm">
+                    {proj.projectName || proj.projectNumber}
+                    <span className="text-muted-foreground font-normal ml-2">
+                      ({proj.projektkortData.activities.length} aktiviteter)
+                    </span>
+                  </span>
+                  {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+                {isExpanded && (
+                  <div className="p-3 border-t">
+                    {renderProjectActivities(proj, idx)}
                   </div>
                 )}
-
-                <div className="flex gap-2">
-                  {(["billable", "nonBillable", "mixed"] as const).map((status) => (
-                    <button
-                      key={status}
-                      onClick={() =>
-                        setActivityClassifications((prev) => ({
-                          ...prev,
-                          [String(activity.number)]: {
-                            ...prev[String(activity.number)],
-                            billingStatus: status,
-                          },
-                        }))
-                      }
-                      className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium border transition-colors ${
-                        cls.billingStatus === status
-                          ? status === "billable"
-                            ? "bg-green-100 border-green-300 text-green-800 dark:bg-green-900/40 dark:border-green-700 dark:text-green-300"
-                            : status === "nonBillable"
-                            ? "bg-red-100 border-red-300 text-red-800 dark:bg-red-900/40 dark:border-red-700 dark:text-red-300"
-                            : "bg-amber-100 border-amber-300 text-amber-800 dark:bg-amber-900/40 dark:border-amber-700 dark:text-amber-300"
-                          : "bg-background border-muted hover:bg-muted/50"
-                      }`}
-                    >
-                      {t(status)}
-                    </button>
-                  ))}
-                </div>
               </div>
             );
           })}
@@ -819,8 +849,110 @@ export const EconomicSyncWizard = ({
     );
   };
 
+  const renderProjectActivities = (proj: ProjectFileData, projIdx: number) => (
+    <div className="space-y-4">
+      {projects.length === 1 && (
+        <div>
+          <p className="text-sm font-medium">{t("classifyActivities")}</p>
+          <p className="text-xs text-muted-foreground">{t("classifyDesc")}</p>
+        </div>
+      )}
+      <div className={`space-y-3 ${projects.length === 1 ? "max-h-[400px] overflow-y-auto" : ""}`}>
+        {proj.projektkortData.activities.map((activity) => {
+          const cls = proj.activityClassifications[String(activity.number)] || {
+            billingStatus: activity.suggestedBillingStatus,
+          };
+          const employees = getActivityEmployees(activity);
+          const totalHours = activity.entries.reduce((s, e) => s + e.hours, 0);
+          const totalSalgspris = activity.entries.reduce((s, e) => s + e.salgspris, 0);
+
+          return (
+            <div key={activity.number} className="border rounded-lg p-4 space-y-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="font-medium text-sm">
+                    {activity.number} - {activity.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {totalHours.toFixed(1)}t &middot; {activity.entries.length} entries &middot;{" "}
+                    {employees.join(", ")}
+                  </p>
+                </div>
+                <Badge
+                  variant={
+                    totalSalgspris > 0
+                      ? activity.suggestedBillingStatus === "mixed"
+                        ? "secondary"
+                        : "default"
+                      : "outline"
+                  }
+                >
+                  {totalSalgspris > 0
+                    ? `${t("salgspris")}: ${totalSalgspris.toLocaleString("da-DK")} kr`
+                    : t("allSalgsprisZero")}
+                </Badge>
+              </div>
+
+              {activity.suggestedBillingStatus === "mixed" && (
+                <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/20 p-2 rounded">
+                  <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+                  {t("mixedWarning")
+                    .replace(
+                      "{billable}",
+                      activity.entries
+                        .filter((e) => e.salgspris > 0)
+                        .reduce((s, e) => s + e.hours, 0)
+                        .toFixed(1)
+                    )
+                    .replace(
+                      "{nonBillable}",
+                      activity.entries
+                        .filter((e) => e.salgspris === 0)
+                        .reduce((s, e) => s + e.hours, 0)
+                        .toFixed(1)
+                    )}
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                {(["billable", "nonBillable", "mixed"] as const).map((status) => (
+                  <button
+                    key={status}
+                    onClick={() => {
+                      const updated = { ...proj.activityClassifications };
+                      updated[String(activity.number)] = {
+                        ...updated[String(activity.number)],
+                        billingStatus: status,
+                      };
+                      updateProject(projIdx, { activityClassifications: updated });
+                    }}
+                    className={`flex-1 py-1.5 px-3 rounded-md text-xs font-medium border transition-colors ${
+                      cls.billingStatus === status
+                        ? status === "billable"
+                          ? "bg-green-100 border-green-300 text-green-800 dark:bg-green-900/40 dark:border-green-700 dark:text-green-300"
+                          : status === "nonBillable"
+                          ? "bg-red-100 border-red-300 text-red-800 dark:bg-red-900/40 dark:border-red-700 dark:text-red-300"
+                          : "bg-amber-100 border-amber-300 text-amber-800 dark:bg-amber-900/40 dark:border-amber-700 dark:text-amber-300"
+                        : "bg-background border-muted hover:bg-muted/50"
+                    }`}
+                  >
+                    {t(status)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
   const renderInvoicingStep = () => {
-    if (!omsaetningData || !projektkortData) return null;
+    if (!omsaetningData || projects.length === 0) return null;
+    // For invoicing, use first project's activities (or all combined)
+    const allActivities = projects.flatMap((p) => p.projektkortData.activities);
+    const proj = projects[0]; // Invoice mappings stored on first project for now
+
     return (
       <div className="space-y-4">
         <div>
@@ -841,16 +973,15 @@ export const EconomicSyncWizard = ({
               </div>
               <Select
                 value={
-                  invoiceMappings[String(cat.number)] != null
-                    ? String(invoiceMappings[String(cat.number)])
+                  proj.invoiceMappings[String(cat.number)] != null
+                    ? String(proj.invoiceMappings[String(cat.number)])
                     : ""
                 }
-                onValueChange={(val) =>
-                  setInvoiceMappings((prev) => ({
-                    ...prev,
-                    [String(cat.number)]: val ? parseInt(val) : null,
-                  }))
-                }
+                onValueChange={(val) => {
+                  const updated = { ...proj.invoiceMappings };
+                  updated[String(cat.number)] = val ? parseInt(val) : null;
+                  updateProject(0, { invoiceMappings: updated });
+                }}
               >
                 <SelectTrigger className="w-[220px]">
                   <SelectValue placeholder={t("noActivityMatch")} />
@@ -859,7 +990,7 @@ export const EconomicSyncWizard = ({
                   <SelectItem value="">
                     {t("noActivityMatch")}
                   </SelectItem>
-                  {projektkortData.activities.map((act) => (
+                  {allActivities.map((act) => (
                     <SelectItem key={act.number} value={String(act.number)}>
                       {act.number} - {act.name}
                     </SelectItem>
@@ -880,22 +1011,34 @@ export const EconomicSyncWizard = ({
   };
 
   const renderConfirmStep = () => {
-    const totals = computeTotals();
+    const totals = computeGrandTotals();
+    const mappedEmployeeCount = Object.values(employeeMappings).filter(Boolean).length - skippedEmployees.size;
+    const totalActivities = projects.reduce((s, p) => s + p.projektkortData.activities.length, 0);
+
     return (
       <div className="space-y-4">
         <p className="text-sm font-medium">{t("confirmTitle")}</p>
 
-        {/* Project info */}
-        <div className="rounded-lg border p-3 space-y-1">
-          <p className="text-sm font-medium">
-            {useExisting
-              ? existingProjects.find((p) => p.id === selectedProjectId)?.name || "—"
-              : projectName}
-          </p>
-          {!useExisting && clientName && (
-            <p className="text-xs text-muted-foreground">{clientName}</p>
-          )}
-        </div>
+        {/* Projects summary */}
+        {projects.map((proj, idx) => (
+          <div key={idx} className="rounded-lg border p-3 space-y-1">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">{proj.projectNumber || `#${idx + 1}`}</Badge>
+              <p className="text-sm font-medium">
+                {proj.useExisting
+                  ? existingProjects.find((p) => p.id === proj.selectedProjectId)?.name || "—"
+                  : proj.projectName}
+              </p>
+            </div>
+            {!proj.useExisting && proj.clientName && (
+              <p className="text-xs text-muted-foreground">{proj.clientName}</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              {proj.projektkortData.activities.length} aktiviteter &middot;{" "}
+              {proj.projektkortData.totals.registeredHours.toFixed(1)}t
+            </p>
+          </div>
+        ))}
 
         {/* Stats grid */}
         <div className="grid grid-cols-2 gap-3">
@@ -917,23 +1060,20 @@ export const EconomicSyncWizard = ({
           </div>
         </div>
 
-        {totals.invoiced > 0 && (
-          <div className="rounded-lg border p-3 text-center bg-blue-50 dark:bg-blue-950/20">
-            <p className="text-lg font-bold text-blue-600">{totals.invoiced.toFixed(1)}t</p>
-            <p className="text-xs text-muted-foreground">{t("invoicedHours")}</p>
+        {/* Summary */}
+        <div className="text-xs text-muted-foreground space-y-0.5">
+          <p>{projects.length} {projects.length === 1 ? "projekt" : "projekter"}</p>
+          <p>{mappedEmployeeCount} medarbejdere importeres</p>
+          <p>{totalActivities} aktiviteter klassificeret</p>
+        </div>
+
+        {importing && (
+          <div className="rounded-lg border p-3 bg-blue-50 dark:bg-blue-950/20">
+            <p className="text-sm text-blue-600 font-medium">
+              Importerer projekt {importProgress} af {projects.length}...
+            </p>
           </div>
         )}
-
-        {/* Employee summary */}
-        <div className="text-xs text-muted-foreground">
-          <p>
-            {Object.values(employeeMappings).filter(Boolean).length - skippedEmployees.size}{" "}
-            medarbejdere importeres
-          </p>
-          <p>
-            {projektkortData?.activities.length || 0} aktiviteter klassificeret
-          </p>
-        </div>
       </div>
     );
   };

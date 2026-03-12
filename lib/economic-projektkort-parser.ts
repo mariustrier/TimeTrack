@@ -141,19 +141,45 @@ export const parseProjektkort = (buffer: ArrayBuffer): ProjektkortData => {
     periodTo = parseExcelDate(periodMatch[2]);
   }
 
-  // Find project row: "Projektkort for projekt NNNNNNN - Project Name"
+  // Find project row dynamically — search through first 30 rows
   let projectNumber = "", projectName = "";
   let projectRow = -1;
-  for (let r = 0; r <= Math.min(maxRow, 20); r++) {
+  for (let r = 0; r <= Math.min(maxRow, 30); r++) {
     const v = toStr(cell(r, 0));
-    const projMatch = v.match(/projekt\s+(\d+)\s*-\s*(.+)/i);
-    if (projMatch) {
-      projectNumber = projMatch[1];
-      projectName = projMatch[2].trim();
-      projectRow = r;
-      break;
+
+    // Try "Projektkort for projekt XXXX - Project Name" or "Projektkort - projekt XXXX"
+    if (!projectNumber) {
+      const projMatch = v.match(/projekt\s+(\S+?)\s*-\s*(.+)/i);
+      if (projMatch) {
+        projectNumber = projMatch[1];
+        projectName = projMatch[2].trim();
+        projectRow = r;
+        continue;
+      }
+      // Also try just "projekt XXXX" without a name
+      const projNumOnly = v.match(/projekt\s+(\S+)/i);
+      if (projNumOnly) {
+        projectNumber = projNumOnly[1];
+        projectRow = r;
+        continue;
+      }
     }
+
+    // Try "Underprojekt XXXX - Name"
+    if (projectNumber && !projectName) {
+      const subMatch = v.match(/[Uu]nderprojekt\s+\S+\s*-\s*(.+)/);
+      if (subMatch) {
+        projectName = subMatch[1].trim();
+      }
+    }
+
+    if (projectNumber && projectName) break;
   }
+
+  // Fallback: use projectNumber as name
+  if (!projectName && projectNumber) projectName = projectNumber;
+
+  if (projectRow === -1) projectRow = 6; // default for section search start
 
   // Find sections
   let invoiceSectionStart = -1;

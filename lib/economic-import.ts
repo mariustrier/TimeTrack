@@ -112,24 +112,50 @@ export function parseEconomicFile(buffer: ArrayBuffer): EconomicImportData {
     throw new Error("Invalid Projektkort format: too few rows");
   }
 
-  // Row 1: "{CompanyId} - {CompanyName}"
-  const companyRow = String(rows[1]?.[0] || "");
-  const companyParts = companyRow.split(" - ");
-  const sourceCompanyId = companyParts[0]?.trim() || "";
-  const sourceCompanyName = companyParts.slice(1).join(" - ").trim();
+  // Search for company info dynamically (usually row 2, but can vary)
+  let sourceCompanyId = "";
+  let sourceCompanyName = "";
+  for (let i = 0; i < Math.min(rows.length, 10); i++) {
+    const val = String(rows[i]?.[0] || "").trim();
+    const companyMatch = val.match(/^(\d{5,})\s*-\s*(.+)$/);
+    if (companyMatch) {
+      sourceCompanyId = companyMatch[1];
+      sourceCompanyName = companyMatch[2].trim();
+      break;
+    }
+  }
 
-  // Row 3: "Projektkort - projekt {ProjectNumber}"
-  const projektRow = String(rows[3]?.[0] || "");
-  const projektMatch = projektRow.match(/projekt\s+(\S+)/i);
-  const projectNumber = projektMatch?.[1] || "";
+  // Search for project number and name dynamically (rows 0–30)
+  let projectNumber = "";
+  let projectName = "";
+  for (let i = 0; i < Math.min(rows.length, 30); i++) {
+    const val = String(rows[i]?.[0] || "").trim();
 
-  // Row 6: "Underprojekt {ProjectNumber} - {ProjectName}"
-  const subRow = String(rows[6]?.[0] || "");
-  const subMatch = subRow.match(/Underprojekt\s+\S+\s*-\s*(.+)/i);
-  const projectName = subMatch?.[1]?.trim() || projectNumber;
+    // "Projektkort - projekt XXXX" or "Projektkort for projekt XXXX - Name"
+    if (!projectNumber) {
+      const match = val.match(/projekt\s+(\S+?)(?:\s*-\s*(.+))?$/i);
+      if (match) {
+        projectNumber = match[1];
+        if (match[2]) projectName = match[2].trim();
+      }
+    }
+
+    // "Underprojekt XXXX - Name"
+    if (!projectName) {
+      const subMatch = val.match(/[Uu]nderprojekt\s+\S+\s*-\s*(.+)/);
+      if (subMatch) {
+        projectName = subMatch[1].trim();
+      }
+    }
+
+    if (projectNumber && projectName) break;
+  }
+
+  // Fallback: use projectNumber as name if we found a number but no name
+  if (!projectName && projectNumber) projectName = projectNumber;
 
   if (!projectNumber && !projectName) {
-    throw new Error("Invalid Projektkort format: could not extract project info");
+    throw new Error("Invalid Projektkort format: could not extract project info. Expected a row containing 'projekt' followed by a project number.");
   }
 
   // Find section boundaries

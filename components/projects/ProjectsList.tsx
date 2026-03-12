@@ -41,7 +41,6 @@ import { convertAndFormat, convertAndFormatBudget, SUPPORTED_CURRENCIES } from "
 import { ContractSection } from "@/components/contracts/contract-section";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { PhaseProgress } from "@/components/projects/PhaseProgress";
-import { EconomicImport } from "@/components/projects/EconomicImport";
 import { EconomicSyncWizard } from "@/components/economic-sync/EconomicSyncWizard";
 import { BillingStatusOverview } from "@/components/economic-sync/BillingStatusOverview";
 import { TilbudDialog } from "@/components/tilbud/TilbudDialog";
@@ -155,7 +154,6 @@ export function ProjectsList() {
   const [projectPhasesEnabled, setProjectPhasesEnabled] = useState(true);
   const [statusFilter, setStatusFilter] = useState<"all" | ProjectStatus>("all");
   const [phaseFilter, setPhaseFilter] = useState("all");
-  const [importOpen, setImportOpen] = useState(false);
   const [syncWizardOpen, setSyncWizardOpen] = useState(false);
   const [syncWizardProjectId, setSyncWizardProjectId] = useState<string | undefined>(undefined);
   const [billingProjectId, setBillingProjectId] = useState<string | null>(null);
@@ -412,15 +410,9 @@ export function ProjectsList() {
         </div>
         <div className="flex gap-2">
           {(userRole === "admin" || userRole === "manager") && (
-            <Button variant="outline" onClick={() => setImportOpen(true)}>
-              <Upload className="mr-2 h-4 w-4" />
-              {t("importEconomic")}
-            </Button>
-          )}
-          {(userRole === "admin" || userRole === "manager") && (
             <Button variant="outline" onClick={() => { setSyncWizardProjectId(undefined); setSyncWizardOpen(true); }}>
               <Upload className="mr-2 h-4 w-4" />
-              {t("economicSync")}
+              {t("importEconomic")}
             </Button>
           )}
           <Button onClick={openCreateModal} data-tour="projects-create-btn">
@@ -877,12 +869,7 @@ export function ProjectsList() {
         </DialogContent>
       </Dialog>
 
-      {/* e-conomic Import Dialog */}
-      <EconomicImport
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        onSuccess={fetchProjects}
-      />
+
 
       {/* Contract Dialog */}
       <Dialog open={!!contractProjectId} onOpenChange={(open) => !open && setContractProjectId(null)}>
