@@ -21,7 +21,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 
 - `npm run dev` - Start development server
 - `npm run build` - Production build (also runs linting + type checking)
-- `npm run test` - Run all 200 unit tests (Vitest)
+- `npm run test` - Run all 236 unit tests (Vitest)
 - `npm run test:watch` - Run tests in watch mode
 
 ## Project Structure
@@ -39,7 +39,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 10. `app/(dashboard)/settings/` - Tour replay, data export, account deletion
 11. `app/(dashboard)/super-admin/` - Platform-level admin with support access requests *(superAdmin only)*
 
-### API Routes (122 route files across 29 domains)
+### API Routes (124 route files across 29 domains)
 - `app/api/` - All scoped by companyId (via `getAuthUser()` which auto-overrides for support mode)
 - Key domains: `time-entries`, `projects`, `projects/[id]/activities` (CRUD + reorder), `team`, `admin`, `expenses`, `vacations`, `contracts`, `resource-allocations`, `analytics`, `ai`, `insights`, `mileage`, `auth`, `cron`, `super-admin`, `super-admin/access`, `admin/support-access`, `user`, `upload`, `absence-reasons`, `admin/phases`, `phases`, `admin/expense-categories`, `invoices`, `billing`, `roles` (CRUD + reorder), `accounting/test`, `accounting/customers`, `accounting/mappings`, `accounting/mappings/projects` (CRUD), `accounting/mappings/employees` (CRUD), `accounting/mappings/expense-categories` (CRUD), `accounting/projects`, `accounting/employees`, `accounting/accounts`, `accounting/sync/time-entries`, `accounting/sync/expenses`, `accounting/sync/status`, `accounting/export/time-entries`, `accounting/export/expenses`, `accounting/economic` (authorize + callback), `accounting/dinero` (authorize + callback)
 
@@ -49,6 +49,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `components/analytics/` - EmployeeInsights, TeamInsights, ProjectInsights, CompanyInsights, analytics-shared (KpiCard, ChartCard with expand/export, MiniSelect, StatusDot, InfoTip, ChartTooltip, BudgetBar, FontLoader, AnalyticsKeyframes, color/style constants)
 - `components/billing/` - UninvoicedTab, InvoicesTab, InvoiceCreateDialog, InvoiceDetailDialog, BillingSettings
 - `components/contracts/` - ContractSection (upload, AI extraction, manual entry)
+- `components/economic-sync/` - EconomicSyncWizard (6-step bulk import wizard with billing classification), BillingStatusOverview (per-project billing dashboard)
 - `components/projects/` - ProjectsList, ProjectTimeline (self-contained ~3200-line inline-styled Gantt), PhaseProgress, TimelineExportPopover (Excel/PDF export with filter popover), TimelinePdfDocument (@react-pdf/renderer A3 Gantt PDF)
 - `components/project-timeline/` - DeadlinePopover, DeadlineMarker, TimelineGrid, MilestoneDialog, MilestonePopover, ActivityGanttSection, ActivityRow, ActivityBlock, ActivityPopover, ActivityCategoryHeader, ActivityProgressBar, InlineEditCell, TimelineContextMenu, TimelineEditFooter, useTimelineEditSession, useTimelineDrag, types.ts (`TimelineViewMode: "day" | "week" | "month" | "year"`)
 - `components/resource-planner/` - ResourceGrid, AllocationDialog, AllocationBlock, ViewControls, PlannerControls, PlannerGrid, PlannerRow, PlannerCell, BulkActionToolbar, CapacitySummary
@@ -79,7 +80,10 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `lib/expense-utils.ts` - Expense formatting helpers
 - `lib/analytics-utils.ts` - Analytics data processing (28+ functions): aggregation for employee, team, project, company views. Key additions: `aggregateEmployeePhaseBreakdown`, `aggregateEmployeeFlexTrend`, `aggregateCapacityDetail`, `aggregateEffectiveRate`, `aggregateBudgetVelocity`, `aggregateRedList`, `aggregateTeamContribution`, `aggregateClientConcentration`, `aggregateInvoicePipeline`, `aggregateBillingVelocity`, `aggregateCollectionSummary`, `aggregateUnbilledAging`. `withProjection()` adds dashed projection lines for incomplete current periods.
 - `lib/analytics-forecast.ts` - Revenue bridge forecast engine: `computeRevenueBridge()` (historical actuals + future forecast), `compute30DayForecast()`. Uses ResourceAllocations with confirmed=100%, tentative=50% weighting.
-- `lib/economic-import.ts` - e-conomic Projektkort XLSX parser
+- `lib/economic-import.ts` - e-conomic Projektkort XLSX parser (legacy, used by old EconomicImport component)
+- `lib/economic-projektkort-parser.ts` - Enhanced Projektkort parser with billing classification (billable/nonBillable/mixed per activity based on salgspris), period extraction, dynamic row search
+- `lib/economic-omsaetning-parser.ts` - Omsætningsstatistik (revenue statistics) XLSX parser — extracts varekategorier with hours, revenue, costs per project
+- `lib/economic-matching.ts` - Auto-matching utilities: `matchEmployees` (name similarity), `matchTilbudCategories`, `matchInvoiceCategories` (cascading: exact → includes → startsWith)
 - `lib/vacation-entries.ts` - createVacationEntries/deleteVacationEntries (shared by vacation routes)
 - `lib/invoice-pdf.ts` - Server-side A4 invoice PDF generation (pdf-lib), multi-page support, Danish formatting
 - `lib/timeline-excel-export.ts` - Client-side Excel workbook builder (ExcelJS + file-saver). 5 sheets: Projektoversigt, Aktiviteter, Milepæle, Tidslinje (Gantt via cell fills), Budgetstatus. A3 landscape, conditional formatting, today column highlight.
@@ -93,10 +97,10 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
   - `lib/accounting/sync.ts` - Shared sync logic: `pushApprovedTimeEntries()`, `pushApprovedExpenses()`. Loads mappings, queries unsynced approved entries, pushes via adapter, updates sync timestamps, creates SyncLog audit trail.
 
 ### Database (32 models)
-Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPaymentDays`, `companyAddress`, `companyCvr`, `companyBankAccount`, `companyBankReg`, `invoiceFooterNote`, `accountingSystem`, `accountingCredentials`, `timeSyncEnabled`, `expenseSyncEnabled`, `flexStartDate`), User (`isHourly`, `weeklyTarget`, `vacationDays`, `vacationTrackingUnit`, `vacationHoursPerYear`, `deletedAt`, `roleId`, `status`, `invitedAt`, `acceptedAt`, etc.), Project (`estimatedNonBillablePercent`), TimeEntry (`invoiceId`, `invoicedAt`, `externallyInvoiced`, `accountingSyncedAt`, `accountingSyncId`), VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense (`invoiceId`, `invoicedAt`, `accountingSyncedAt`, `accountingSyncId`), CompanyExpense, ExpenseCategory, AbsenceReason, ResourceAllocation, ProjectMilestone (`type`, `phaseId`, `description`, `icon`, `color` — deadline fields + Phase relation), ProjectActivity, Phase, SupportAccess, CompanyHoliday, Invoice, InvoiceLine, CustomerMapping, OAuthState, Role (`name`, `sortOrder`, `defaultRate`, `color`, `isDefault` — company-scoped employee categories), CompanyEconomics (`avgHourlyRate`, `targetUtilization`, `monthlyFixedCosts`, `avgMonthlySalary`), ImportBatch, Absence, ProjectMapping (CT project → external accounting project), EmployeeMapping (CT user → external accounting employee), ExpenseCategoryMapping (CT expense category → external account), SyncLog (audit trail for sync/export operations)
+Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPaymentDays`, `companyAddress`, `companyCvr`, `companyBankAccount`, `companyBankReg`, `invoiceFooterNote`, `accountingSystem`, `accountingCredentials`, `timeSyncEnabled`, `expenseSyncEnabled`, `flexStartDate`), User (`isHourly`, `weeklyTarget`, `vacationDays`, `vacationTrackingUnit`, `vacationHoursPerYear`, `deletedAt`, `roleId`, `status`, `invitedAt`, `acceptedAt`, etc.), Project (`estimatedNonBillablePercent`), TimeEntry (`invoiceId`, `invoicedAt`, `externallyInvoiced`, `accountingSyncedAt`, `accountingSyncId`, `economicActivityNumber`, `economicActivityName`, `economicSalgspris`, `economicKostpris`, `economicBilag`), VacationRequest, AuditLog, ProjectAllocation, Contract, ContractInsight, AIApiUsage, Expense (`invoiceId`, `invoicedAt`, `accountingSyncedAt`, `accountingSyncId`), CompanyExpense, ExpenseCategory, AbsenceReason, ResourceAllocation, ProjectMilestone (`type`, `phaseId`, `description`, `icon`, `color` — deadline fields + Phase relation), ProjectActivity, Phase, SupportAccess, CompanyHoliday, Invoice, InvoiceLine, CustomerMapping, OAuthState, Role (`name`, `sortOrder`, `defaultRate`, `color`, `isDefault` — company-scoped employee categories), CompanyEconomics (`avgHourlyRate`, `targetUtilization`, `monthlyFixedCosts`, `avgMonthlySalary`), ImportBatch (`source`, `stats`, `status`, `omsaetningData`, `activityClassifications`, `tilbudMappings`, `invoiceMappings`, `totalRegisteredHours`, `totalBillableHours`, `totalNonBillableHours`, `totalInvoicedHours`, `totalInvoicedAmount`), Absence, ProjectMapping (CT project → external accounting project), EmployeeMapping (CT user → external accounting employee), ExpenseCategoryMapping (CT expense category → external account), SyncLog (audit trail for sync/export operations)
 
 ### Tests
-- `__tests__/lib/` - 200 unit tests across 11 suites (Vitest)
+- `__tests__/lib/` - 236 unit tests across 15 suites (Vitest)
 
 ## Core Features
 
@@ -210,15 +214,26 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
   - Analytics: phase distribution + velocity charts in Project Insights
   - AI insights: phase bottleneck detection, completion celebrations
   - Audit log: PHASE_CHANGE, RENAME_GLOBAL, PHASE_DELETE, PHASE_BACKFILL
-- **e-conomic Import**: Import historical project data from e-conomic Projektkort (.xlsx)
-  - 5-step wizard: Upload → Map Employees → Map Categories to Phases → Project Settings → Review & Confirm
-  - Client-side XLSX parsing via SheetJS (`xlsx` package)
-  - Auto-match employees by name similarity, categories to phases
-  - Creates project, allocations, and time entries (pre-approved, `externallyInvoiced: true`) in a single Prisma transaction
-  - **Re-import safe**: Deletes existing entries for mapped employees on the target project before inserting, preventing duplicates. Allocations use upsert to replace hours (not accumulate).
-  - Audit log: IMPORT action with metadata
+- **e-conomic Import (Legacy)**: Old 5-step import wizard in `components/projects/EconomicImport.tsx` — still in codebase but no longer wired in the UI. Replaced by the new sync wizard.
   - API: `POST /api/projects/import` (multipart/form-data, admin/manager only, rate-limited)
   - Parser: `lib/economic-import.ts` — extracts invoices, task categories, time entries from Projektkort format
+- **e-conomic Project Sync** (replaces old import): Enhanced 6-step import wizard with billing classification and bulk support
+  - Component: `components/economic-sync/EconomicSyncWizard.tsx` — 6 steps: Upload → Project Setup → Map Employees → Classify Activities → Invoicing Data → Review & Confirm
+  - **Bulk import**: Drop multiple Projektkort files + Omsætningsstatistik files in a single unified drop zone. Files auto-classified by name. Omsætningsstatistik matched to Projektkort by project number in filename.
+  - **Billing classification**: Per-activity billing status (billable/nonBillable/mixed) auto-suggested based on salgspris values. Mixed activities show per-entry breakdown.
+  - **Omsætningsstatistik integration**: Revenue data parsed per project, varekategorier mapped to Projektkort activities for invoiced hours tracking
+  - Server-side XLSX parsing via SheetJS — dynamic row search (robust to layout variations across companies)
+  - Creates project, allocations, and time entries (pre-approved, billingStatus set, `externallyInvoiced` for invoiced hours) in a single Prisma transaction
+  - TimeEntry fields: `economicActivityNumber`, `economicActivityName`, `economicSalgspris`, `economicKostpris`, `economicBilag`
+  - ImportBatch fields: `omsaetningData`, `activityClassifications`, billing hour totals
+  - **Re-import safe**: Deletes existing `importSource: "economic"` entries for mapped employees before inserting
+  - Audit log: ECONOMIC_PROJECT_SYNC action with metadata
+  - API: `POST /api/projects/import/economic-sync` (parse + suggest mappings), `PUT` (confirm import)
+  - Parsers: `lib/economic-projektkort-parser.ts` (Projektkort with billing classification), `lib/economic-omsaetning-parser.ts` (revenue statistics)
+- **Billing Status Overview**: Per-project billing dashboard accessible via BarChart3 icon in project row actions
+  - Component: `components/economic-sync/BillingStatusOverview.tsx`
+  - Shows KPI cards (registered/billable/non-billable/invoiced hours), activity breakdown table, employee breakdown
+  - API: `GET /api/projects/[id]/billing-status`
 - **Timeline tab**: Self-contained ~3200-line `ProjectTimeline.tsx` component with all inline styles (no Tailwind). Two-level Gantt view with project bars, milestone markers, today line.
   - **Architecture**: Week-based internal positioning system with `ANCHOR` date (+ `MONTH_ANCHOR` for year view), `dateToWeek()`/`weekToDate()` conversion. `useReducer` undo/redo for project/activity position edits. Window-level `mousemove`/`mouseup` listeners for drag-and-drop (always-on during edit mode). Refs (`dragRef`, `dragDeltaRef`, `justDraggedRef`) to avoid stale closures. Milestones in separate `useState` (not undo/redo) for immediate API calls.
   - **Day/Week/Month/Year view toggle**: Day view (36px columns, 35 visible, daily precision with weekend dimming), Week view (56px columns, 16 visible), Month view (96px columns, 10 visible), Year view (64px columns, 18 visible, **month-based** — uses `differenceInCalendarMonths`/`addMonths` instead of week math, columns show month names with year labels at January). Navigation step: 7 days / 4 weeks / 4 months / 6 months. Data refetches on view switch with activity cache cleared.
