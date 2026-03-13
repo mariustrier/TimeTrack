@@ -233,7 +233,7 @@ export const EconomicSyncWizard = ({
           selectedProjectId: initialProjectId || "",
           projectName: projektkortData.projectName || "",
           projectNumber: projektkortData.projectNumber || "",
-          clientName: "",
+          clientName: projektkortData.companyName || "",
           activityClassifications: classifications,
           invoiceMappings: {},
           suggestedEmployeeMappings: result.suggestedMappings?.employees || [],
@@ -705,7 +705,7 @@ export const EconomicSyncWizard = ({
                           <Input
                             value={proj.projectName}
                             onChange={(e) => updateProject(idx, { projectName: e.target.value })}
-                            placeholder="f.eks. Blidahpark 5"
+                            placeholder={t("projectNamePlaceholder")}
                           />
                         </div>
                         <div className="space-y-1">
@@ -713,7 +713,7 @@ export const EconomicSyncWizard = ({
                           <Input
                             value={proj.projectNumber}
                             onChange={(e) => updateProject(idx, { projectNumber: e.target.value })}
-                            placeholder="f.eks. 2025017"
+                            placeholder={t("projectNumberPlaceholder")}
                           />
                         </div>
                       </div>
@@ -722,7 +722,7 @@ export const EconomicSyncWizard = ({
                         <Input
                           value={proj.clientName}
                           onChange={(e) => updateProject(idx, { clientName: e.target.value })}
-                          placeholder="f.eks. Jørgen Kolind Knudsen"
+                          placeholder={t("clientNamePlaceholder")}
                         />
                       </div>
                     </div>
