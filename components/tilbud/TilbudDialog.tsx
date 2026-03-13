@@ -117,6 +117,7 @@ export function TilbudDialog({
   const [confidence, setConfidence] = useState<number | null>(null);
 
   // Step 2 — Review & Edit
+  const [tilbudId, setTilbudId] = useState<string | null>(null);
   const [phases, setPhases] = useState<ExtractedPhase[]>([]);
   const [hourlyRate, setHourlyRate] = useState<number>(0);
   const [currency, setCurrency] = useState("DKK");
@@ -129,6 +130,7 @@ export function TilbudDialog({
       setDragActive(false);
       setUploading(false);
       setConfidence(null);
+      setTilbudId(null);
       setPhases([]);
       setHourlyRate(0);
       setCurrency("DKK");
@@ -204,11 +206,35 @@ export function TilbudDialog({
         return;
       }
 
-      const data: ExtractionResult = await res.json();
-      setPhases(data.phases);
-      setHourlyRate(data.hourlyRate);
-      setCurrency(data.currency || "DKK");
-      setConfidence(data.confidence);
+      const data = await res.json();
+      const extraction = data.extraction;
+      if (!extraction || !extraction.phases) {
+        toast.error(t("uploadFailed"));
+        return;
+      }
+      setTilbudId(data.tilbud?.id ?? null);
+      // Transform extraction format to component format
+      const mappedPhases: ExtractedPhase[] = extraction.phases.map(
+        (p: { faseNumber: number; name: string; tasks?: { name: string; quotedHours?: number; isTimeloen?: boolean; timeloenEstimate?: string }[] }, pIdx: number) => ({
+          id: tempId(),
+          name: p.name || "",
+          faseNumber: p.faseNumber ?? pIdx + 1,
+          tasks: (p.tasks || []).map(
+            (tk: { name: string; quotedHours?: number; isTimeloen?: boolean; timeloenEstimate?: string }, tIdx: number) => ({
+              id: tempId(),
+              name: tk.name || "",
+              hours: tk.quotedHours ?? 0,
+              isTimeloen: tk.isTimeloen ?? false,
+              timeloenEstimate: tk.timeloenEstimate ?? "",
+              sortOrder: tIdx + 1,
+            })
+          ),
+        })
+      );
+      setPhases(mappedPhases);
+      setHourlyRate(extraction.hourlyRate ?? 0);
+      setCurrency("DKK");
+      setConfidence(extraction.confidence ?? null);
       setStep(2);
     } catch {
       toast.error(t("uploadFailed"));
@@ -310,12 +336,33 @@ export function TilbudDialog({
   // ---- Step 3: Confirm ----
 
   const handleConfirm = useCallback(async () => {
+    if (!tilbudId) {
+      toast.error(t("confirmFailed"));
+      return;
+    }
     setLoading(true);
     try {
+      // Transform component phases to API categories format
+      const categories = phases.map((phase, pIdx) => ({
+        faseNumber: phase.faseNumber,
+        name: phase.name || `Phase ${phase.faseNumber}`,
+        quotedHours: calcPhaseSubtotal(phase),
+        isTimeloen: false,
+        sortOrder: pIdx + 1,
+        children: phase.tasks
+          .sort((a, b) => a.sortOrder - b.sortOrder)
+          .map((task, tIdx) => ({
+            name: task.name || t("unnamedTask"),
+            quotedHours: task.isTimeloen ? undefined : task.hours,
+            isTimeloen: task.isTimeloen,
+            timeloenEstimate: task.timeloenEstimate || undefined,
+            sortOrder: tIdx + 1,
+          })),
+      }));
       const res = await fetch(`/api/projects/${projectId}/tilbud`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phases, hourlyRate, currency }),
+        body: JSON.stringify({ tilbudId, hourlyRate, categories }),
       });
 
       if (!res.ok) {
@@ -332,7 +379,7 @@ export function TilbudDialog({
     } finally {
       setLoading(false);
     }
-  }, [projectId, phases, hourlyRate, currency, t, onOpenChange, onConfirmed]);
+  }, [projectId, tilbudId, phases, hourlyRate, t, onOpenChange, onConfirmed]);
 
   // ---- Computed totals ----
 
