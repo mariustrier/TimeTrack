@@ -623,7 +623,7 @@ export const EconomicSyncWizard = ({
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
         {projects.length === 1
-          ? t("projectSetup") || "Konfigurer projektet"
+          ? t("projectSetup")
           : `${projects.length} projekter fundet — konfigurer hver`}
       </p>
 
@@ -1144,7 +1144,7 @@ export const EconomicSyncWizard = ({
             {step > 0 && (
               <Button variant="outline" onClick={handleBack} disabled={loading || importing}>
                 <ChevronLeft className="mr-1 h-4 w-4" />
-                {tc("back") || "Tilbage"}
+                {tc("back")}
               </Button>
             )}
           </div>
@@ -1172,7 +1172,7 @@ export const EconomicSyncWizard = ({
                   </>
                 ) : (
                   <>
-                    {tc("next") || "Næste"}
+                    {tc("next")}
                     <ChevronRight className="ml-1 h-4 w-4" />
                   </>
                 )}
