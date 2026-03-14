@@ -11,6 +11,8 @@ export async function GET() {
     return NextResponse.json({
       id: user.id,
       role: user.role,
+      imageUrl: user.imageUrl,
+      avatarUrl: user.avatarUrl,
       vacationDays: user.vacationDays,
       vacationTrackingUnit: user.vacationTrackingUnit,
       vacationHoursPerYear: user.vacationHoursPerYear,

@@ -149,6 +149,10 @@ export const createExpenseSchema = z.object({
   receiptFileSize: z.coerce.number().int().nonnegative().optional().nullable(),
 });
 
+export const updateExpenseSchema = createExpenseSchema.partial().extend({
+  amendmentReason: z.string().max(1000).optional(),
+});
+
 // --- Vacations ---
 
 export const createVacationSchema = z.object({

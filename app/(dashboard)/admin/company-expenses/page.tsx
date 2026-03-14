@@ -284,11 +284,11 @@ export default function CompanyExpensesPage() {
         fetchExpenses();
       } else {
         const data = await res.json();
-        toast.error(data.error || "Failed to save");
+        toast.error(data.error || tc("failedToSave"));
       }
     } catch (error) {
       console.error("Failed to save company expense:", error);
-      toast.error("Failed to save");
+      toast.error(tc("failedToSave"));
     } finally {
       setSaving(false);
     }
@@ -313,11 +313,11 @@ export default function CompanyExpensesPage() {
         fetchExpenses();
       } else {
         const data = await res.json();
-        toast.error(data.error || "Failed to delete");
+        toast.error(data.error || tc("failedToDelete"));
       }
     } catch (error) {
       console.error("Failed to delete company expense:", error);
-      toast.error("Failed to delete");
+      toast.error(tc("failedToDelete"));
     } finally {
       setDeleting(false);
     }
@@ -338,10 +338,10 @@ export default function CompanyExpensesPage() {
         fetchCategories();
       } else {
         const data = await res.json();
-        toast.error(data.error === "Category already exists" ? t("categoryExists") : data.error || "Failed to save");
+        toast.error(data.error === "Category already exists" ? t("categoryExists") : data.error || tc("failedToSave"));
       }
     } catch {
-      toast.error("Failed to save");
+      toast.error(tc("failedToSave"));
     } finally {
       setSavingCategory(false);
     }
@@ -363,10 +363,10 @@ export default function CompanyExpensesPage() {
         fetchCategories();
       } else {
         const data = await res.json();
-        toast.error(data.error === "Category already exists" ? t("categoryExists") : data.error || "Failed to save");
+        toast.error(data.error === "Category already exists" ? t("categoryExists") : data.error || tc("failedToSave"));
       }
     } catch {
-      toast.error("Failed to save");
+      toast.error(tc("failedToSave"));
     } finally {
       setSavingCategory(false);
     }
@@ -388,10 +388,10 @@ export default function CompanyExpensesPage() {
         fetchCategories();
       } else {
         const data = await res.json();
-        toast.error(data.error || "Failed to delete");
+        toast.error(data.error || tc("failedToDelete"));
       }
     } catch {
-      toast.error("Failed to delete");
+      toast.error(tc("failedToDelete"));
     } finally {
       setSavingCategory(false);
     }

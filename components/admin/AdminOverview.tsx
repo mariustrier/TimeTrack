@@ -488,7 +488,7 @@ export function AdminOverview() {
           toast.success(t("reasonSaved"));
         } else {
           const data = await res.json();
-          toast.error(data.error || "Failed to save");
+          toast.error(data.error || tc("failedToSave"));
         }
       } else {
         const res = await fetch("/api/admin/absence-reasons", {
@@ -505,7 +505,7 @@ export function AdminOverview() {
           toast.success(t("reasonSaved"));
         } else {
           const data = await res.json();
-          toast.error(data.error || "Failed to save");
+          toast.error(data.error || tc("failedToSave"));
         }
       }
       setAbsenceReasonDialogOpen(false);
@@ -513,7 +513,7 @@ export function AdminOverview() {
       setAbsenceReasonName("");
       setAbsenceReasonCode("");
     } catch {
-      toast.error("Failed to save");
+      toast.error(tc("failedToSave"));
     } finally {
       setAbsenceReasonSaving(false);
     }
@@ -540,10 +540,10 @@ export function AdminOverview() {
         }
       } else {
         const data = await res.json();
-        toast.error(data.error || "Failed to delete");
+        toast.error(data.error || tc("failedToDelete"));
       }
     } catch {
-      toast.error("Failed to delete");
+      toast.error(tc("failedToDelete"));
     }
   }
 
@@ -563,10 +563,10 @@ export function AdminOverview() {
         setAssignDialogOpen(false);
       } else {
         const data = await res.json();
-        toast.error(data.error || "Failed to save");
+        toast.error(data.error || tc("failedToSave"));
       }
     } catch {
-      toast.error("Failed to save");
+      toast.error(tc("failedToSave"));
     } finally {
       setAssignSaving(false);
     }
@@ -968,7 +968,7 @@ export function AdminOverview() {
                                   toast.success(project.locked ? t("projectUnlocked") : t("projectLockedSuccess"));
                                 }
                               } catch {
-                                toast.error("Failed to update project");
+                                toast.error(tc("failedToUpdate"));
                               }
                             }}
                             title={project.locked ? t("unlockProject") : t("lockProject")}
@@ -990,7 +990,7 @@ export function AdminOverview() {
                                   toast.success(project.archived ? t("projectUnarchived") : t("projectArchivedSuccess"));
                                 }
                               } catch {
-                                toast.error("Failed to update project");
+                                toast.error(tc("failedToUpdate"));
                               }
                             }}
                             title={project.archived ? t("unarchiveProject") : t("archiveProject")}
@@ -1677,7 +1677,7 @@ export function AdminOverview() {
                     });
                     if (!res.ok) {
                       const data = await res.json();
-                      toast.error(data.error || "Failed to update phase");
+                      toast.error(data.error || tc("failedToUpdate"));
                       return;
                     }
                     if (phaseApplyGlobally && phaseName.trim() !== editingPhase.name) {
@@ -1693,7 +1693,7 @@ export function AdminOverview() {
                     });
                     if (!res.ok) {
                       const data = await res.json();
-                      toast.error(data.error || "Failed to create phase");
+                      toast.error(data.error || tc("failedToSave"));
                       return;
                     }
                     toast.success(tp("phaseSaved"));
@@ -1703,7 +1703,7 @@ export function AdminOverview() {
                   const pRes = await fetch("/api/admin/phases");
                   if (pRes.ok) setPhases(await pRes.json());
                 } catch {
-                  toast.error("Failed to save phase");
+                  toast.error(tc("failedToSave"));
                 } finally {
                   setPhaseSaving(false);
                 }
@@ -1861,7 +1861,7 @@ export function AdminOverview() {
                   );
                   if (!res.ok) {
                     const data = await res.json();
-                    toast.error(data.error || "Export failed");
+                    toast.error(data.error || tc("exportFailed"));
                     return;
                   }
                   const blob = await res.blob();
@@ -1874,7 +1874,7 @@ export function AdminOverview() {
                   document.body.removeChild(a);
                   URL.revokeObjectURL(url);
                 } catch {
-                  toast.error("Export failed");
+                  toast.error(tc("exportFailed"));
                 } finally {
                   setReceiptExporting(false);
                 }

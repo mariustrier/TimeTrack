@@ -229,16 +229,16 @@ export async function POST(req: Request) {
     const dueDate = new Date(invoiceDate);
     dueDate.setDate(dueDate.getDate() + payDays);
 
-    // Atomically get and increment invoice number
-    const updated = await db.company.update({
-      where: { id: user.companyId },
-      data: { nextInvoiceNumber: { increment: 1 } },
-      select: { nextInvoiceNumber: true },
-    });
-    const invoiceNumber = updated.nextInvoiceNumber - 1;
-
-    // Create invoice in transaction
+    // Create invoice in transaction (invoice number increment is inside to prevent race conditions)
     const invoice = await db.$transaction(async (tx) => {
+      // Atomically get and increment invoice number inside transaction
+      const updated = await tx.company.update({
+        where: { id: user.companyId },
+        data: { nextInvoiceNumber: { increment: 1 } },
+        select: { nextInvoiceNumber: true },
+      });
+      const invoiceNumber = updated.nextInvoiceNumber - 1;
+
       const inv = await tx.invoice.create({
         data: {
           companyId: user.companyId,

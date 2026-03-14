@@ -34,12 +34,16 @@ import {
 } from "@/components/ui/table";
 import { useTranslations } from "@/lib/i18n";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { resizeImage } from "@/lib/image-resize";
 
 interface TeamMember {
   id: string;
   email: string;
   firstName: string | null;
   lastName: string | null;
+  imageUrl: string | null;
+  avatarUrl: string | null;
   role: string;
   employmentType: string;
   hourlyRate: number;
@@ -86,6 +90,7 @@ export function TeamList() {
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [rolesEnabled, setRolesEnabled] = useState(true);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   async function fetchTeam() {
     setLoading(true);
@@ -185,7 +190,7 @@ export function TeamList() {
         });
         if (!res.ok) {
           const data = await res.json();
-          toast.error(data.error || "Failed to update member");
+          toast.error(data.error || tc("failedToUpdate"));
           return;
         }
       } else {
@@ -196,7 +201,7 @@ export function TeamList() {
         });
         if (!res.ok) {
           const data = await res.json();
-          toast.error(data.error || "Failed to invite member");
+          toast.error(data.error || tc("failedToSave"));
           return;
         }
         const data = await res.json();
@@ -222,7 +227,7 @@ export function TeamList() {
       const res = await fetch(`/api/team/${deletingMember.id}`, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json();
-        toast.error(data.error || "Failed to remove member");
+        toast.error(data.error || tc("failedToDelete"));
         return;
       }
       const memberName = deletingMember.firstName || deletingMember.email || "";
@@ -232,7 +237,7 @@ export function TeamList() {
       fetchTeam();
     } catch (error) {
       console.error("Failed to remove member:", error);
-      toast.error("Failed to remove member");
+      toast.error(tc("failedToDelete"));
     } finally {
       setSaving(false);
     }
@@ -316,9 +321,19 @@ export function TeamList() {
                 {members.map((member) => (
                   <TableRow key={member.id}>
                     <TableCell className="font-medium">
-                      {member.firstName || member.lastName
-                        ? `${member.firstName || ""} ${member.lastName || ""}`.trim()
-                        : "-"}
+                      <div className="flex items-center gap-2">
+                        <UserAvatar
+                          avatarUrl={member.avatarUrl}
+                          imageUrl={member.imageUrl}
+                          firstName={member.firstName}
+                          lastName={member.lastName}
+                          email={member.email}
+                          size="md"
+                        />
+                        {member.firstName || member.lastName
+                          ? `${member.firstName || ""} ${member.lastName || ""}`.trim()
+                          : "-"}
+                      </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {member.email}
@@ -399,6 +414,96 @@ export function TeamList() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {editingMember && (
+              <div className="flex items-center gap-4">
+                <UserAvatar
+                  avatarUrl={editingMember.avatarUrl}
+                  imageUrl={editingMember.imageUrl}
+                  firstName={editingMember.firstName}
+                  lastName={editingMember.lastName}
+                  email={editingMember.email}
+                  size="lg"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={uploadingAvatar}
+                    onClick={() => {
+                      const input = document.createElement("input");
+                      input.type = "file";
+                      input.accept = "image/png,image/jpeg,image/webp";
+                      input.onchange = async (e) => {
+                        const file = (e.target as HTMLInputElement).files?.[0];
+                        if (!file) return;
+                        if (file.size > 2 * 1024 * 1024) {
+                          toast.error(t("photoTooLarge"));
+                          return;
+                        }
+                        if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+                          toast.error(t("photoInvalidType"));
+                          return;
+                        }
+                        setUploadingAvatar(true);
+                        try {
+                          const resized = await resizeImage(file);
+                          const formData = new FormData();
+                          formData.append("file", resized);
+                          const res = await fetch(`/api/team/${editingMember.id}/avatar`, {
+                            method: "POST",
+                            body: formData,
+                          });
+                          if (res.ok) {
+                            const data = await res.json();
+                            setEditingMember({ ...editingMember, avatarUrl: data.url });
+                            toast.success(t("photoUploaded"));
+                            fetchTeam();
+                          } else {
+                            const data = await res.json();
+                            toast.error(data.error || t("photoUploadError"));
+                          }
+                        } catch {
+                          toast.error(t("photoUploadError"));
+                        } finally {
+                          setUploadingAvatar(false);
+                        }
+                      };
+                      input.click();
+                    }}
+                  >
+                    {uploadingAvatar ? tc("saving") : t("uploadPhoto")}
+                  </Button>
+                  {editingMember.avatarUrl && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={uploadingAvatar}
+                      onClick={async () => {
+                        setUploadingAvatar(true);
+                        try {
+                          const res = await fetch(`/api/team/${editingMember.id}/avatar`, {
+                            method: "DELETE",
+                          });
+                          if (res.ok) {
+                            setEditingMember({ ...editingMember, avatarUrl: null });
+                            toast.success(t("photoRemoved"));
+                            fetchTeam();
+                          }
+                        } catch {
+                          toast.error(t("photoUploadError"));
+                        } finally {
+                          setUploadingAvatar(false);
+                        }
+                      }}
+                    >
+                      {t("removePhoto")}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>{t("firstName")}</Label>

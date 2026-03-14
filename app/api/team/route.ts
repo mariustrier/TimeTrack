@@ -23,6 +23,7 @@ export async function GET() {
         firstName: true,
         lastName: true,
         imageUrl: true,
+        avatarUrl: true,
         role: true,
         employmentType: true,
         hourlyRate: true,

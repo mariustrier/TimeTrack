@@ -28,7 +28,7 @@ interface DeadlinePopoverProps {
   projectColor: string;
   companyPhases: CompanyPhase[];
   existingPhaseDeadlines: string[]; // phaseIds that already have deadlines
-  teamMembers?: { id: string; name: string; imageUrl: string | null }[];
+  teamMembers?: { id: string; name: string; imageUrl: string | null; avatarUrl?: string | null }[];
   defaultDate?: string;
   onSave: (data: {
     projectId: string;

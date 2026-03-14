@@ -56,7 +56,19 @@
     "to": "Til",
     "export": "Eksportér",
     "exporting": "Eksporterer...",
-    "default": "Standard"
+    "default": "Standard",
+    "failedToSave": "Kunne ikke gemme",
+    "failedToDelete": "Kunne ikke slette",
+    "failedToApprove": "Kunne ikke godkende",
+    "failedToReject": "Kunne ikke afvise",
+    "failedToUpdate": "Kunne ikke opdatere",
+    "exportFailed": "Eksport fejlede",
+    "pdfDownloadFailed": "PDF-download fejlede",
+    "syncFailed": "Synkronisering fejlede",
+    "previewFailed": "Forhåndsvisning fejlede",
+    "failedToCreate": "Kunne ikke oprette",
+    "backfillFailed": "Backfill fejlede",
+    "failedToSubmit": "Kunne ikke indsende anmodning"
   },
   "nav": {
     "timetrack": "Cloud Timer",
@@ -79,7 +91,12 @@
     "resourcePlanner": "Ressourceplanlægning",
     "projectTimeline": "Tidslinje",
     "billing": "Fakturering",
-    "management": "Administration"
+    "management": "Administration",
+    "statusDraft": "kladde",
+    "statusSubmitted": "indsendt",
+    "statusApproved": "godkendt",
+    "statusRejected": "afvist",
+    "statusLocked": "låst"
   },
   "dashboard": {
     "title": "Timeseddel",
@@ -283,7 +300,15 @@
     "trackingHours": "Timer",
     "annualHours": "Årlige ferietimer",
     "annualHoursHelper": "Standard: ugetimer × 5 (f.eks. 30t/uge = 150t/år)",
-    "extraVacationHours": "Ekstra ferietimer"
+    "extraVacationHours": "Ekstra ferietimer",
+    "profilePhoto": "Profilbillede",
+    "uploadPhoto": "Upload billede",
+    "removePhoto": "Fjern billede",
+    "photoUploaded": "Profilbillede opdateret",
+    "photoRemoved": "Profilbillede fjernet",
+    "photoUploadError": "Kunne ikke uploade billede",
+    "photoTooLarge": "Billedet skal være under 2MB",
+    "photoInvalidType": "Kun PNG, JPG og WebP billeder er tilladt"
   },
   "admin": {
     "title": "Admin-dashboard",
@@ -664,7 +689,15 @@
     "entityExpense": "Udgift",
     "entries": "poster",
     "hours": "timer",
-    "reason": "Årsag"
+    "reason": "Årsag",
+    "statusDraft": "Kladde",
+    "statusSubmitted": "Indsendt",
+    "statusApproved": "Godkendt",
+    "statusRejected": "Afvist",
+    "statusLocked": "Låst",
+    "statusReopened": "Genåbnet",
+    "statusPending": "Afventer",
+    "statusCancelled": "Annulleret"
   },
   "onboarding": {
     "welcome": "Velkommen til Cloud Timer",
@@ -1092,6 +1125,9 @@
     "utilization": "Udnyttelse",
     "teamUtilization": "Holdudnyttelse",
     "overbooked": "Overbooket",
+    "optimal": "OK",
+    "partial": "Delvis",
+    "low": "Lav",
     "available": "Tilgængelig",
     "viewWeek": "Uge",
     "viewTwoWeeks": "2 uger",
@@ -2001,7 +2037,13 @@
     "externallyInvoicedIn": "Allerede faktureret i {system}",
     "externallyInvoicedDesc": "Disse timer er importeret fra dit regnskabssystem og er allerede faktureret.",
     "importedHours": "importerede timer",
-    "importedEntries": "poster"
+    "importedEntries": "poster",
+    "outsideContract": "Udenfor kontrakt",
+    "outsideContractDesc": "Timer registreret udenfor kontraktperioden",
+    "entries": "poster",
+    "createSupplementaryInvoice": "Opret tillægsfaktura",
+    "cvr": "CVR",
+    "paymentDays": "Betalingsdage"
   },
   "demo": {
     "bannerText": "Du ser en demo af Cloud Timer med eksempeldata",

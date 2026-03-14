@@ -130,6 +130,7 @@ export async function GET(req: Request) {
       userId: string;
       userName: string;
       userImageUrl: string | null;
+      userAvatarUrl: string | null;
       startDate: string;
       endDate: string;
       hoursPerDay: number;
@@ -144,7 +145,7 @@ export async function GET(req: Request) {
       endDate: Date;
       hoursPerDay: number;
       status: string;
-      user: { id: string; firstName: string | null; lastName: string | null; imageUrl: string | null; weeklyTarget: number; isHourly: boolean };
+      user: { id: string; firstName: string | null; lastName: string | null; imageUrl: string | null; avatarUrl: string | null; weeklyTarget: number; isHourly: boolean };
     }> = [];
 
     if (includeAllocations || includeConflicts) {
@@ -168,6 +169,7 @@ export async function GET(req: Request) {
               firstName: true,
               lastName: true,
               imageUrl: true,
+              avatarUrl: true,
               weeklyTarget: true,
               isHourly: true,
             },
@@ -189,6 +191,7 @@ export async function GET(req: Request) {
             userId: alloc.userId,
             userName,
             userImageUrl: alloc.user.imageUrl,
+            userAvatarUrl: alloc.user.avatarUrl,
             startDate: format(alloc.startDate, "yyyy-MM-dd"),
             endDate: format(alloc.endDate, "yyyy-MM-dd"),
             hoursPerDay: alloc.hoursPerDay,

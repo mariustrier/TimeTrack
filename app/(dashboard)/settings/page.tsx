@@ -71,7 +71,7 @@ export default function SettingsPage() {
       URL.revokeObjectURL(url);
       toast.success(t("downloaded"));
     } catch {
-      toast.error("Export failed");
+      toast.error(tc("exportFailed"));
     } finally {
       setDownloading(false);
     }
@@ -90,7 +90,7 @@ export default function SettingsPage() {
       setDeletionStatus({ requested: true, requestedAt: new Date().toISOString() });
       toast.success(t("deletionPending"));
     } catch {
-      toast.error("Failed to submit request");
+      toast.error(tc("failedToSubmit"));
     } finally {
       setSubmitting(false);
     }

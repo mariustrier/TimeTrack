@@ -8,6 +8,8 @@ interface PendingItem {
   type: "timeEntry" | "expense" | "vacation";
   date: string;
   employeeName: string;
+  employeeImageUrl: string | null;
+  employeeAvatarUrl: string | null;
   projectName: string | null;
   amount: number | null;
   hours: number | null;
@@ -37,7 +39,7 @@ export async function GET() {
         approvalStatus: true,
         createdAt: true,
         project: { select: { name: true } },
-        user: { select: { firstName: true, lastName: true, email: true } },
+        user: { select: { firstName: true, lastName: true, email: true, imageUrl: true, avatarUrl: true } },
       },
     });
 
@@ -73,6 +75,8 @@ export async function GET() {
           type: "timeEntry",
           date: new Date(entry.date).toISOString().split("T")[0],
           employeeName,
+          employeeImageUrl: entry.user.imageUrl ?? null,
+          employeeAvatarUrl: entry.user.avatarUrl ?? null,
           projectName: entry.project.name,
           amount: null,
           hours: entry.hours,
@@ -92,7 +96,7 @@ export async function GET() {
         approvalStatus: true,
         createdAt: true,
         project: { select: { name: true } },
-        user: { select: { firstName: true, lastName: true, email: true } },
+        user: { select: { firstName: true, lastName: true, email: true, imageUrl: true, avatarUrl: true } },
       },
     });
 
@@ -105,6 +109,8 @@ export async function GET() {
         type: "expense",
         date: new Date(exp.date).toISOString().split("T")[0],
         employeeName,
+        employeeImageUrl: exp.user.imageUrl ?? null,
+        employeeAvatarUrl: exp.user.avatarUrl ?? null,
         projectName: exp.project?.name || null,
         amount: exp.amount,
         hours: null,
@@ -126,7 +132,7 @@ export async function GET() {
         type: true,
         status: true,
         createdAt: true,
-        user: { select: { firstName: true, lastName: true, email: true } },
+        user: { select: { firstName: true, lastName: true, email: true, imageUrl: true, avatarUrl: true } },
       },
     });
 
@@ -139,6 +145,8 @@ export async function GET() {
         type: "vacation",
         date: new Date(vac.startDate).toISOString().split("T")[0],
         employeeName,
+        employeeImageUrl: vac.user.imageUrl ?? null,
+        employeeAvatarUrl: vac.user.avatarUrl ?? null,
         projectName: null,
         amount: null,
         hours: null,

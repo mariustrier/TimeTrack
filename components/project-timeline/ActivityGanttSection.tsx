@@ -26,7 +26,7 @@ interface ActivityGanttSectionProps {
   project: TimelineProject;
   columns: TimelineColumn[];
   companyPhases: CompanyPhase[];
-  teamMembers: { id: string; name: string; imageUrl: string | null }[];
+  teamMembers: { id: string; name: string; imageUrl: string | null; avatarUrl?: string | null }[];
   milestones: TimelineMilestone[];
   editMode: boolean;
   onSaveDeadline: (data: {
@@ -142,6 +142,9 @@ export function ActivityGanttSection({
             : null,
           assignedUserImageUrl: item.assignedUser
             ? ((item.assignedUser as Record<string, unknown>).imageUrl as string) || null
+            : null,
+          assignedUserAvatarUrl: item.assignedUser
+            ? ((item.assignedUser as Record<string, unknown>).avatarUrl as string) || null
             : null,
           startDate: (item.startDate as string)?.split("T")[0] || format(new Date(), "yyyy-MM-dd"),
           endDate: (item.endDate as string)?.split("T")[0] || format(new Date(), "yyyy-MM-dd"),
@@ -278,6 +281,7 @@ export function ActivityGanttSection({
             ? [created.assignedUser.firstName, created.assignedUser.lastName].filter(Boolean).join(" ")
             : null,
           assignedUserImageUrl: created.assignedUser?.imageUrl || null,
+          assignedUserAvatarUrl: created.assignedUser?.avatarUrl || null,
           startDate: (created.startDate as string)?.split("T")[0] || (data.startDate as string) || "",
           endDate: (created.endDate as string)?.split("T")[0] || (data.endDate as string) || "",
           status: created.status || "not_started",

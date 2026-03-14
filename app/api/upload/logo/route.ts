@@ -7,7 +7,6 @@ import { checkRateLimit } from "@/lib/rate-limit";
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_TYPES = [
   "image/png",
-  "image/svg+xml",
   "image/jpeg",
   "image/webp",
 ];
@@ -38,7 +37,7 @@ export async function POST(req: Request) {
 
     if (!ALLOWED_TYPES.includes(file.type)) {
       return NextResponse.json(
-        { error: "Only SVG, PNG, JPG, and WebP images are allowed" },
+        { error: "Only PNG, JPG, and WebP images are allowed" },
         { status: 400 }
       );
     }
@@ -72,9 +71,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ url: blob.url });
   } catch (error) {
     console.error("[LOGO_UPLOAD]", error);
-    const message = error instanceof Error ? error.message : "Internal server error";
     return NextResponse.json(
-      { error: message },
+      { error: "Upload failed" },
       { status: 500 }
     );
   }

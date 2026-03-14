@@ -148,12 +148,12 @@ export function ExpenseApprovals() {
         setSelectedIds(new Set());
       } else {
         const data = await res.json();
-        toast.error(data.error || "Failed to approve");
+        toast.error(data.error || tc("failedToApprove"));
       }
       fetchExpenses();
     } catch (error) {
       console.error("Failed to approve expenses:", error);
-      toast.error("Failed to approve");
+      toast.error(tc("failedToApprove"));
     } finally {
       setActing(false);
     }
@@ -183,14 +183,14 @@ export function ExpenseApprovals() {
         setSelectedIds(new Set());
       } else {
         const data = await res.json();
-        toast.error(data.error || "Failed to reject");
+        toast.error(data.error || tc("failedToReject"));
       }
       setRejectDialogOpen(false);
       setPendingRejectIds([]);
       fetchExpenses();
     } catch (error) {
       console.error("Failed to reject expenses:", error);
-      toast.error("Failed to reject");
+      toast.error(tc("failedToReject"));
     } finally {
       setActing(false);
     }

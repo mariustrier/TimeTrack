@@ -56,7 +56,19 @@
     "to": "To",
     "export": "Export",
     "exporting": "Exporting...",
-    "default": "Default"
+    "default": "Default",
+    "failedToSave": "Failed to save",
+    "failedToDelete": "Failed to delete",
+    "failedToApprove": "Failed to approve",
+    "failedToReject": "Failed to reject",
+    "failedToUpdate": "Failed to update",
+    "exportFailed": "Export failed",
+    "pdfDownloadFailed": "PDF download failed",
+    "syncFailed": "Sync failed",
+    "previewFailed": "Preview failed",
+    "failedToCreate": "Failed to create",
+    "backfillFailed": "Backfill failed",
+    "failedToSubmit": "Failed to submit request"
   },
   "nav": {
     "timetrack": "Cloud Timer",
@@ -79,7 +91,12 @@
     "resourcePlanner": "Resource Planner",
     "projectTimeline": "Timeline",
     "billing": "Billing",
-    "management": "Management"
+    "management": "Management",
+    "statusDraft": "draft",
+    "statusSubmitted": "submitted",
+    "statusApproved": "approved",
+    "statusRejected": "rejected",
+    "statusLocked": "locked"
   },
   "dashboard": {
     "title": "Timesheet",
@@ -283,7 +300,15 @@
     "trackingHours": "Hours",
     "annualHours": "Annual vacation hours",
     "annualHoursHelper": "Standard: weekly hours × 5 (e.g., 30h/week = 150h/year)",
-    "extraVacationHours": "Extra Vacation Hours"
+    "extraVacationHours": "Extra Vacation Hours",
+    "profilePhoto": "Profile Photo",
+    "uploadPhoto": "Upload Photo",
+    "removePhoto": "Remove Photo",
+    "photoUploaded": "Profile photo updated",
+    "photoRemoved": "Profile photo removed",
+    "photoUploadError": "Failed to upload photo",
+    "photoTooLarge": "Photo must be under 2MB",
+    "photoInvalidType": "Only PNG, JPG and WebP images are allowed"
   },
   "admin": {
     "title": "Admin Dashboard",
@@ -664,7 +689,15 @@
     "entityExpense": "Expense",
     "entries": "entries",
     "hours": "hours",
-    "reason": "Reason"
+    "reason": "Reason",
+    "statusDraft": "Draft",
+    "statusSubmitted": "Submitted",
+    "statusApproved": "Approved",
+    "statusRejected": "Rejected",
+    "statusLocked": "Locked",
+    "statusReopened": "Reopened",
+    "statusPending": "Pending",
+    "statusCancelled": "Cancelled"
   },
   "onboarding": {
     "welcome": "Welcome to Cloud Timer",
@@ -1092,6 +1125,9 @@
     "utilization": "Utilization",
     "teamUtilization": "Team Utilization",
     "overbooked": "Overbooked",
+    "optimal": "OK",
+    "partial": "Partial",
+    "low": "Low",
     "available": "Available",
     "viewWeek": "Week",
     "viewTwoWeeks": "2 Weeks",
@@ -2004,7 +2040,13 @@
     "externallyInvoicedIn": "Already invoiced in {system}",
     "externallyInvoicedDesc": "These hours were imported from your accounting system and have already been invoiced.",
     "importedHours": "imported hours",
-    "importedEntries": "entries"
+    "importedEntries": "entries",
+    "outsideContract": "Outside Contract",
+    "outsideContractDesc": "Hours logged outside the contract period",
+    "entries": "entries",
+    "createSupplementaryInvoice": "Create Supplementary Invoice",
+    "cvr": "CVR",
+    "paymentDays": "Payment Days"
   },
   "demo": {
     "bannerText": "You are viewing a demo of Cloud Timer with sample data",

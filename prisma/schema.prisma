@@ -93,6 +93,7 @@ model User {
   firstName            String?
   lastName             String?
   imageUrl             String?
+  avatarUrl            String?
   role                 String    @default("employee") // "admin" | "manager" | "employee"
   employmentType       String    @default("employee") // "employee" | "freelancer"
   hourlyRate           Float     @default(0)

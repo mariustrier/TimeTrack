@@ -30,6 +30,7 @@ interface Employee {
   lastName: string | null;
   email: string;
   imageUrl: string | null;
+  avatarUrl?: string | null;
   weeklyTarget: number;
 }
 

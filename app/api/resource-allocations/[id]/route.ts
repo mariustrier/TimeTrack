@@ -10,6 +10,7 @@ const userSelect = {
   lastName: true,
   email: true,
   imageUrl: true,
+  avatarUrl: true,
   weeklyTarget: true,
   isHourly: true,
   employmentType: true,

@@ -14,7 +14,7 @@ interface ActivityRowProps {
   activity: TimelineActivity;
   projectColor: string;
   columns: TimelineColumn[];
-  teamMembers: { id: string; name: string; imageUrl: string | null }[];
+  teamMembers: { id: string; name: string; imageUrl: string | null; avatarUrl?: string | null }[];
   editMode?: boolean;
   onUpdate: (activityId: string, data: Record<string, unknown>) => void;
   onDelete: (activityId: string) => void;

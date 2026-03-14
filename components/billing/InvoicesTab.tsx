@@ -60,6 +60,7 @@ function StatusBadge({ status, t }: { status: string; t: (key: string) => string
 
 export function InvoicesTab() {
   const t = useTranslations("billing");
+  const tc = useTranslations("common");
   const dateLocale = useDateLocale();
   const formatOpts = dateLocale ? { locale: dateLocale } : undefined;
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -111,7 +112,7 @@ export function InvoicesTab() {
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      toast.error("PDF download failed");
+      toast.error(tc("pdfDownloadFailed"));
     }
   }
 
@@ -123,10 +124,10 @@ export function InvoicesTab() {
         toast.success(t("invoiceSynced", { system: data.system }));
         fetchInvoices();
       } else {
-        toast.error(data.error || "Sync failed");
+        toast.error(data.error || tc("syncFailed"));
       }
     } catch {
-      toast.error("Sync failed");
+      toast.error(tc("syncFailed"));
     }
   }
 

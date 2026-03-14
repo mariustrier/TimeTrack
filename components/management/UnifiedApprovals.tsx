@@ -31,6 +31,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useTranslations, useDateLocale } from "@/lib/i18n";
 import { convertAndFormat } from "@/lib/currency";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 // ─── Types ───
 
@@ -39,6 +40,8 @@ interface PendingItem {
   type: "timeEntry" | "expense" | "vacation";
   date: string;
   employeeName: string;
+  employeeImageUrl?: string | null;
+  employeeAvatarUrl?: string | null;
   projectName: string | null;
   amount: number | null;
   hours: number | null;
@@ -170,12 +173,12 @@ export function UnifiedApprovals() {
         toast.success(tc("approved"));
       } else {
         const data = await res.json();
-        toast.error(data.error || "Failed to approve");
+        toast.error(data.error || tc("failedToApprove"));
       }
       fetchItems();
     } catch (error) {
       console.error("Failed to approve expense:", error);
-      toast.error("Failed to approve");
+      toast.error(tc("failedToApprove"));
     } finally {
       setActing(null);
     }
@@ -193,12 +196,12 @@ export function UnifiedApprovals() {
         toast.success(tc("approved"));
       } else {
         const data = await res.json();
-        toast.error(data.error || "Failed to approve");
+        toast.error(data.error || tc("failedToApprove"));
       }
       fetchItems();
     } catch (error) {
       console.error("Failed to approve vacation:", error);
-      toast.error("Failed to approve");
+      toast.error(tc("failedToApprove"));
     } finally {
       setActing(null);
     }
@@ -260,7 +263,7 @@ export function UnifiedApprovals() {
         toast.success(tc("rejected"));
       } else {
         const data = await res.json();
-        toast.error(data.error || "Failed to reject");
+        toast.error(data.error || tc("failedToReject"));
       }
 
       setReasonDialogOpen(false);
@@ -268,7 +271,7 @@ export function UnifiedApprovals() {
       fetchItems();
     } catch (error) {
       console.error("Failed to reject:", error);
-      toast.error("Failed to reject");
+      toast.error(tc("failedToReject"));
     } finally {
       setActing(null);
     }
@@ -384,7 +387,16 @@ export function UnifiedApprovals() {
                   <div className="flex-shrink-0">{getTypeBadge(item.type)}</div>
 
                   {/* Employee + project */}
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 flex items-center gap-2">
+                    <UserAvatar
+                      avatarUrl={item.employeeAvatarUrl}
+                      imageUrl={item.employeeImageUrl}
+                      firstName={item.employeeName.split(" ")[0]}
+                      lastName={item.employeeName.split(" ")[1]}
+                      size="sm"
+                      className="shrink-0"
+                    />
+                    <div className="min-w-0">
                     <p className="font-medium text-foreground truncate">
                       {item.employeeName}
                     </p>
@@ -393,6 +405,7 @@ export function UnifiedApprovals() {
                         {item.projectName}
                       </p>
                     )}
+                    </div>
                   </div>
 
                   {/* Date */}

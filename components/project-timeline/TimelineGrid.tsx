@@ -63,7 +63,7 @@ interface TimelineGridProps {
   onDeleteMilestone: (milestoneId: string, projectId: string) => void;
   onAutoPopulatePhases: (projectId: string) => void;
   onUpdateActivityDates: (activityId: string, projectId: string, startDate: string, endDate: string) => void;
-  teamMembers: Array<{ id: string; name: string; imageUrl: string | null }>;
+  teamMembers: Array<{ id: string; name: string; imageUrl: string | null; avatarUrl?: string | null }>;
   companyPhases: CompanyPhase[];
 }
 

@@ -80,6 +80,7 @@ interface InvoiceDetailDialogProps {
 
 export function InvoiceDetailDialog({ invoiceId, open, onOpenChange }: InvoiceDetailDialogProps) {
   const t = useTranslations("billing");
+  const tc = useTranslations("common");
   const dateLocale = useDateLocale();
   const formatOpts = dateLocale ? { locale: dateLocale } : undefined;
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null);
@@ -127,7 +128,7 @@ export function InvoiceDetailDialog({ invoiceId, open, onOpenChange }: InvoiceDe
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      toast.error("PDF download failed");
+      toast.error(tc("pdfDownloadFailed"));
     }
   }
 
@@ -141,10 +142,10 @@ export function InvoiceDetailDialog({ invoiceId, open, onOpenChange }: InvoiceDe
         const updated = await fetch(`/api/invoices/${invoiceId}`);
         if (updated.ok) setInvoice(await updated.json());
       } else {
-        toast.error(data.error || "Sync failed");
+        toast.error(data.error || tc("syncFailed"));
       }
     } catch {
-      toast.error("Sync failed");
+      toast.error(tc("syncFailed"));
     }
   }
 

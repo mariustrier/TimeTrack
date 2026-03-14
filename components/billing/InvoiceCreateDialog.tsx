@@ -58,6 +58,7 @@ export function InvoiceCreateDialog({
   onOpenChange,
 }: InvoiceCreateDialogProps) {
   const t = useTranslations("billing");
+  const tc = useTranslations("common");
   const now = new Date();
   const lastMonth = subMonths(now, 1);
 
@@ -135,7 +136,7 @@ export function InvoiceCreateDialog({
 
       if (!res.ok) {
         const err = await res.json();
-        toast.error(err.error || "Preview failed");
+        toast.error(err.error || tc("previewFailed"));
         return;
       }
 
@@ -147,7 +148,7 @@ export function InvoiceCreateDialog({
       setCurrency(data.currency);
       setStep(2);
     } catch {
-      toast.error("Preview failed");
+      toast.error(tc("previewFailed"));
     } finally {
       setLoading(false);
     }
@@ -240,7 +241,7 @@ export function InvoiceCreateDialog({
 
       if (!res.ok) {
         const err = await res.json();
-        toast.error(err.error || "Failed to create invoice");
+        toast.error(err.error || tc("failedToCreate"));
         return;
       }
 
@@ -248,7 +249,7 @@ export function InvoiceCreateDialog({
       toast.success(t("invoiceCreated", { number: String(data.invoiceNumber) }));
       onOpenChange(false);
     } catch {
-      toast.error("Failed to create invoice");
+      toast.error(tc("failedToCreate"));
     } finally {
       setLoading(false);
     }

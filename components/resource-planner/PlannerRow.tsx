@@ -15,6 +15,7 @@ interface Employee {
   lastName: string | null;
   email: string;
   imageUrl: string | null;
+  avatarUrl?: string | null;
   weeklyTarget: number;
   isHourly?: boolean;
   employmentType?: string;
@@ -67,10 +68,10 @@ interface PlannerRowProps {
 
 /** Status classification based on utilization ratio */
 function statusOf(ratio: number) {
-  if (ratio > 1.02) return { key: "over",    label: "Overbooked", bg: "#FEE2E2", fg: "#DC2626", dot: "#DC2626" };
-  if (ratio > 0.85) return { key: "optimal", label: "OK",         bg: "#D1FAE5", fg: "#059669", dot: "#059669" };
-  if (ratio > 0.4)  return { key: "partial", label: "Partial",    bg: "#FEF3C7", fg: "#B45309", dot: "#D97706" };
-  return                    { key: "low",     label: "Low",        bg: "#F3F4F6", fg: "#9CA3AF", dot: "#9CA3AF" };
+  if (ratio > 1.02) return { key: "overbooked", bg: "#FEE2E2", fg: "#DC2626", dot: "#DC2626" };
+  if (ratio > 0.85) return { key: "optimal",    bg: "#D1FAE5", fg: "#059669", dot: "#059669" };
+  if (ratio > 0.4)  return { key: "partial",    bg: "#FEF3C7", fg: "#B45309", dot: "#D97706" };
+  return                    { key: "low",        bg: "#F3F4F6", fg: "#9CA3AF", dot: "#9CA3AF" };
 }
 
 /** Role badge colors matching demo */
@@ -193,7 +194,7 @@ export function PlannerRow({
         >
           {/* Avatar — 34x34, rounded-[9px] matching demo */}
           <Avatar className="h-[34px] w-[34px] rounded-[9px] shrink-0">
-            <AvatarImage src={employee.imageUrl || undefined} className="rounded-[9px]" />
+            <AvatarImage src={employee.avatarUrl || employee.imageUrl || undefined} className="rounded-[9px]" />
             <AvatarFallback
               className="rounded-[9px] text-[11px] font-bold"
               style={{
@@ -255,10 +256,10 @@ export function PlannerRow({
                   className="w-[5px] h-[5px] rounded-full"
                   style={{
                     background: status.dot,
-                    animation: status.key === "over" ? "pulse 1.5s ease infinite" : "none",
+                    animation: status.key === "overbooked" ? "pulse 1.5s ease infinite" : "none",
                   }}
                 />
-                {status.label}
+                {t(status.key)}
               </span>
             </div>
           </div>

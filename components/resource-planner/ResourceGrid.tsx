@@ -18,6 +18,7 @@ interface Employee {
   lastName: string | null;
   email: string;
   imageUrl: string | null;
+  avatarUrl?: string | null;
   weeklyTarget: number;
   isHourly?: boolean;
 }
@@ -352,7 +353,7 @@ export function ResourceGrid({
                 <td className="sticky left-0 z-10 bg-card border-b border-r border-border p-3">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={employee.imageUrl || undefined} />
+                      <AvatarImage src={employee.avatarUrl || employee.imageUrl || undefined} />
                       <AvatarFallback className="text-xs">
                         {getInitials(employee)}
                       </AvatarFallback>
@@ -578,7 +579,7 @@ export function ResourceGrid({
               <td className="sticky left-0 z-10 bg-card border-b border-r border-border p-3">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={employee.imageUrl || undefined} />
+                    <AvatarImage src={employee.avatarUrl || employee.imageUrl || undefined} />
                     <AvatarFallback className="text-xs">
                       {getInitials(employee)}
                     </AvatarFallback>

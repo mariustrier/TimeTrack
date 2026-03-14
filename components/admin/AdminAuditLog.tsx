@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useTranslations, useDateLocale } from "@/lib/i18n";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 interface AuditLog {
   id: string;
@@ -34,6 +35,8 @@ interface TeamMember {
   email: string;
   firstName: string | null;
   lastName: string | null;
+  imageUrl?: string | null;
+  avatarUrl?: string | null;
 }
 
 const ACTIONS = [
@@ -273,7 +276,20 @@ export function AdminAuditLog() {
                         {format(new Date(log.createdAt), "MMM d, yyyy HH:mm", formatOpts)}
                       </td>
                       <td className="px-4 py-3">
-                        <div>
+                        <div className="flex items-center gap-2">
+                          {(() => {
+                            const member = teamMembers.find((m) => m.id === log.actorId);
+                            return member ? (
+                              <UserAvatar
+                                avatarUrl={member.avatarUrl}
+                                imageUrl={member.imageUrl}
+                                firstName={member.firstName}
+                                lastName={member.lastName}
+                                email={member.email}
+                                size="sm"
+                              />
+                            ) : null;
+                          })()}
                           <p className="font-medium text-foreground">
                             {actorMap.get(log.actorId) || log.actorId}
                           </p>
@@ -288,9 +304,9 @@ export function AdminAuditLog() {
                       <td className="px-4 py-3 text-foreground">
                         {log.fromStatus && log.toStatus ? (
                           <span className="flex items-center gap-1">
-                            <Badge variant="secondary" className="text-xs">{log.fromStatus}</Badge>
+                            <Badge variant="secondary" className="text-xs">{t(`status${log.fromStatus.charAt(0).toUpperCase()}${log.fromStatus.slice(1)}`) || log.fromStatus}</Badge>
                             <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                            <Badge variant="secondary" className="text-xs">{log.toStatus}</Badge>
+                            <Badge variant="secondary" className="text-xs">{t(`status${log.toStatus.charAt(0).toUpperCase()}${log.toStatus.slice(1)}`) || log.toStatus}</Badge>
                           </span>
                         ) : (
                           "—"

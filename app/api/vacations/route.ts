@@ -21,8 +21,9 @@ export async function GET(req: Request) {
       companyId: user.companyId,
     };
 
-    // Admins/managers see all; employees see only their own unless calendar mode
-    if (user.role !== "admin" && user.role !== "manager" && !status) {
+    // Admins/managers see all; employees see only their own
+    // Exception: status=approved is used by Team Calendar (visible to all)
+    if (user.role !== "admin" && user.role !== "manager" && status !== "approved") {
       where.userId = user.id;
     }
 
@@ -42,7 +43,7 @@ export async function GET(req: Request) {
     const requests = await db.vacationRequest.findMany({
       where,
       include: {
-        user: { select: { id: true, firstName: true, lastName: true, email: true, imageUrl: true, vacationTrackingUnit: true, weeklyTarget: true } },
+        user: { select: { id: true, firstName: true, lastName: true, email: true, imageUrl: true, avatarUrl: true, vacationTrackingUnit: true, weeklyTarget: true } },
       },
       orderBy: { startDate: "asc" },
     });

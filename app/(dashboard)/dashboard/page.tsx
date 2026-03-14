@@ -715,7 +715,7 @@ export default function DashboardPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        toast.error(data.error || "Failed to save time entry");
+        toast.error(data.error || tc("failedToSave"));
         return;
       }
 
@@ -723,7 +723,7 @@ export default function DashboardPage() {
       fetchData();
     } catch (error) {
       console.error("Failed to save:", error);
-      toast.error("Failed to save time entry");
+      toast.error(tc("failedToSave"));
     } finally {
       setSaving(false);
     }
@@ -1657,7 +1657,7 @@ export default function DashboardPage() {
           {editingEntry && isEntryReadOnly(editingEntry) && (
             <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
               <AlertCircle className="h-4 w-4 flex-shrink-0" />
-              {t("entryReadOnly", { status: editingEntry.approvalStatus })}
+              {t("entryReadOnly", { status: tc(`status${editingEntry.approvalStatus.charAt(0).toUpperCase()}${editingEntry.approvalStatus.slice(1)}`) || editingEntry.approvalStatus })}
             </div>
           )}
 

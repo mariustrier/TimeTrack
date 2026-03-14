@@ -34,6 +34,7 @@ export interface TimelineAllocation {
   userId: string;
   userName: string;
   userImageUrl: string | null;
+  userAvatarUrl?: string | null;
   startDate: string;
   endDate: string;
   hoursPerDay: number;
@@ -110,6 +111,7 @@ export interface TimelineActivity {
   assignedUserId: string | null;
   assignedUserName: string | null;
   assignedUserImageUrl: string | null;
+  assignedUserAvatarUrl?: string | null;
   startDate: string;
   endDate: string;
   status: ActivityStatus;

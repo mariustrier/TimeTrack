@@ -24,7 +24,7 @@ interface ActivityPopoverProps {
   projectColor: string;
   companyPhases: CompanyPhase[];
   phasesEnabled: boolean;
-  teamMembers: { id: string; name: string; imageUrl: string | null }[];
+  teamMembers: { id: string; name: string; imageUrl: string | null; avatarUrl?: string | null }[];
   defaultDate?: string;
   onSave: (data: Record<string, unknown>) => void;
   onUpdate: (activityId: string, data: Record<string, unknown>) => void;

@@ -19,6 +19,7 @@ interface Employee {
   lastName: string | null;
   email: string;
   imageUrl: string | null;
+  avatarUrl?: string | null;
   weeklyTarget: number;
   isHourly?: boolean;
   employmentType?: string;
@@ -395,7 +396,7 @@ export function PlannerGrid({
                     "text-[9px] font-semibold uppercase tracking-[0.05em]",
                     isToday(day, isDemo) ? "text-[#D97706]" : "text-[#9CA3AF]"
                   )}>
-                    {isToday(day, isDemo) ? "Today" : format(day, "EEE", { locale: dateLocale })}
+                    {isToday(day, isDemo) ? t("today") : format(day, "EEE", { locale: dateLocale })}
                   </div>
                   <div
                     className={cn(
@@ -432,7 +433,7 @@ export function PlannerGrid({
                 Team
               </span>
               <span className="text-[10px] text-[#6B7280] ml-2">
-                {employees.reduce((s, e) => s + (e.weeklyTarget || 0), 0)}{tc("hourAbbrev")}/wk
+                {employees.reduce((s, e) => s + (e.weeklyTarget || 0), 0)}{tc("hourAbbrev")}/{t("weeks")}
               </span>
             </td>
             {days.map((day) => {
@@ -787,7 +788,7 @@ function MonthRow({
       <td className="sticky left-0 z-10 bg-card border-b border-r border-border p-2">
         <div className="flex items-center gap-2">
           <Avatar className="h-[34px] w-[34px] rounded-[9px]">
-            <AvatarImage src={employee.imageUrl || undefined} className="rounded-[9px]" />
+            <AvatarImage src={employee.avatarUrl || employee.imageUrl || undefined} className="rounded-[9px]" />
             <AvatarFallback className="rounded-[9px] text-[10px] font-bold">{getInitials()}</AvatarFallback>
           </Avatar>
           <div className="min-w-0">

@@ -66,6 +66,7 @@ function formatCents(cents: number): string {
 export default function SuperAdminPage() {
   const t = useTranslations("superAdmin");
   const ts = useTranslations("support");
+  const tc = useTranslations("common");
   const router = useRouter();
 
   const [companies, setCompanies] = useState<CompanyInfo[]>([]);
@@ -162,10 +163,10 @@ export default function SuperAdminPage() {
           toast.info(t("backfillNone"));
         }
       } else {
-        toast.error("Backfill failed");
+        toast.error(tc("backfillFailed"));
       }
     } catch {
-      toast.error("Backfill failed");
+      toast.error(tc("backfillFailed"));
     } finally {
       setBackfillLoading(false);
     }

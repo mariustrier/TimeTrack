@@ -183,7 +183,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
       const targetUser = await db.user.findFirst({
-        where: { id: targetUserId, companyId: user.companyId },
+        where: { id: targetUserId, companyId: user.companyId, deletedAt: null },
       });
       if (!targetUser) {
         return NextResponse.json({ error: "Target user not found" }, { status: 404 });

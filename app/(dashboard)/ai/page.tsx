@@ -223,7 +223,7 @@ export default function AIAssistantPage() {
           size="sm"
           onClick={() => setActiveFilter("ALL")}
         >
-          All
+          {tc("all")}
         </Button>
         {ALL_CATEGORIES.map((cat) => {
           const config = categoryConfig[cat];

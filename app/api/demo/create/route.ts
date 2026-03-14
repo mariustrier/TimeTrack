@@ -3,9 +3,12 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { seedDemoData } from "@/lib/demo-seed";
 import { seedDefaultRoles } from "@/lib/seed-roles";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST() {
   try {
+    const limited = checkRateLimit("demo-create", { windowMs: 60000, maxRequests: 3 });
+    if (limited) return limited;
     const demoId = crypto.randomUUID().slice(0, 8);
     const email = `demo+${demoId}@cloudtimer.dk`;
     const password =

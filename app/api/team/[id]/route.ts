@@ -19,7 +19,7 @@ export async function PUT(
     }
 
     const member = await db.user.findFirst({
-      where: { id: params.id, companyId: user.companyId },
+      where: { id: params.id, companyId: user.companyId, deletedAt: null },
     });
     if (!member) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });

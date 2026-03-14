@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
+import { validate } from "@/lib/validate";
+import { updateExpenseSchema } from "@/lib/schemas";
 
 export async function PUT(
   req: Request,
@@ -21,7 +23,9 @@ export async function PUT(
     }
 
     const body = await req.json();
-    const { amount, description, category, date, projectId, receiptUrl, receiptFileName, receiptFileSize, amendmentReason } = body;
+    const result = validate(updateExpenseSchema, body);
+    if (!result.success) return result.response;
+    const { amount, description, category, date, projectId, receiptUrl, receiptFileName, receiptFileSize, amendmentReason } = result.data;
 
     // Bogføringsloven: finalized expenses require an amendment reason
     if (expense.isFinalized) {

@@ -42,6 +42,7 @@ interface VacationRequest {
     lastName: string | null;
     email: string;
     imageUrl: string | null;
+    avatarUrl?: string | null;
   };
 }
 
@@ -251,7 +252,7 @@ export function VacationCalendar() {
                               )}
                             >
                               <Avatar className="h-3.5 w-3.5">
-                                <AvatarImage src={vac.user.imageUrl || undefined} />
+                                <AvatarImage src={vac.user.avatarUrl || vac.user.imageUrl || undefined} />
                                 <AvatarFallback className="text-[7px]">
                                   {getUserInitials(vac.user)}
                                 </AvatarFallback>

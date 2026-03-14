@@ -55,6 +55,7 @@ export async function GET(req: Request) {
             lastName: true,
             email: true,
             imageUrl: true,
+            avatarUrl: true,
             weeklyTarget: true,
             isHourly: true,
             employmentType: true,
@@ -97,9 +98,9 @@ export async function POST(req: Request) {
 
     const { userId, projectId, startDate, endDate, hoursPerDay, totalHours, status, notes } = result.data;
 
-    // Verify user belongs to company
+    // Verify user belongs to company and is not deleted
     const targetUser = await db.user.findFirst({
-      where: { id: userId, companyId: user.companyId },
+      where: { id: userId, companyId: user.companyId, deletedAt: null },
     });
     if (!targetUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -148,6 +149,7 @@ export async function POST(req: Request) {
             lastName: true,
             email: true,
             imageUrl: true,
+            avatarUrl: true,
           },
         },
         project: {

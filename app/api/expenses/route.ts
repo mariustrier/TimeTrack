@@ -97,7 +97,7 @@ export async function POST(req: Request) {
         projectId,
         companyId: user.companyId,
         approvalStatus: autoApprove ? "approved" : "submitted",
-        ...(!autoApprove && { submittedAt: new Date() }),
+        submittedAt: new Date(),
         ...(autoApprove && { approvedAt: new Date() }),
         ...(receiptUrl && { receiptUrl, receiptFileName, receiptFileSize }),
       },

@@ -27,7 +27,7 @@ export async function GET(
       where: { projectId: params.id },
       include: {
         assignedUser: {
-          select: { id: true, firstName: true, lastName: true, imageUrl: true },
+          select: { id: true, firstName: true, lastName: true, imageUrl: true, avatarUrl: true },
         },
         phase: {
           select: { id: true, name: true, color: true },

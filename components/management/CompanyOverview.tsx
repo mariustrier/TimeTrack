@@ -635,7 +635,7 @@ export function CompanyOverview() {
                                   );
                                 }
                               } catch {
-                                toast.error("Failed to update project");
+                                toast.error(tc("failedToUpdate"));
                               }
                             }}
                             title={
@@ -676,7 +676,7 @@ export function CompanyOverview() {
                                   );
                                 }
                               } catch {
-                                toast.error("Failed to update project");
+                                toast.error(tc("failedToUpdate"));
                               }
                             }}
                             title={
