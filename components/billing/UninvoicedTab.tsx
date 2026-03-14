@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FetchError } from "@/components/ui/fetch-error";
 import { FileText, Clock, Banknote, Users, Receipt, CheckCircle2, AlertCircle } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
 import { InvoiceCreateDialog } from "./InvoiceCreateDialog";
@@ -50,6 +51,7 @@ export function UninvoicedTab() {
   const tc = useTranslations("common");
   const [projects, setProjects] = useState<UninvoicedProject[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [createProjectId, setCreateProjectId] = useState<string | null>(null);
   const [createProjectName, setCreateProjectName] = useState("");
   const [createClient, setCreateClient] = useState("");
@@ -63,13 +65,17 @@ export function UninvoicedTab() {
     setLoading(true);
     try {
       const res = await fetch("/api/invoices/uninvoiced");
-      if (res.ok) {
-        const data = await res.json();
-        setProjects(data.projects || []);
-        setOutsideContractProjects(data.outsideContractProjects || []);
+      if (!res.ok) {
+        setError(tc("fetchErrorDescription"));
+        return;
       }
+      const data = await res.json();
+      setProjects(data.projects || []);
+      setOutsideContractProjects(data.outsideContractProjects || []);
+      setError(null);
     } catch (error) {
       console.error("Failed to fetch uninvoiced:", error);
+      setError(tc("fetchErrorDescription"));
     } finally {
       setLoading(false);
     }
@@ -100,6 +106,8 @@ export function UninvoicedTab() {
       </div>
     );
   }
+
+  if (error) return <FetchError message={error} onRetry={fetchUninvoiced} />;
 
   const systemName = externalSystem || "external";
 

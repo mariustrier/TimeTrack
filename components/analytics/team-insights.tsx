@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useCallback, useMemo, useState } from "react";
 import { format } from "date-fns";
 import {
   BarChart,
@@ -29,6 +29,7 @@ import {
   fmtCurrency,
 } from "@/components/analytics/analytics-shared";
 import { getToday } from "@/lib/demo-date";
+import { FetchError } from "@/components/ui/fetch-error";
 import { useTranslations } from "@/lib/i18n";
 
 // ---------------------------------------------------------------------------
@@ -103,7 +104,9 @@ export function TeamInsights({
   granularity,
 }: TeamInsightsProps) {
   const t = useTranslations("analytics");
+  const tc = useTranslations("common");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [capacityDetail, setCapacityDetail] = useState<CapacityDetailEntry[]>([]);
   const [effectiveRate, setEffectiveRate] = useState<EffectiveRateEntry[]>([]);
   const [utilization, setUtilization] = useState<UtilizationEntry[]>([]);
@@ -114,37 +117,40 @@ export function TeamInsights({
   const endDate = format(dateRange.to, "yyyy-MM-dd");
 
   // ---- Fetch data --------------------------------------------------------
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        type: "team",
+        startDate,
+        endDate,
+        granularity,
+        approvalFilter,
+      });
+      const res = await fetch(`/api/analytics?${params}`);
+      if (!res.ok) throw new Error("Failed to fetch team analytics");
+      const data = await res.json();
+      setError(null);
+      setCapacityDetail(data.capacityDetail ?? []);
+      setEffectiveRate(data.effectiveRate ?? []);
+      setUtilization(data.utilization ?? []);
+      setTimeMix(data.timeMix ?? []);
+      setCurrency(data.currency ?? "DKK");
+    } catch (err) {
+      console.error("[TeamInsights]", err);
+      setError(tc("fetchErrorDescription"));
+      setCapacityDetail([]);
+      setEffectiveRate([]);
+      setUtilization([]);
+      setTimeMix([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [startDate, endDate, granularity, approvalFilter, tc]);
+
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams({
-          type: "team",
-          startDate,
-          endDate,
-          granularity,
-          approvalFilter,
-        });
-        const res = await fetch(`/api/analytics?${params}`);
-        if (!res.ok) throw new Error("Failed to fetch team analytics");
-        const data = await res.json();
-        setCapacityDetail(data.capacityDetail ?? []);
-        setEffectiveRate(data.effectiveRate ?? []);
-        setUtilization(data.utilization ?? []);
-        setTimeMix(data.timeMix ?? []);
-        setCurrency(data.currency ?? "DKK");
-      } catch (err) {
-        console.error("[TeamInsights]", err);
-        setCapacityDetail([]);
-        setEffectiveRate([]);
-        setUtilization([]);
-        setTimeMix([]);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
-  }, [startDate, endDate, granularity, approvalFilter]);
+  }, [fetchData]);
 
   // ---- Derived -----------------------------------------------------------
   const burnoutCount = useMemo(
@@ -194,6 +200,8 @@ export function TeamInsights({
       </div>
     );
   }
+
+  if (error) return <FetchError message={error} onRetry={fetchData} />;
 
   // ---- Render ------------------------------------------------------------
   return (

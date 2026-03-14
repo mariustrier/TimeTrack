@@ -18,6 +18,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { FetchError } from "@/components/ui/fetch-error";
 interface Insight {
   id: string;
   category: "OPPORTUNITY" | "INSIGHT" | "SUGGESTION" | "HEADS_UP" | "CELEBRATION";
@@ -83,17 +84,22 @@ export default function AIAssistantPage() {
 
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [activeFilter, setActiveFilter] = useState<Category | "ALL">("ALL");
 
   const fetchInsights = useCallback(async () => {
     try {
       const res = await fetch("/api/insights");
-      if (res.ok) {
-        setInsights(await res.json());
+      if (!res.ok) {
+        setError(tc("fetchErrorDescription"));
+        return;
       }
+      setInsights(await res.json());
+      setError(null);
     } catch (error) {
       console.error("Failed to fetch insights:", error);
+      setError(tc("fetchErrorDescription"));
     }
   }, []);
 
@@ -189,6 +195,8 @@ export default function AIAssistantPage() {
       </div>
     );
   }
+
+  if (error) return <FetchError message={error} onRetry={fetchInsights} />;
 
   return (
     <div className="space-y-6">

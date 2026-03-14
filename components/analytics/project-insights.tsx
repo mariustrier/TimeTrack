@@ -43,6 +43,7 @@ import {
 import { withProjection } from "@/lib/analytics-utils";
 import { getToday } from "@/lib/demo-date";
 import { useIsDemo } from "@/lib/company-context";
+import { FetchError } from "@/components/ui/fetch-error";
 import { useTranslations } from "@/lib/i18n";
 
 // ---------------------------------------------------------------------------
@@ -137,6 +138,7 @@ export function ProjectInsights({
 }: ProjectInsightsProps) {
   const isDemo = useIsDemo();
   const t = useTranslations("analytics");
+  const tc = useTranslations("common");
 
   const billingLabel = (key: string) => {
     const map: Record<string, string> = { billable: t("billable"), included: t("included"), nonBillable: t("nonBillable"), internal: t("internal"), presales: t("preSales") };
@@ -157,6 +159,7 @@ export function ProjectInsights({
 
   const [loadingList, setLoadingList] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const startDate = format(dateRange.from, "yyyy-MM-dd");
   const endDate = format(dateRange.to, "yyyy-MM-dd");
@@ -172,17 +175,20 @@ export function ProjectInsights({
         approvalFilter,
       });
       const res = await fetch(`/api/analytics?${params}`);
-      if (!res.ok) return;
+      if (!res.ok) { setError(tc("fetchErrorDescription")); return; }
       const data = await res.json();
+      setError(null);
       setProjects(data.projects ?? []);
       setRedList(data.redList ?? []);
       setBudgetVelocity(data.budgetVelocity ?? []);
       setBillableMix(data.billableMix ?? []);
       setCurrency(data.currency ?? "DKK");
+    } catch {
+      setError(tc("fetchErrorDescription"));
     } finally {
       setLoadingList(false);
     }
-  }, [startDate, endDate, approvalFilter]);
+  }, [startDate, endDate, approvalFilter, tc]);
 
   // ---- Fetch detail for selected project ----
   const fetchDetail = useCallback(async () => {
@@ -278,6 +284,8 @@ export function ProjectInsights({
   };
 
   // ---- Render ----
+  if (error && !loadingList) return <FetchError message={error} onRetry={fetchOverview} />;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {/* ============================================================

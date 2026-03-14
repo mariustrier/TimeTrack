@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { format } from "date-fns";
 import {
   ResponsiveContainer,
@@ -39,6 +39,7 @@ import {
 import { withProjection } from "@/lib/analytics-utils";
 import { getToday } from "@/lib/demo-date";
 import { useIsDemo } from "@/lib/company-context";
+import { FetchError } from "@/components/ui/fetch-error";
 import { useTranslations } from "@/lib/i18n";
 
 // ---------------------------------------------------------------------------
@@ -133,11 +134,13 @@ export function CompanyInsights({
 }: CompanyInsightsProps) {
   const isDemo = useIsDemo();
   const t = useTranslations("analytics");
+  const tc = useTranslations("common");
   const expenseLabel = (key: string) => {
     const map: Record<string, string> = { salaries: t("catSalaries"), rent: t("catRent"), insurance: t("catInsurance"), software: t("catSoftware"), utilities: t("catUtilities"), travel: t("catTravel"), other: t("catOther") };
     return map[key] || key;
   };
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [revenueBridge, setRevenueBridge] = useState<RevenueBridgeEntry[]>([]);
   const [clientConcentration, setClientConcentration] = useState<ClientConcentrationEntry[]>([]);
   const [invoicePipeline, setInvoicePipeline] = useState<InvoicePipelineEntry[]>([]);
@@ -148,43 +151,46 @@ export function CompanyInsights({
   const [unbilledAging, setUnbilledAging] = useState<UnbilledAgingEntry[]>([]);
   const [currency, setCurrency] = useState("DKK");
 
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        type: "company",
+        startDate: format(dateRange.from, "yyyy-MM-dd"),
+        endDate: format(dateRange.to, "yyyy-MM-dd"),
+        granularity,
+        approvalFilter,
+      });
+      const res = await fetch(`/api/analytics?${params}`);
+      if (!res.ok) throw new Error("Failed to fetch company analytics");
+      const data = await res.json();
+      setError(null);
+      setRevenueBridge(data.revenueBridge ?? []);
+      setClientConcentration(data.clientConcentration ?? []);
+      setInvoicePipeline(data.invoicePipeline ?? []);
+      setBillingVelocity(data.billingVelocity ?? { avgDays: 0, buckets: [] });
+      setCollectionSummary(data.collectionSummary ?? { invoiced: 0, paid: 0, outstanding: 0 });
+      setExpenseBreakdown(data.expenseBreakdown ?? []);
+      setNonBillableTrend(data.nonBillableTrend ?? []);
+      setUnbilledAging(data.unbilledAging ?? []);
+      setCurrency(data.currency ?? "DKK");
+    } catch (err) {
+      console.error("[CompanyInsights]", err);
+      setError(tc("fetchErrorDescription"));
+      setRevenueBridge([]);
+      setClientConcentration([]);
+      setInvoicePipeline([]);
+      setExpenseBreakdown([]);
+      setNonBillableTrend([]);
+      setUnbilledAging([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [dateRange.from, dateRange.to, granularity, approvalFilter, tc]);
+
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams({
-          type: "company",
-          startDate: format(dateRange.from, "yyyy-MM-dd"),
-          endDate: format(dateRange.to, "yyyy-MM-dd"),
-          granularity,
-          approvalFilter,
-        });
-        const res = await fetch(`/api/analytics?${params}`);
-        if (!res.ok) throw new Error("Failed to fetch company analytics");
-        const data = await res.json();
-        setRevenueBridge(data.revenueBridge ?? []);
-        setClientConcentration(data.clientConcentration ?? []);
-        setInvoicePipeline(data.invoicePipeline ?? []);
-        setBillingVelocity(data.billingVelocity ?? { avgDays: 0, buckets: [] });
-        setCollectionSummary(data.collectionSummary ?? { invoiced: 0, paid: 0, outstanding: 0 });
-        setExpenseBreakdown(data.expenseBreakdown ?? []);
-        setNonBillableTrend(data.nonBillableTrend ?? []);
-        setUnbilledAging(data.unbilledAging ?? []);
-        setCurrency(data.currency ?? "DKK");
-      } catch (err) {
-        console.error("[CompanyInsights]", err);
-        setRevenueBridge([]);
-        setClientConcentration([]);
-        setInvoicePipeline([]);
-        setExpenseBreakdown([]);
-        setNonBillableTrend([]);
-        setUnbilledAging([]);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchData();
-  }, [dateRange.from, dateRange.to, granularity, approvalFilter]);
+  }, [fetchData]);
 
   // ---- Derived ----
   const projectedNonBillable = useMemo(
@@ -229,6 +235,8 @@ export function CompanyInsights({
   }, [revenueBridge]);
 
   // ---- Render ----
+  if (error && !loading) return <FetchError message={error} onRetry={fetchData} />;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {/* ============================================================

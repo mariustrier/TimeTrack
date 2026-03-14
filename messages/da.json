@@ -68,7 +68,10 @@
     "previewFailed": "Forhåndsvisning fejlede",
     "failedToCreate": "Kunne ikke oprette",
     "backfillFailed": "Backfill fejlede",
-    "failedToSubmit": "Kunne ikke indsende anmodning"
+    "failedToSubmit": "Kunne ikke indsende anmodning",
+    "fetchErrorTitle": "Noget gik galt",
+    "fetchErrorDescription": "Kunne ikke hente data. Prøv igen.",
+    "tryAgain": "Prøv igen"
   },
   "nav": {
     "timetrack": "Cloud Timer",
@@ -208,7 +211,30 @@
     "invoiceLabel": "Fakturatekst (2 ord)",
     "invoiceLabelPlaceholder": "F.eks. 'Opstartsmøde Borgergade'",
     "useFullText": "Brug fuld tekst",
-    "columns": "Kolonner"
+    "columns": "Kolonner",
+    "vacationSummary": "{used} brugt \u00b7 {remaining} tilbage"
+  },
+  "timelineExport": {
+    "export": "Eksport\u00e9r",
+    "exportTimeline": "Eksport\u00e9r tidslinje",
+    "projects": "Projekter",
+    "all": "Alle",
+    "active": "Aktive",
+    "billable": "Fakturerbare",
+    "selectedOfTotal": "{selected} af {total} valgt",
+    "timePeriod": "Tidsperiode",
+    "start": "Start",
+    "end": "Slut",
+    "thisMonth": "Denne m\u00e5ned",
+    "thisQuarter": "Dette kvartal",
+    "thisYear": "I \u00e5r",
+    "include": "Inkluder",
+    "activities": "Aktiviteter",
+    "milestones": "Milep\u00e6le",
+    "budgetFinance": "Budget & \u00f8konomi",
+    "generating": "Genererer...",
+    "exportingProjects": "Eksporterer {count} projekter \u00b7 {range}",
+    "selectAtLeastOne": "V\u00e6lg mindst \u00e9t projekt"
   },
   "projects": {
     "title": "Projekter",

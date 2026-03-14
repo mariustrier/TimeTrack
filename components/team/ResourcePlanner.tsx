@@ -20,6 +20,7 @@ import { PlannerControls } from "@/components/resource-planner/PlannerControls";
 import { PlannerSummary } from "@/components/resource-planner/PlannerSummary";
 import { AllocationPopover } from "@/components/resource-planner/AllocationPopover";
 import { BulkActionToolbar } from "@/components/resource-planner/BulkActionToolbar";
+import { FetchError } from "@/components/ui/fetch-error";
 import { getDailyTarget, getEffectiveWeeklyCapacity } from "@/lib/calculations";
 import { isCompanyHoliday, type CustomHoliday } from "@/lib/holidays";
 import { isWeekend } from "date-fns";
@@ -98,6 +99,7 @@ const INITIAL_POPOVER: PopoverState = {
 
 export function ResourcePlanner() {
   const t = useTranslations("resourcePlanner");
+  const tc = useTranslations("common");
   const isDemo = useIsDemo();
 
   const [viewMode, setViewMode] = useState<ViewMode>("twoWeeks");
@@ -126,6 +128,7 @@ export function ResourcePlanner() {
   const [disabledHolidayCodes, setDisabledHolidayCodes] = useState<string[]>([]);
   const [customHolidays, setCustomHolidays] = useState<CustomHoliday[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Filters
   const [projectFilter, setProjectFilter] = useState<string | null>(null);
@@ -220,16 +223,18 @@ export function ResourcePlanner() {
         );
       }
 
+      setError(null);
       setEmployees(employeesData);
       setProjects(projectsData.filter((p: Project & { archived?: boolean }) => !p.archived));
       setAllocations(allocationsData);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error(t("fetchError") || "Failed to load data");
+      setError(tc("fetchErrorDescription"));
     } finally {
       setLoading(false);
     }
-  }, [startStr, endStr, t]);
+  }, [startStr, endStr, t, tc]);
 
   useEffect(() => {
     fetchData();
@@ -714,6 +719,8 @@ export function ResourcePlanner() {
       </div>
     );
   }
+
+  if (error) return <FetchError message={error} onRetry={fetchData} />;
 
   return (
     <div className="space-y-4 p-6">

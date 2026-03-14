@@ -68,7 +68,10 @@
     "previewFailed": "Preview failed",
     "failedToCreate": "Failed to create",
     "backfillFailed": "Backfill failed",
-    "failedToSubmit": "Failed to submit request"
+    "failedToSubmit": "Failed to submit request",
+    "fetchErrorTitle": "Something went wrong",
+    "fetchErrorDescription": "Could not load data. Please try again.",
+    "tryAgain": "Try again"
   },
   "nav": {
     "timetrack": "Cloud Timer",
@@ -208,7 +211,30 @@
     "invoiceLabel": "Invoice text (2 words)",
     "invoiceLabelPlaceholder": "E.g. 'Startup meeting'",
     "useFullText": "Use full text",
-    "columns": "Columns"
+    "columns": "Columns",
+    "vacationSummary": "{used} used \u00b7 {remaining} remaining"
+  },
+  "timelineExport": {
+    "export": "Export",
+    "exportTimeline": "Export timeline",
+    "projects": "Projects",
+    "all": "All",
+    "active": "Active",
+    "billable": "Billable",
+    "selectedOfTotal": "{selected} of {total} selected",
+    "timePeriod": "Time period",
+    "start": "Start",
+    "end": "End",
+    "thisMonth": "This month",
+    "thisQuarter": "This quarter",
+    "thisYear": "This year",
+    "include": "Include",
+    "activities": "Activities",
+    "milestones": "Milestones",
+    "budgetFinance": "Budget & finance",
+    "generating": "Generating...",
+    "exportingProjects": "Exporting {count} projects \u00b7 {range}",
+    "selectAtLeastOne": "Select at least one project"
   },
   "projects": {
     "title": "Projects",

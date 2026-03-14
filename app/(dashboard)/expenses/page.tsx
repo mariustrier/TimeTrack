@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FetchError } from "@/components/ui/fetch-error";
 import {
   Dialog,
   DialogContent,
@@ -66,6 +67,7 @@ export default function ExpensesPage() {
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
@@ -94,11 +96,15 @@ export default function ExpensesPage() {
     setLoading(true);
     try {
       const res = await fetch("/api/expenses");
-      if (res.ok) {
-        setExpenses(await res.json());
+      if (!res.ok) {
+        setError(tc("fetchErrorDescription"));
+        return;
       }
+      setExpenses(await res.json());
+      setError(null);
     } catch (error) {
       console.error("Failed to fetch expenses:", error);
+      setError(tc("fetchErrorDescription"));
     } finally {
       setLoading(false);
     }
@@ -310,6 +316,8 @@ export default function ExpensesPage() {
       </div>
     );
   }
+
+  if (error) return <FetchError message={error} onRetry={fetchExpenses} />;
 
   return (
     <div className="space-y-6">

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FetchError } from "@/components/ui/fetch-error";
 import {
   Select,
   SelectContent,
@@ -65,6 +66,7 @@ export function InvoicesTab() {
   const formatOpts = dateLocale ? { locale: dateLocale } : undefined;
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedInvoice, setSelectedInvoice] = useState<string | null>(null);
 
@@ -73,9 +75,15 @@ export function InvoicesTab() {
     try {
       const params = statusFilter !== "all" ? `?status=${statusFilter}` : "";
       const res = await fetch(`/api/invoices${params}`);
-      if (res.ok) setInvoices(await res.json());
+      if (!res.ok) {
+        setError(tc("fetchErrorDescription"));
+        return;
+      }
+      setInvoices(await res.json());
+      setError(null);
     } catch (error) {
       console.error("Failed to fetch invoices:", error);
+      setError(tc("fetchErrorDescription"));
     } finally {
       setLoading(false);
     }
@@ -134,6 +142,8 @@ export function InvoicesTab() {
   if (loading) {
     return <Skeleton className="h-64" />;
   }
+
+  if (error) return <FetchError message={error} onRetry={fetchInvoices} />;
 
   return (
     <>

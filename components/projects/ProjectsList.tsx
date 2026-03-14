@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FetchError } from "@/components/ui/fetch-error";
 import {
   Dialog,
   DialogContent,
@@ -125,6 +126,7 @@ export function ProjectsList() {
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -221,9 +223,15 @@ export function ProjectsList() {
     setLoading(true);
     try {
       const res = await fetch("/api/projects");
-      if (res.ok) setProjects(await res.json());
+      if (!res.ok) {
+        setError(tc("fetchErrorDescription"));
+        return;
+      }
+      setProjects(await res.json());
+      setError(null);
     } catch (error) {
       console.error("Failed to fetch projects:", error);
+      setError(tc("fetchErrorDescription"));
     } finally {
       setLoading(false);
     }
@@ -359,6 +367,8 @@ export function ProjectsList() {
       </div>
     );
   }
+
+  if (error) return <FetchError message={error} onRetry={fetchProjects} />;
 
   return (
     <div className="space-y-6">

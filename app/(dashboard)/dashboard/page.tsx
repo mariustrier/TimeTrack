@@ -1163,19 +1163,19 @@ export default function DashboardPage() {
                 />
                 <StatCard
                   title={t("vacation")}
-                  value={isVacationHours ? `${vacationHoursUsed.toFixed(1)}${tc("hourAbbrev")}` : `${vacationDaysUsed.toFixed(1)}d`}
-                  icon={Palmtree}
-                  color="bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400"
-                  subtitle={isVacationHours ? t("hoursUsedStat") : t("daysUsed")}
-                />
-                <StatCard
-                  title={isVacationHours ? t("vacationHours") : t("vacationDays")}
                   value={isVacationHours
                     ? `${(vacationHoursTotal - vacationHoursUsed).toFixed(1)}${tc("hourAbbrev")}`
                     : `${(vacationDaysTotal - vacationDaysUsed).toFixed(1)}`}
-                  icon={CalendarDays}
-                  color="bg-sky-50 text-sky-600 dark:bg-sky-950 dark:text-sky-400"
-                  subtitle={t("remaining")}
+                  icon={Palmtree}
+                  color="bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400"
+                  subtitle={t("vacationSummary", {
+                    used: isVacationHours
+                      ? `${vacationHoursUsed.toFixed(1)}${tc("hourAbbrev")}`
+                      : `${vacationDaysUsed.toFixed(1)}d`,
+                    remaining: isVacationHours
+                      ? `${(vacationHoursTotal - vacationHoursUsed).toFixed(1)}${tc("hourAbbrev")}`
+                      : `${(vacationDaysTotal - vacationDaysUsed).toFixed(1)}d`,
+                  })}
                 />
               </>
             )}
@@ -1885,9 +1885,9 @@ export default function DashboardPage() {
               >
                 <span className="flex items-center gap-2">
                   <DollarSign className="h-4 w-4" />
-                  Fakturering &amp; Klassificering
+                  {t("billingClassification")}
                   <Badge variant="secondary" className="ml-1">
-                    {billingType === "BILLABLE" ? "Fakturerbar" : billingType === "OUTSIDE_CONTRACT" ? "Udenfor kontrakt" : "Ikke fakturerbar"}
+                    {billingType === "BILLABLE" ? t("billable") : billingType === "OUTSIDE_CONTRACT" ? t("outsideContract") : t("nonBillable")}
                   </Badge>
                 </span>
                 <ChevronDown
@@ -1902,12 +1902,12 @@ export default function DashboardPage() {
                 <div className="space-y-3 border-t p-3">
                   {/* Three-tier billing type pills */}
                   <div className="space-y-2">
-                    <Label>Faktureringstype</Label>
+                    <Label>{t("billingType")}</Label>
                     <div className="flex gap-2">
                       {([
-                        { value: "BILLABLE" as const, label: "Fakturerbar", color: "bg-emerald-500 text-white" },
-                        { value: "OUTSIDE_CONTRACT" as const, label: "Udenfor kontrakt", color: "bg-amber-500 text-white" },
-                        { value: "NON_BILLABLE" as const, label: "Ikke fakturerbar", color: "bg-gray-500 text-white" },
+                        { value: "BILLABLE" as const, label: t("billable"), color: "bg-emerald-500 text-white" },
+                        { value: "OUTSIDE_CONTRACT" as const, label: t("outsideContract"), color: "bg-amber-500 text-white" },
+                        { value: "NON_BILLABLE" as const, label: t("nonBillable"), color: "bg-gray-500 text-white" },
                       ]).map((option) => (
                         <button
                           key={option.value}

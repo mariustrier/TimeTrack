@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FetchError } from "@/components/ui/fetch-error";
 import {
   Dialog,
   DialogContent,
@@ -76,6 +77,7 @@ export function UnifiedApprovals() {
     total: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterType>("all");
   const [acting, setActing] = useState<string | null>(null);
   const [currency, setCurrency] = useState("DKK");
@@ -93,13 +95,17 @@ export function UnifiedApprovals() {
   const fetchItems = useCallback(async () => {
     try {
       const res = await fetch("/api/approvals/pending");
-      if (res.ok) {
-        const data = await res.json();
-        setItems(data.items || []);
-        setCounts(data.counts || { timeEntries: 0, expenses: 0, vacations: 0, total: 0 });
+      if (!res.ok) {
+        setError(tc("fetchErrorDescription"));
+        return;
       }
+      const data = await res.json();
+      setItems(data.items || []);
+      setCounts(data.counts || { timeEntries: 0, expenses: 0, vacations: 0, total: 0 });
+      setError(null);
     } catch (error) {
       console.error("Failed to fetch pending approvals:", error);
+      setError(tc("fetchErrorDescription"));
     } finally {
       setLoading(false);
     }
@@ -323,6 +329,8 @@ export function UnifiedApprovals() {
       </div>
     );
   }
+
+  if (error) return <FetchError message={error} onRetry={fetchItems} />;
 
   return (
     <div className="space-y-4 pt-4">

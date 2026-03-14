@@ -38,6 +38,7 @@ import {
 import { withProjection } from "@/lib/analytics-utils";
 import { getToday } from "@/lib/demo-date";
 import { useIsDemo } from "@/lib/company-context";
+import { FetchError } from "@/components/ui/fetch-error";
 import { useTranslations } from "@/lib/i18n";
 
 // ---------------------------------------------------------------------------
@@ -147,6 +148,7 @@ export function EmployeeInsights({
 }: EmployeeInsightsProps) {
   const isDemo = useIsDemo();
   const t = useTranslations("analytics");
+  const tc = useTranslations("common");
 
   const statusLabel = (key: string) => {
     const map: Record<string, string> = { billable: t("billable"), included: t("included"), non_billable: t("nonBillable"), nonBillable: t("nonBillable"), internal: t("internal"), presales: t("preSales") };
@@ -156,6 +158,7 @@ export function EmployeeInsights({
   const [members, setMembers] = useState<Member[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [membersLoading, setMembersLoading] = useState(true);
 
   const [kpis, setKpis] = useState<Kpis | null>(null);
@@ -212,6 +215,7 @@ export function EmployeeInsights({
     fetch(`/api/analytics?${params}`)
       .then((r) => r.json())
       .then((data) => {
+        setError(null);
         setKpis(data.kpis ?? null);
         setTimeDistribution(data.timeDistribution ?? []);
         setPhaseBreakdown(data.phaseBreakdown ?? []);
@@ -221,6 +225,7 @@ export function EmployeeInsights({
         if (data.currency) setCurrency(data.currency);
       })
       .catch(() => {
+        setError(tc("fetchErrorDescription"));
         setKpis(null);
         setTimeDistribution([]);
         setPhaseBreakdown([]);
@@ -341,8 +346,13 @@ export function EmployeeInsights({
         </div>
       )}
 
+      {/* Error */}
+      {selectedEmployeeId && !loading && error && (
+        <FetchError message={error} onRetry={fetchEmployeeData} />
+      )}
+
       {/* Content */}
-      {selectedEmployeeId && !loading && kpis && (
+      {selectedEmployeeId && !loading && !error && kpis && (
         <>
           {/* KPI row */}
           <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>

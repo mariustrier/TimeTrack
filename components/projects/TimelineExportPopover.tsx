@@ -11,6 +11,7 @@ import {
   endOfQuarter,
 } from "date-fns";
 import { getToday } from "@/lib/demo-date";
+import { useTranslations } from "@/lib/i18n";
 import type {
   TimelineProject,
   TimelineMilestone,
@@ -178,6 +179,7 @@ export const TimelineExportPopover = ({
   const [loading, setLoading] = useState<"excel" | "pdf" | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const [btnHover, setBtnHover] = useState(false);
+  const t = useTranslations("timelineExport");
 
   /* ── Reset selectedIds when projects change ── */
   useEffect(() => {
@@ -252,10 +254,10 @@ export const TimelineExportPopover = ({
         const e = format(new Date(de), "dd/MM/yy");
         return `${s} – ${e}`;
       } catch {
-        return "Alt";
+        return t("all");
       }
     }
-    return "Alt";
+    return t("all");
   })();
 
   /* ── Project quick-select helpers ── */
@@ -574,7 +576,7 @@ export const TimelineExportPopover = ({
           }}
         >
           <DownloadIcon />
-          Eksportér
+          {t("export")}
         </button>
 
         {/* ── Popover ── */}
@@ -608,12 +610,12 @@ export const TimelineExportPopover = ({
                 margin: 0,
               }}
             >
-              Eksportér tidslinje
+              {t("exportTimeline")}
             </div>
 
             {/* ── Project selection ── */}
             <div style={{ marginTop: 16 }}>
-              <div style={sectionLabelStyle}>PROJEKTER</div>
+              <div style={sectionLabelStyle}>{t("projects")}</div>
 
               {/* Quick-select pills */}
               <div
@@ -638,7 +640,7 @@ export const TimelineExportPopover = ({
                   }}
                   style={pillStyle(allSelected)}
                 >
-                  Alle
+                  {t("all")}
                 </button>
                 <button
                   type="button"
@@ -655,7 +657,7 @@ export const TimelineExportPopover = ({
                   }}
                   style={pillStyle(activeSelected)}
                 >
-                  Aktive
+                  {t("active")}
                 </button>
                 <button
                   type="button"
@@ -672,7 +674,7 @@ export const TimelineExportPopover = ({
                   }}
                   style={pillStyle(billableSelected)}
                 >
-                  Fakturerbare
+                  {t("billable")}
                 </button>
               </div>
 
@@ -748,14 +750,14 @@ export const TimelineExportPopover = ({
                     marginTop: 4,
                   }}
                 >
-                  {selectedCount} af {totalCount} valgt
+                  {t("selectedOfTotal", { selected: String(selectedCount), total: String(totalCount) })}
                 </div>
               )}
             </div>
 
             {/* ── Date range ── */}
             <div style={{ marginTop: 16 }}>
-              <div style={sectionLabelStyle}>TIDSPERIODE</div>
+              <div style={sectionLabelStyle}>{t("timePeriod")}</div>
 
               <div
                 style={{
@@ -815,23 +817,23 @@ export const TimelineExportPopover = ({
               >
                 {(
                   [
-                    { label: "Alt", active: isDateAll, action: clearDates },
+                    { label: t("all"), active: isDateAll, action: clearDates },
                     {
-                      label: "Denne måned",
+                      label: t("thisMonth"),
                       active: isDateThisMonth,
                       action: setThisMonth,
                     },
                     {
-                      label: "Dette kvartal",
+                      label: t("thisQuarter"),
                       active: isDateThisQuarter,
                       action: setThisQuarter,
                     },
                     {
-                      label: "I år",
+                      label: t("thisYear"),
                       active: isDateThisYear,
                       action: setThisYear,
                     },
-                  ] as const
+                  ]
                 ).map((item) => (
                   <button
                     key={item.label}
@@ -859,27 +861,27 @@ export const TimelineExportPopover = ({
 
             {/* ── Include options ── */}
             <div style={{ marginTop: 16 }}>
-              <div style={sectionLabelStyle}>INKLUDÉR</div>
+              <div style={sectionLabelStyle}>{t("include")}</div>
 
               <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
                 {(
                   [
                     {
-                      label: "Aktiviteter",
+                      label: t("activities"),
                       checked: includeActivities,
                       toggle: () => setIncludeActivities((v) => !v),
                     },
                     {
-                      label: "Milepæle",
+                      label: t("milestones"),
                       checked: includeMilestones,
                       toggle: () => setIncludeMilestones((v) => !v),
                     },
                     {
-                      label: "Budget & økonomi",
+                      label: t("budgetFinance"),
                       checked: includeBudget,
                       toggle: () => setIncludeBudget((v) => !v),
                     },
-                  ] as const
+                  ]
                 ).map((opt) => (
                   <div
                     key={opt.label}
@@ -944,7 +946,7 @@ export const TimelineExportPopover = ({
                 style={exportBtnStyle(!hasSelection || loading !== null)}
               >
                 {loading === "excel" ? <SpinnerIcon /> : <SpreadsheetIcon />}
-                {loading === "excel" ? "Genererer..." : "Excel"}
+                {loading === "excel" ? t("generating") : "Excel"}
               </button>
               <button
                 type="button"
@@ -962,7 +964,7 @@ export const TimelineExportPopover = ({
                 style={exportBtnStyle(!hasSelection || loading !== null)}
               >
                 {loading === "pdf" ? <SpinnerIcon /> : <DocumentIcon />}
-                {loading === "pdf" ? "Genererer..." : "PDF"}
+                {loading === "pdf" ? t("generating") : "PDF"}
               </button>
             </div>
 
@@ -976,8 +978,8 @@ export const TimelineExportPopover = ({
               }}
             >
               {hasSelection
-                ? `Eksporterer ${selectedCount} projekter · ${dateRangeLabel}`
-                : "Vælg mindst ét projekt"}
+                ? t("exportingProjects", { count: String(selectedCount), range: dateRangeLabel })
+                : t("selectAtLeastOne")}
             </div>
           </div>
         )}
