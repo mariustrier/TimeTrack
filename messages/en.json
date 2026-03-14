@@ -49,7 +49,14 @@
     "loading": "Loading...",
     "cancelled": "Cancelled",
     "next": "Next",
-    "back": "Back"
+    "back": "Back",
+    "saved": "Saved",
+    "saveFailed": "Could not save",
+    "from": "From",
+    "to": "To",
+    "export": "Export",
+    "exporting": "Exporting...",
+    "default": "Default"
   },
   "nav": {
     "timetrack": "Cloud Timer",
@@ -183,7 +190,8 @@
     "skipPhase": "Skip phase",
     "invoiceLabel": "Invoice text (2 words)",
     "invoiceLabelPlaceholder": "E.g. 'Startup meeting'",
-    "useFullText": "Use full text"
+    "useFullText": "Use full text",
+    "columns": "Columns"
   },
   "projects": {
     "title": "Projects",
@@ -502,7 +510,19 @@
     "flexStartDateDesc": "Set a company-wide start date for flex balance calculations. If set, flex is only tracked from this date (or the employee's start date, whichever is later). Useful when transitioning to Cloud Timer mid-year.",
     "flexStartDateSaved": "Flex start date saved",
     "flexStartDateCleared": "Flex start date cleared",
-    "saveFailed": "Failed to save"
+    "saveFailed": "Failed to save",
+    "companySettings": "Company Settings",
+    "timeTrackingSettings": "Time Tracking Settings",
+    "expenseAutoApproveThreshold": "Expense Auto-Approve Threshold",
+    "expenseThresholdDesc": "Expenses below this amount are automatically approved.",
+    "holidaySettings": "Holiday Settings",
+    "noHolidays": "No holiday settings available.",
+    "noAbsenceReasons": "No absence reasons configured.",
+    "dataExport": "Data Export",
+    "exportDesc": "Export time entries as CSV for your accounting system.",
+    "selectDateRange": "Select a date range",
+    "exportSuccess": "Export downloaded",
+    "exportFailed": "Export failed"
   },
   "approvals": {
     "title": "Approvals",

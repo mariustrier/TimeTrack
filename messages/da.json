@@ -49,7 +49,14 @@
     "loading": "Indlæser...",
     "cancelled": "Annulleret",
     "next": "Næste",
-    "back": "Tilbage"
+    "back": "Tilbage",
+    "saved": "Gemt",
+    "saveFailed": "Kunne ikke gemme",
+    "from": "Fra",
+    "to": "Til",
+    "export": "Eksportér",
+    "exporting": "Eksporterer...",
+    "default": "Standard"
   },
   "nav": {
     "timetrack": "Cloud Timer",
@@ -183,7 +190,8 @@
     "skipPhase": "Spring fase over",
     "invoiceLabel": "Fakturatekst (2 ord)",
     "invoiceLabelPlaceholder": "F.eks. 'Opstartsmøde Borgergade'",
-    "useFullText": "Brug fuld tekst"
+    "useFullText": "Brug fuld tekst",
+    "columns": "Kolonner"
   },
   "projects": {
     "title": "Projekter",
@@ -502,7 +510,19 @@
     "flexStartDateDesc": "Angiv en virksomhedsdækkende startdato for fleksaldoberegninger. Hvis angivet, beregnes flex kun fra denne dato (eller medarbejderens startdato, hvis den er senere). Nyttigt ved overgang til Cloud Timer midt i året.",
     "flexStartDateSaved": "Fleksaldo startdato gemt",
     "flexStartDateCleared": "Fleksaldo startdato ryddet",
-    "saveFailed": "Kunne ikke gemme"
+    "saveFailed": "Kunne ikke gemme",
+    "companySettings": "Virksomhedsindstillinger",
+    "timeTrackingSettings": "Tidsregistreringsindstillinger",
+    "expenseAutoApproveThreshold": "Automatisk godkendelsesgrænse for udgifter",
+    "expenseThresholdDesc": "Udgifter under dette beløb godkendes automatisk.",
+    "holidaySettings": "Helligdagsindstillinger",
+    "noHolidays": "Ingen helligdagsindstillinger tilgængelige.",
+    "noAbsenceReasons": "Ingen fraværsårsager konfigureret.",
+    "dataExport": "Dataeksport",
+    "exportDesc": "Eksportér tidsregistreringer som CSV til dit regnskabssystem.",
+    "selectDateRange": "Vælg en datoperiode",
+    "exportSuccess": "Eksport hentet",
+    "exportFailed": "Eksport fejlede"
   },
   "approvals": {
     "title": "Godkendelser",
