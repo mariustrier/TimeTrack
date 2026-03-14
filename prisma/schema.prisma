@@ -263,7 +263,6 @@ model TimeEntry {
   // Import tracking
   importBatchId      String?
   importSource       String? // "economic" | null - tracks origin for safe upserts
-  economicSalgspris  Float?  // Raw salgspris from e-conomic Projektkort (reference only, not the actual rate)
 
   // Accounting sync
   accountingSyncedAt DateTime?
