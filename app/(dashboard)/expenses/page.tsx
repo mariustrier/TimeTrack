@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
 import { Receipt, Plus, Pencil, Trash2, Paperclip } from "lucide-react";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -313,16 +314,15 @@ export default function ExpensesPage() {
   return (
     <div className="space-y-6">
       <PageGuide pageId="expenses" titleKey="expensesTitle" descKey="expensesDesc" tips={["expensesTip1", "expensesTip2", "expensesTip3"]} />
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-        <div className="flex items-center gap-2">
+      <PageHeader
+        title={t("title")}
+        rightControls={
           <Button onClick={openCreateModal}>
             <Plus className="mr-2 h-4 w-4" />
             {t("addExpense")}
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Expenses Table */}
       <Card>

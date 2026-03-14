@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "@/lib/i18n";
 import { PageGuide } from "@/components/ui/page-guide";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -192,35 +193,28 @@ export default function AIAssistantPage() {
   return (
     <div className="space-y-6">
       <PageGuide pageId="ai" titleKey="aiTitle" descKey="aiDesc" tips={["aiTip1", "aiTip2", "aiTip3"]} />
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-            <Sparkles className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-            <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {insights.length > 0 && (
-            <Button variant="outline" onClick={handleDismissAll}>
-              <X className="mr-2 h-4 w-4" />
-              {t("closeAll")}
+      <PageHeader
+        title={t("title")}
+        rightControls={
+          <>
+            {insights.length > 0 && (
+              <Button variant="outline" onClick={handleDismissAll}>
+                <X className="mr-2 h-4 w-4" />
+                {t("closeAll")}
+              </Button>
+            )}
+            <Button
+              onClick={handleRefresh}
+              disabled={refreshing}
+            >
+              <RefreshCw
+                className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+              />
+              {refreshing ? t("refreshing") : t("refresh")}
             </Button>
-          )}
-          <Button
-            onClick={handleRefresh}
-            disabled={refreshing}
-          >
-            <RefreshCw
-              className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
-            />
-            {refreshing ? t("refreshing") : t("refresh")}
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Category Filter Tabs */}
       <div className="flex flex-wrap gap-2">

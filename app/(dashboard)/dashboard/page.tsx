@@ -67,6 +67,7 @@ import { useTranslations, useDateLocale, useLocale } from "@/lib/i18n";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { PageGuide } from "@/components/ui/page-guide";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { useCompanyLogo, useIsDemo } from "@/lib/company-context";
 import { isCompanyHoliday, getCompanyHolidayName, type CustomHoliday } from "@/lib/holidays";
 import { getDailyTarget } from "@/lib/calculations";
@@ -931,109 +932,108 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <PageGuide pageId="dashboard" titleKey="dashboardTitle" descKey="dashboardDesc" tips={["dashboardTip1", "dashboardTip2", "dashboardTip3"]} />
-      {/* Week Navigation */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-          {(userRole === "admin" || userRole === "manager") && teamMembers.length > 0 && (
-            <div className="relative">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowViewAs(!showViewAs)}
-                className="gap-1.5"
-              >
-                <Eye className="h-4 w-4" />
-                {selectedEmployeeId ? (() => {
-                  const m = teamMembers.find((m) => m.id === selectedEmployeeId);
-                  return m?.firstName && m?.lastName ? `${m.firstName} ${m.lastName}` : m?.email || "";
-                })() : (t("viewAs") || "View as...")}
+      <PageHeader
+        title={t("title")}
+        rightControls={
+          <>
+            {(userRole === "admin" || userRole === "manager") && teamMembers.length > 0 && (
+              <div className="relative">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowViewAs(!showViewAs)}
+                  className="gap-1.5"
+                >
+                  <Eye className="h-4 w-4" />
+                  {selectedEmployeeId ? (() => {
+                    const m = teamMembers.find((m) => m.id === selectedEmployeeId);
+                    return m?.firstName && m?.lastName ? `${m.firstName} ${m.lastName}` : m?.email || "";
+                  })() : (t("viewAs") || "View as...")}
+                </Button>
+                {showViewAs && (
+                  <div className="absolute top-full left-0 mt-1 z-50">
+                    <Select
+                      open={showViewAs}
+                      onOpenChange={setShowViewAs}
+                      value={selectedEmployeeId || "__self__"}
+                      onValueChange={(val) => {
+                        setSelectedEmployeeId(val === "__self__" ? "" : val);
+                        setShowViewAs(false);
+                      }}
+                    >
+                      <SelectTrigger className="w-[220px]">
+                        <Users className="h-4 w-4 mr-2 text-muted-foreground" />
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__self__">{t("myTimesheet")}</SelectItem>
+                        {teamMembers.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>
+                            {m.firstName && m.lastName ? `${m.firstName} ${m.lastName}` : m.email}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            )}
+            {hasDraftEntries && (
+              <Button onClick={() => setSubmitDialogOpen(true)}>
+                <Send className="mr-2 h-4 w-4" />
+                {t("submitWeek")}
               </Button>
-              {showViewAs && (
-                <div className="absolute top-full left-0 mt-1 z-50">
-                  <Select
-                    open={showViewAs}
-                    onOpenChange={setShowViewAs}
-                    value={selectedEmployeeId || "__self__"}
-                    onValueChange={(val) => {
-                      setSelectedEmployeeId(val === "__self__" ? "" : val);
-                      setShowViewAs(false);
-                    }}
-                  >
-                    <SelectTrigger className="w-[220px]">
-                      <Users className="h-4 w-4 mr-2 text-muted-foreground" />
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__self__">{t("myTimesheet")}</SelectItem>
-                      {teamMembers.map((m) => (
-                        <SelectItem key={m.id} value={m.id}>
-                          {m.firstName && m.lastName ? `${m.firstName} ${m.lastName}` : m.email}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {hasDraftEntries && (
-            <Button onClick={() => setSubmitDialogOpen(true)}>
-              <Send className="mr-2 h-4 w-4" />
-              {t("submitWeek")}
+            )}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setCurrentWeek(subWeeks(currentWeek, 1))}
+            >
+              <ChevronLeft className="h-4 w-4" />
             </Button>
-          )}
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setCurrentWeek(subWeeks(currentWeek, 1))}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="min-w-[180px]">
-                <CalendarDays className="mr-2 h-4 w-4" />
-                {format(weekStart, "MMM d", formatOpts)} – {format(weekEnd, "MMM d, yyyy", formatOpts)}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="center">
-              <Calendar
-                mode="single"
-                selected={weekStart}
-                onSelect={(day) => {
-                  if (day) {
-                    setCurrentWeek(day);
-                    setCalendarOpen(false);
-                  }
-                }}
-                weekStartsOn={1}
-                locale={dateLocale}
-              />
-            </PopoverContent>
-          </Popover>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setCurrentWeek(addWeeks(currentWeek, 1))}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setCurrentWeek(getToday(isDemo))}>
-            {tc("today")}
-          </Button>
-          <Button variant="ghost" size="icon" onClick={() => fetchData(true)} className="ml-1">
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-          {lastUpdated && (
-            <span className="text-xs text-muted-foreground">
-              {tc("lastUpdated").replace("{time}", format(lastUpdated, "HH:mm:ss"))}
-            </span>
-          )}
-        </div>
-      </div>
+            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="min-w-[180px]">
+                  <CalendarDays className="mr-2 h-4 w-4" />
+                  {format(weekStart, "MMM d", formatOpts)} – {format(weekEnd, "MMM d, yyyy", formatOpts)}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="center">
+                <Calendar
+                  mode="single"
+                  selected={weekStart}
+                  onSelect={(day) => {
+                    if (day) {
+                      setCurrentWeek(day);
+                      setCalendarOpen(false);
+                    }
+                  }}
+                  weekStartsOn={1}
+                  locale={dateLocale}
+                />
+              </PopoverContent>
+            </Popover>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setCurrentWeek(addWeeks(currentWeek, 1))}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setCurrentWeek(getToday(isDemo))}>
+              {tc("today")}
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => fetchData(true)} className="ml-1">
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+            {lastUpdated && (
+              <span className="text-xs text-muted-foreground">
+                {tc("lastUpdated").replace("{time}", format(lastUpdated, "HH:mm:ss"))}
+              </span>
+            )}
+          </>
+        }
+      />
 
       {/* Viewing employee banner */}
       {selectedEmployeeId && (

@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { useTranslations } from "@/lib/i18n";
 import { PageGuide } from "@/components/ui/page-guide";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { UnifiedApprovals } from "@/components/management/UnifiedApprovals";
 import { TeamList } from "@/components/team/TeamList";
 import { ResourcePlanner } from "@/components/team/ResourcePlanner";
@@ -62,6 +61,7 @@ export default function ManagementPage() {
   const defaultTab = tabParam && ["approvals", "team", "resource-planner", "setup"].includes(tabParam)
     ? tabParam
     : "approvals";
+  const [activeTab, setActiveTab] = useState(defaultTab);
 
   // Fetch pending approval count for badge
   useEffect(() => {
@@ -87,78 +87,59 @@ export default function ManagementPage() {
         descKey="managementDesc"
         tips={["managementTip1", "managementTip2", "managementTip3"]}
       />
-      <h1 className="text-2xl font-bold text-foreground">
-        {t("title") || "Management"}
-      </h1>
-      <Tabs defaultValue={defaultTab}>
-        <TabsList>
-          <TabsTrigger value="approvals" className="gap-2">
-            {t("approvalsTab") || "Approvals"}
-            {approvalCount > 0 && (
-              <Badge className="ml-1 h-5 min-w-5 rounded-full px-1.5 text-[10px] font-bold">
-                {approvalCount}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="team">
-            {t("teamTab") || "Team"}
-          </TabsTrigger>
-          <TabsTrigger value="resource-planner">
-            {t("resourcePlannerTab") || "Resource Planner"}
-          </TabsTrigger>
-          <TabsTrigger value="setup">
-            {t("setupTab") || "Setup"}
-          </TabsTrigger>
-        </TabsList>
+      <PageHeader
+        title={t("title") || "Management"}
+        tabs={[
+          { key: "approvals", label: t("approvalsTab") || "Approvals", count: approvalCount || undefined },
+          { key: "team", label: t("teamTab") || "Team" },
+          { key: "resource-planner", label: t("resourcePlannerTab") || "Resource Planner" },
+          { key: "setup", label: t("setupTab") || "Setup" },
+        ]}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
 
-        <TabsContent value="approvals" className="mt-6">
-          <UnifiedApprovals />
-        </TabsContent>
+      {activeTab === "approvals" && <UnifiedApprovals />}
 
-        <TabsContent value="team" className="mt-6">
-          <TeamList />
-        </TabsContent>
+      {activeTab === "team" && <TeamList />}
 
-        <TabsContent value="resource-planner" className="mt-6">
-          <ResourcePlanner />
-        </TabsContent>
+      {activeTab === "resource-planner" && <ResourcePlanner />}
 
-        <TabsContent value="setup" className="mt-6">
-          <div className="space-y-2">
-            <SettingsSection title={t("companySettings") || "Company Settings"} defaultOpen>
-              <CompanySettings />
-            </SettingsSection>
+      {activeTab === "setup" && (
+        <div className="space-y-2">
+          <SettingsSection title={t("companySettings") || "Company Settings"} defaultOpen>
+            <CompanySettings />
+          </SettingsSection>
 
-            <SettingsSection title={t("timeTrackingSettings") || "Time Tracking"}>
-              <TimeTrackingSettings />
-            </SettingsSection>
+          <SettingsSection title={t("timeTrackingSettings") || "Time Tracking"}>
+            <TimeTrackingSettings />
+          </SettingsSection>
 
-            <SettingsSection title={t("holidaySettings") || "Holidays"}>
-              <HolidaySettings />
-            </SettingsSection>
+          <SettingsSection title={t("holidaySettings") || "Holidays"}>
+            <HolidaySettings />
+          </SettingsSection>
 
-            <SettingsSection title={t("absenceCategories") || "Absence Categories"}>
-              <NonBillableCategorySettings />
-            </SettingsSection>
+          <SettingsSection title={t("absenceCategories") || "Absence Categories"}>
+            <NonBillableCategorySettings />
+          </SettingsSection>
 
-            <SettingsSection title={t("billingDetails") || "Billing Company Details"}>
-              <BillingCompanyDetails />
-            </SettingsSection>
+          <SettingsSection title={t("billingDetails") || "Billing Company Details"}>
+            <BillingCompanyDetails />
+          </SettingsSection>
 
-            <SettingsSection title={t("accountingIntegration") || "Accounting Integration"}>
-              <AccountingSettings />
-            </SettingsSection>
+          <SettingsSection title={t("accountingIntegration") || "Accounting Integration"}>
+            <AccountingSettings />
+          </SettingsSection>
 
-            <SettingsSection title={t("dataExport") || "Data Export"}>
-              <ExportSettings />
-            </SettingsSection>
+          <SettingsSection title={t("dataExport") || "Data Export"}>
+            <ExportSettings />
+          </SettingsSection>
 
-            <SettingsSection title={t("auditLog") || "Audit Log"}>
-              <AdminAuditLog />
-            </SettingsSection>
-          </div>
-        </TabsContent>
-      </Tabs>
+          <SettingsSection title={t("auditLog") || "Audit Log"}>
+            <AdminAuditLog />
+          </SettingsSection>
+        </div>
+      )}
     </div>
   );
 }

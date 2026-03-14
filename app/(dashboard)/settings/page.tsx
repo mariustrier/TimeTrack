@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Download, Trash2, AlertTriangle, Clock, RotateCcw, User, Globe, Bell, Save } from "lucide-react";
 import { useTranslations, useLocale } from "@/lib/i18n";
 import { PageGuide } from "@/components/ui/page-guide";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -159,7 +160,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-8">
       <PageGuide pageId="settings" titleKey="settingsTitle" descKey="settingsDesc" tips={["settingsTip1", "settingsTip2", "settingsTip3"]} />
-      <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
+      <PageHeader title={t("title")} />
 
       {/* Profile Section */}
       <div className="rounded-xl border border-border bg-card p-6">

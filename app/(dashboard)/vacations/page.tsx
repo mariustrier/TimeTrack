@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { useTranslations, useDateLocale } from "@/lib/i18n";
 import { PageGuide } from "@/components/ui/page-guide";
 import { VacationCalendar } from "@/components/vacations/VacationCalendar";
@@ -52,6 +52,7 @@ export default function VacationsPage() {
   const tc = useTranslations("common");
   const dateLocale = useDateLocale();
   const formatOpts = dateLocale ? { locale: dateLocale } : undefined;
+  const [vacTab, setVacTab] = useState("requests");
 
   function getStatusBadge(status: string) {
     switch (status) {
@@ -205,23 +206,24 @@ export default function VacationsPage() {
   return (
     <div className="space-y-6">
       <PageGuide pageId="vacations" titleKey="vacationsTitle" descKey="vacationsDesc" tips={["vacationsTip1", "vacationsTip2", "vacationsTip3"]} />
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">{t("title")}</h1>
-        <Button onClick={() => setModalOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          {t("requestVacation")}
-        </Button>
-      </div>
+      <PageHeader
+        title={t("title")}
+        tabs={[
+          { key: "requests", label: t("myRequests") },
+          { key: "planner", label: t("planner") },
+          { key: "calendar", label: t("teamCalendar") },
+        ]}
+        activeTab={vacTab}
+        onTabChange={setVacTab}
+        rightControls={
+          <Button onClick={() => setModalOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            {t("requestVacation")}
+          </Button>
+        }
+      />
 
-      <Tabs defaultValue="requests">
-        <TabsList>
-          <TabsTrigger value="requests">{t("myRequests")}</TabsTrigger>
-          <TabsTrigger value="planner">{t("planner")}</TabsTrigger>
-          <TabsTrigger value="calendar">{t("teamCalendar")}</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="requests" className="space-y-6 mt-4">
+      {vacTab === "requests" && <div className="space-y-6">
 
       {/* Summary Cards */}
       {isHourly ? (
@@ -325,23 +327,20 @@ export default function VacationsPage() {
         </CardContent>
       </Card>
 
-        </TabsContent>
+      </div>}
 
-        <TabsContent value="planner" className="mt-4">
-          <VacationPlanner
-            requests={requests}
-            bonusDays={bonusDays}
-            isHourly={isHourly}
-            vacationTrackingUnit={vacationTrackingUnit}
-            vacationHoursPerYear={vacationHoursPerYear}
-            weeklyTarget={userWeeklyTarget}
-          />
-        </TabsContent>
+      {vacTab === "planner" && (
+        <VacationPlanner
+          requests={requests}
+          bonusDays={bonusDays}
+          isHourly={isHourly}
+          vacationTrackingUnit={vacationTrackingUnit}
+          vacationHoursPerYear={vacationHoursPerYear}
+          weeklyTarget={userWeeklyTarget}
+        />
+      )}
 
-        <TabsContent value="calendar" className="mt-4">
-          <VacationCalendar />
-        </TabsContent>
-      </Tabs>
+      {vacTab === "calendar" && <VacationCalendar />}
 
       {/* Request Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
