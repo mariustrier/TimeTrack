@@ -257,7 +257,11 @@ function NavBtn({
     <button
       onClick={onClick}
       style={{
-        padding: wide ? "6px 14px" : "6px 10px",
+        height: 36,
+        boxSizing: "border-box",
+        display: "inline-flex",
+        alignItems: "center",
+        padding: wide ? "0 14px" : "0 10px",
         borderRadius: 6,
         border: "1px solid #E5E7EB",
         background: "#fff",
@@ -1569,6 +1573,7 @@ export function ProjectTimeline() {
               borderRadius: 6,
               border: "1px solid #E5E7EB",
               overflow: "hidden",
+              height: 36,
             }}
           >
             {(["day", "week", "month", "year"] as const).map((s) => (
@@ -1576,13 +1581,16 @@ export function ProjectTimeline() {
                 key={s}
                 onClick={() => setViewScale(s)}
                 style={{
-                  padding: "6px 14px",
+                  height: 36,
+                  boxSizing: "border-box",
+                  padding: "0 14px",
                   fontSize: 11,
                   fontWeight: 600,
                   border: "none",
                   cursor: "pointer",
                   background: viewScale === s ? "#1F2937" : "#fff",
                   color: viewScale === s ? "#fff" : "#6B7280",
+                  lineHeight: 1,
                   transition: "all 0.2s ease",
                 }}
               >
@@ -1596,7 +1604,9 @@ export function ProjectTimeline() {
             <button
               onClick={() => setFilterOpen(!filterOpen)}
               style={{
-                padding: "6px 14px",
+                height: 36,
+                boxSizing: "border-box",
+                padding: "0 14px",
                 borderRadius: 6,
                 fontSize: 12,
                 fontWeight: 600,
@@ -1607,6 +1617,7 @@ export function ProjectTimeline() {
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
+                lineHeight: 1,
                 transition: "all 0.2s ease",
               }}
             >
@@ -1759,7 +1770,9 @@ export function ProjectTimeline() {
           <button
             onClick={() => setIsFocusMode((v) => !v)}
             style={{
-              padding: "6px 14px",
+              height: 36,
+              boxSizing: "border-box",
+              padding: "0 14px",
               borderRadius: 6,
               fontSize: 12,
               fontWeight: 600,
@@ -1769,6 +1782,7 @@ export function ProjectTimeline() {
               background: isFocusMode ? "#EEF2FF" : "#fff",
               color: isFocusMode ? "#4338CA" : "#374151",
               cursor: "pointer",
+              lineHeight: 1,
               transition: "all 0.25s ease",
               display: "flex",
               alignItems: "center",
@@ -1801,7 +1815,9 @@ export function ProjectTimeline() {
               }
             }}
             style={{
-              padding: "6px 14px",
+              height: 36,
+              boxSizing: "border-box",
+              padding: "0 14px",
               borderRadius: 6,
               fontSize: 12,
               fontWeight: 600,
@@ -1811,6 +1827,7 @@ export function ProjectTimeline() {
               background: editMode ? "#FFFBEB" : "#fff",
               color: editMode ? "#92400E" : "#374151",
               cursor: "pointer",
+              lineHeight: 1,
               transition: "all 0.25s ease",
               display: "flex",
               alignItems: "center",

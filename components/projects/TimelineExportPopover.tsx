@@ -555,10 +555,12 @@ export const TimelineExportPopover = ({
           onMouseEnter={() => setBtnHover(true)}
           onMouseLeave={() => setBtnHover(false)}
           style={{
+            height: 36,
+            boxSizing: "border-box",
             display: "flex",
             alignItems: "center",
             gap: 6,
-            padding: "6px 14px",
+            padding: "0 14px",
             border: "1.5px solid #E5E7EB",
             borderRadius: 6,
             background: btnHover ? "#F9FAFB" : "#fff",
@@ -567,6 +569,7 @@ export const TimelineExportPopover = ({
             fontWeight: 600,
             cursor: "pointer",
             fontFamily: FONT,
+            lineHeight: 1,
             transition: "background 0.12s",
           }}
         >
