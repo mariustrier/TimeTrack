@@ -1833,7 +1833,16 @@
     "importSummary": "{entries} entries for {employees} employees across {categories} categories ({hours}h)",
     "successMessage": "Successfully imported {entries} time entries for {employees} employees",
     "back": "Back",
-    "next": "Next"
+    "next": "Next",
+    "classifyStep": "Classify",
+    "classifyDesc": "Classify each activity as billable, internal, or mixed. Sales price from e-conomic is used as an indicator — not as the actual rate.",
+    "classifyBillable": "Billable",
+    "classifyNonBillable": "Non-billable",
+    "classifyMixed": "Mixed",
+    "classifyInternal": "Internal",
+    "classifyMixedBreakdown": "Mixed: {billable}h billable · {nonBillable}h internal",
+    "classifyShowEntries": "Show all {count} entries",
+    "classifyHideEntries": "Hide entries"
   },
   "billing": {
     "title": "Billing",

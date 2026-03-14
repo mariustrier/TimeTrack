@@ -25,6 +25,7 @@ export async function POST(req: Request) {
     const file = formData.get("file") as File | null;
     const mappingsRaw = formData.get("mappings") as string | null;
     const settingsRaw = formData.get("projectSettings") as string | null;
+    const classificationsRaw = formData.get("activityClassifications") as string | null;
 
     if (!file) {
       return NextResponse.json({ error: "File is required" }, { status: 400 });
@@ -47,10 +48,17 @@ export async function POST(req: Request) {
       budgetHours?: number;
       existingProjectId?: string;
     };
+    let activityClassifications: Record<string, {
+      billingStatus: "billable" | "nonBillable" | "mixed";
+      entryOverrides: Record<string, "billable" | "nonBillable">;
+    }> | null = null;
 
     try {
       mappings = JSON.parse(mappingsRaw);
       projectSettings = JSON.parse(settingsRaw);
+      if (classificationsRaw) {
+        activityClassifications = JSON.parse(classificationsRaw);
+      }
     } catch {
       return NextResponse.json(
         { error: "Invalid JSON in mappings or settings" },
@@ -205,12 +213,34 @@ export async function POST(req: Request) {
         },
       });
 
-      // Create time entries in bulk
+      // Create time entries in bulk with per-entry billing status
       if (entriesToImport.length > 0) {
+        // Track per-category entry index to match classification overrides
+        const categoryEntryIdx: Record<number, number> = {};
+
         await tx.timeEntry.createMany({
           data: entriesToImport.map((entry) => {
             const userId = employeeMap.get(entry.employeeName)!;
             const phase = categoryPhaseMap.get(entry.categoryNumber);
+
+            // Determine billing status from classifications
+            const catKey = String(entry.categoryNumber);
+            const entryIdx = categoryEntryIdx[entry.categoryNumber] || 0;
+            categoryEntryIdx[entry.categoryNumber] = entryIdx + 1;
+
+            let billingStatus = "billable";
+            const classification = activityClassifications?.[catKey];
+            if (classification) {
+              const override = classification.entryOverrides?.[String(entryIdx)];
+              if (override !== undefined) {
+                billingStatus = override === "billable" ? "billable" : "non_billable";
+              } else if (classification.billingStatus === "nonBillable") {
+                billingStatus = "non_billable";
+              } else if (classification.billingStatus === "mixed") {
+                billingStatus = entry.salesPrice > 0 ? "billable" : "non_billable";
+              }
+            }
+
             return {
               date: new Date(entry.date),
               hours: entry.hours,
@@ -223,10 +253,11 @@ export async function POST(req: Request) {
               submittedBy: user.id,
               approvedAt: now,
               approvedBy: user.id,
-              billingStatus: "billable",
+              billingStatus,
               externallyInvoiced: true,
               phaseId: phase?.id || null,
               phaseName: phase?.name || null,
+              economicSalgspris: entry.salesPrice || null,
             };
           }),
         });
@@ -317,6 +348,7 @@ export async function POST(req: Request) {
             totalHours: entriesToImport.reduce((s, e) => s + e.hours, 0),
             categoriesMapped: categoryPhaseMap.size,
             activitiesCreated,
+            activityClassifications: activityClassifications || undefined,
           }),
         },
       });

@@ -6,12 +6,15 @@ import {
   FileSpreadsheet,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
+  ChevronUp,
   AlertTriangle,
   Check,
   Users,
   Layers,
   Settings,
   ClipboardList,
+  Tag,
 } from "lucide-react";
 import {
   Dialog,
@@ -34,7 +37,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { useTranslations } from "@/lib/i18n";
-import { parseEconomicFile, type EconomicImportData } from "@/lib/economic-import";
+import { parseEconomicFile, type EconomicImportData, type EconomicTimeEntry } from "@/lib/economic-import";
 
 interface TeamMember {
   id: string;
@@ -52,6 +55,11 @@ interface Phase {
 interface ExistingProject {
   id: string;
   name: string;
+}
+
+interface ActivityClassification {
+  billingStatus: "billable" | "nonBillable" | "mixed";
+  entryOverrides: Record<number, "billable" | "nonBillable">;
 }
 
 const COLORS = [
@@ -93,7 +101,12 @@ export function EconomicImport({ open, onOpenChange, onSuccess }: EconomicImport
   const [existingProjectId, setExistingProjectId] = useState("");
   const [existingProjects, setExistingProjects] = useState<ExistingProject[]>([]);
 
-  // Step 5: Import
+  // Step 4 (new): Classify Activities
+  const [activityClassifications, setActivityClassifications] = useState<Record<number, ActivityClassification>>({});
+  const [expandedCategories, setExpandedCategories] = useState<Set<number>>(new Set());
+  const [classificationsInitialized, setClassificationsInitialized] = useState(false);
+
+  // Step 6 (was 5): Import
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{
     project: { id: string; name: string };
@@ -149,6 +162,9 @@ export function EconomicImport({ open, onOpenChange, onSuccess }: EconomicImport
       setExistingProjectId("");
       setImporting(false);
       setImportResult(null);
+      setActivityClassifications({});
+      setExpandedCategories(new Set());
+      setClassificationsInitialized(false);
     }
   }, [open]);
 
@@ -241,13 +257,138 @@ export function EconomicImport({ open, onOpenChange, onSuccess }: EconomicImport
       .reduce((sum, e) => sum + e.hours, 0);
   }, [importData, employeeMappings]);
 
-  const totalSteps = companyPhasesEnabled ? 5 : 4;
+  // Entries per category, filtered by mapped employees
+  const categoryEntriesMap = useMemo(() => {
+    if (!importData) return new Map<number, EconomicTimeEntry[]>();
+    const map = new Map<number, EconomicTimeEntry[]>();
+    for (const cat of importData.taskCategories) {
+      const entries = importData.timeEntries.filter(
+        (e) => e.categoryNumber === cat.number && !!employeeMappings[e.employeeName]
+      );
+      map.set(cat.number, entries);
+    }
+    return map;
+  }, [importData, employeeMappings]);
+
+  const totalSteps = companyPhasesEnabled ? 6 : 5;
 
   const effectiveStep = useMemo(() => {
     // If phases disabled, skip step 3
     if (!companyPhasesEnabled && step >= 3) return step + 1;
     return step;
   }, [step, companyPhasesEnabled]);
+
+  // Auto-classify activities when entering classify step
+  useEffect(() => {
+    if (effectiveStep !== 4 || !importData || classificationsInitialized) return;
+    const classifications: Record<number, ActivityClassification> = {};
+    for (const cat of importData.taskCategories) {
+      const entries = categoryEntriesMap.get(cat.number) || [];
+      const withSales = entries.filter((e) => e.salesPrice > 0).length;
+      const total = entries.length;
+      if (total === 0 || withSales === 0) {
+        classifications[cat.number] = { billingStatus: "nonBillable", entryOverrides: {} };
+      } else if (withSales === total) {
+        classifications[cat.number] = { billingStatus: "billable", entryOverrides: {} };
+      } else {
+        const overrides: Record<number, "billable" | "nonBillable"> = {};
+        entries.forEach((e, i) => {
+          overrides[i] = e.salesPrice > 0 ? "billable" : "nonBillable";
+        });
+        classifications[cat.number] = { billingStatus: "mixed", entryOverrides: overrides };
+      }
+    }
+    setActivityClassifications(classifications);
+    setClassificationsInitialized(true);
+  }, [effectiveStep, importData, categoryEntriesMap, classificationsInitialized]);
+
+  function getEffectiveEntryStatus(
+    classification: ActivityClassification | undefined,
+    entryIndex: number,
+    entry: EconomicTimeEntry
+  ): "billable" | "nonBillable" {
+    if (!classification) return entry.salesPrice > 0 ? "billable" : "nonBillable";
+    if (classification.entryOverrides[entryIndex] !== undefined) {
+      return classification.entryOverrides[entryIndex];
+    }
+    if (classification.billingStatus === "billable") return "billable";
+    if (classification.billingStatus === "nonBillable") return "nonBillable";
+    return entry.salesPrice > 0 ? "billable" : "nonBillable";
+  }
+
+  function handleSetBillingStatus(catNumber: number, status: "billable" | "nonBillable" | "mixed") {
+    setActivityClassifications((prev) => {
+      const entries = categoryEntriesMap.get(catNumber) || [];
+      const newOverrides: Record<number, "billable" | "nonBillable"> = {};
+      if (status === "mixed") {
+        entries.forEach((e, i) => {
+          newOverrides[i] = e.salesPrice > 0 ? "billable" : "nonBillable";
+        });
+      }
+      return { ...prev, [catNumber]: { billingStatus: status, entryOverrides: newOverrides } };
+    });
+  }
+
+  function handleToggleEntry(catNumber: number, entryIndex: number) {
+    setActivityClassifications((prev) => {
+      const cat = prev[catNumber];
+      if (!cat) return prev;
+      const entries = categoryEntriesMap.get(catNumber) || [];
+      const entry = entries[entryIndex];
+      if (!entry) return prev;
+
+      const newOverrides = { ...cat.entryOverrides };
+
+      // Determine current effective status
+      let currentStatus: "billable" | "nonBillable";
+      if (newOverrides[entryIndex] !== undefined) {
+        currentStatus = newOverrides[entryIndex];
+      } else if (cat.billingStatus === "billable") {
+        currentStatus = "billable";
+      } else if (cat.billingStatus === "nonBillable") {
+        currentStatus = "nonBillable";
+      } else {
+        currentStatus = entry.salesPrice > 0 ? "billable" : "nonBillable";
+      }
+
+      // Toggle
+      newOverrides[entryIndex] = currentStatus === "billable" ? "nonBillable" : "billable";
+
+      // Ensure all entries have overrides
+      entries.forEach((e, i) => {
+        if (newOverrides[i] === undefined) {
+          if (cat.billingStatus === "billable") newOverrides[i] = "billable";
+          else if (cat.billingStatus === "nonBillable") newOverrides[i] = "nonBillable";
+          else newOverrides[i] = e.salesPrice > 0 ? "billable" : "nonBillable";
+        }
+      });
+
+      // Auto-detect if all same
+      const allBillable = Object.values(newOverrides).every((v) => v === "billable");
+      const allNonBillable = Object.values(newOverrides).every((v) => v === "nonBillable");
+      let newStatus: "billable" | "nonBillable" | "mixed";
+      if (allBillable) newStatus = "billable";
+      else if (allNonBillable) newStatus = "nonBillable";
+      else newStatus = "mixed";
+
+      return {
+        ...prev,
+        [catNumber]: {
+          billingStatus: newStatus,
+          entryOverrides: newStatus === "billable" || newStatus === "nonBillable" ? {} : newOverrides,
+        },
+      };
+    });
+  }
+
+  function handleToggleExpand(catNumber: number) {
+    setExpandedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(catNumber)) next.delete(catNumber);
+      else next.add(catNumber);
+      return next;
+    });
+  }
 
   async function handleImport() {
     if (!importData) return;
@@ -280,6 +421,10 @@ export function EconomicImport({ open, onOpenChange, onSuccess }: EconomicImport
             : undefined,
           existingProjectId: existingProjectId || undefined,
         })
+      );
+      formData.append(
+        "activityClassifications",
+        JSON.stringify(activityClassifications)
       );
 
       const res = await fetch("/api/projects/import", {
@@ -332,6 +477,7 @@ export function EconomicImport({ open, onOpenChange, onSuccess }: EconomicImport
     ...(companyPhasesEnabled
       ? [{ icon: Layers, label: t("mapCategories") }]
       : []),
+    { icon: Tag, label: t("classifyStep") },
     { icon: Settings, label: t("projectSettings") },
     { icon: ClipboardList, label: t("review") },
   ];
@@ -559,8 +705,134 @@ export function EconomicImport({ open, onOpenChange, onSuccess }: EconomicImport
           </div>
         )}
 
-        {/* STEP 4: Project Settings */}
+        {/* STEP 4: Classify Activities */}
         {effectiveStep === 4 && importData && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {t("classifyDesc")}
+            </p>
+            <div className="space-y-3 max-h-[50vh] overflow-y-auto">
+              {importData.taskCategories.map((cat) => {
+                const entries = categoryEntriesMap.get(cat.number) || [];
+                const withSales = entries.filter((e) => e.salesPrice > 0).length;
+                const classification = activityClassifications[cat.number];
+                const expanded = expandedCategories.has(cat.number);
+
+                // Compute billable/non-billable hours
+                let billableHours = 0;
+                let nonBillableHours = 0;
+                entries.forEach((entry, i) => {
+                  const status = getEffectiveEntryStatus(classification, i, entry);
+                  if (status === "billable") billableHours += entry.hours;
+                  else nonBillableHours += entry.hours;
+                });
+
+                return (
+                  <div key={cat.number} className="border rounded-lg p-4 space-y-3">
+                    {/* Header */}
+                    <div>
+                      <p className="font-medium text-sm">{cat.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(entries.reduce((s, e) => s + e.hours, 0)).toFixed(1)}{tc("hourAbbrev")}
+                        {" · "}
+                        {withSales} af {entries.length} entries har salgspris &gt; 0
+                      </p>
+                    </div>
+
+                    {/* Billing status selector */}
+                    <div className="flex gap-1">
+                      {(["billable", "nonBillable", "mixed"] as const).map((status) => {
+                        const active = classification?.billingStatus === status;
+                        const label = status === "billable"
+                          ? t("classifyBillable")
+                          : status === "nonBillable"
+                          ? t("classifyNonBillable")
+                          : t("classifyMixed");
+                        return (
+                          <button
+                            key={status}
+                            onClick={() => handleSetBillingStatus(cat.number, status)}
+                            className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${
+                              active
+                                ? status === "billable"
+                                  ? "bg-green-100 border-green-300 text-green-800 dark:bg-green-900/30 dark:border-green-700 dark:text-green-400"
+                                  : status === "nonBillable"
+                                  ? "bg-red-100 border-red-300 text-red-800 dark:bg-red-900/30 dark:border-red-700 dark:text-red-400"
+                                  : "bg-amber-100 border-amber-300 text-amber-800 dark:bg-amber-900/30 dark:border-amber-700 dark:text-amber-400"
+                                : "bg-muted border-border text-muted-foreground hover:bg-accent"
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Mixed warning banner */}
+                    {classification?.billingStatus === "mixed" && (
+                      <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 dark:bg-amber-900/20 dark:text-amber-400 px-3 py-2 rounded-md">
+                        <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+                        {t("classifyMixedBreakdown")
+                          .replace("{billable}", billableHours.toFixed(1))
+                          .replace("{nonBillable}", nonBillableHours.toFixed(1))}
+                      </div>
+                    )}
+
+                    {/* Expandable entry list */}
+                    {entries.length > 0 && (
+                      <>
+                        <button
+                          onClick={() => handleToggleExpand(cat.number)}
+                          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                          {expanded
+                            ? t("classifyHideEntries")
+                            : t("classifyShowEntries").replace("{count}", String(entries.length))}
+                        </button>
+
+                        {expanded && (
+                          <div className="border rounded-md divide-y">
+                            {entries.map((entry, i) => {
+                              const entryStatus = getEffectiveEntryStatus(classification, i, entry);
+                              return (
+                                <div key={i} className="flex items-center gap-2 px-3 py-1.5 text-xs">
+                                  <div
+                                    className={`h-2 w-2 rounded-full flex-shrink-0 ${
+                                      entryStatus === "billable" ? "bg-green-500" : "bg-red-500"
+                                    }`}
+                                  />
+                                  <span className="text-muted-foreground w-[72px]">{entry.date}</span>
+                                  <span className="flex-1 truncate">{entry.employeeName}</span>
+                                  <span className="text-muted-foreground w-[40px] text-right">
+                                    {entry.hours.toFixed(1)}{tc("hourAbbrev")}
+                                  </span>
+                                  <button
+                                    onClick={() => handleToggleEntry(cat.number, i)}
+                                    className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors ${
+                                      entryStatus === "billable"
+                                        ? "bg-green-100 border-green-300 text-green-800 hover:bg-green-200 dark:bg-green-900/30 dark:border-green-700 dark:text-green-400"
+                                        : "bg-red-100 border-red-300 text-red-800 hover:bg-red-200 dark:bg-red-900/30 dark:border-red-700 dark:text-red-400"
+                                    }`}
+                                  >
+                                    {entryStatus === "billable" ? t("classifyBillable") : t("classifyInternal")}
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* STEP 5: Project Settings */}
+        {effectiveStep === 5 && importData && (
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>{t("existingProject")}</Label>
@@ -640,8 +912,8 @@ export function EconomicImport({ open, onOpenChange, onSuccess }: EconomicImport
           </div>
         )}
 
-        {/* STEP 5: Review & Confirm */}
-        {effectiveStep === 5 && importData && !importResult && (
+        {/* STEP 6: Review & Confirm */}
+        {effectiveStep === 6 && importData && !importResult && (
           <div className="space-y-4">
             <div className="border rounded-lg p-4 space-y-3">
               <h3 className="font-medium">{t("reviewSummary")}</h3>

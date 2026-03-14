@@ -1830,7 +1830,16 @@
     "importSummary": "{entries} registreringer for {employees} medarbejdere på tværs af {categories} kategorier ({hours}t)",
     "successMessage": "Importerede {entries} tidsregistreringer for {employees} medarbejdere",
     "back": "Tilbage",
-    "next": "Næste"
+    "next": "Næste",
+    "classifyStep": "Klassificér",
+    "classifyDesc": "Klassificér hver aktivitet som fakturerbar, intern eller blandet. Salgspris fra e-conomic bruges som indikator — ikke som faktisk pris.",
+    "classifyBillable": "Fakturerbar",
+    "classifyNonBillable": "Ikke-fakturerbar",
+    "classifyMixed": "Blandet",
+    "classifyInternal": "Intern",
+    "classifyMixedBreakdown": "Blandet: {billable}t fakturerbar · {nonBillable}t intern",
+    "classifyShowEntries": "Vis alle {count} entries",
+    "classifyHideEntries": "Skjul entries"
   },
   "billing": {
     "title": "Fakturering",

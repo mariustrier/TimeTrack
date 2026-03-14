@@ -261,8 +261,9 @@ model TimeEntry {
   externallyInvoiced Boolean   @default(false) // True for imported entries already invoiced in external system
 
   // Import tracking
-  importBatchId String?
-  importSource  String? // "economic" | null - tracks origin for safe upserts
+  importBatchId      String?
+  importSource       String? // "economic" | null - tracks origin for safe upserts
+  economicSalgspris  Float?  // Raw salgspris from e-conomic Projektkort (reference only, not the actual rate)
 
   // Accounting sync
   accountingSyncedAt DateTime?
