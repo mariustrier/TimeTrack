@@ -455,12 +455,11 @@ export function PlannerGrid({
                 >
                   {!weekend && !holiday && totals.cap > 0 && (
                     <span
-                      className="inline-block px-2 py-0.5 rounded text-[9px] font-bold font-mono"
-                      style={{
-                        background: hc.bg,
-                        color: hc.text,
-                        fontVariantNumeric: "tabular-nums",
-                      }}
+                      className={cn(
+                        "inline-block px-2 py-0.5 rounded text-[9px] font-bold font-mono",
+                        hc.bg, hc.text
+                      )}
+                      style={{ fontVariantNumeric: "tabular-nums" }}
                     >
                       {Math.round(ratio * 100)}%
                     </span>
@@ -846,16 +845,18 @@ function MonthRow({
           >
             {totalHours > 0 && (
               <div
-                className="inline-block px-2.5 py-1.5 rounded-[6px] text-center min-w-[44px]"
-                style={{ background: hc.bg }}
+                className={cn(
+                  "inline-block px-2.5 py-1.5 rounded-[6px] text-center min-w-[44px]",
+                  hc.bg
+                )}
               >
                 <div
-                  className="text-[13px] font-bold font-mono leading-none"
-                  style={{ color: hc.text, fontVariantNumeric: "tabular-nums" }}
+                  className={cn("text-[13px] font-bold font-mono leading-none", hc.text)}
+                  style={{ fontVariantNumeric: "tabular-nums" }}
                 >
                   {totalHours.toFixed(0)}
                 </div>
-                <div className="text-[8px] font-medium leading-none mt-0.5" style={{ color: hc.text, opacity: 0.7 }}>
+                <div className={cn("text-[8px] font-medium leading-none mt-0.5 opacity-70", hc.text)}>
                   hrs
                 </div>
               </div>

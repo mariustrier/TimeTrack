@@ -44,13 +44,13 @@ interface PlannerCellProps {
   onBulkDrop?: (selectedIds: string[], sourceDate: string, targetDate: string) => void;
 }
 
-/** Heatmap color for utilization ratio — matches demo exactly */
+/** Heatmap color for utilization ratio — dark-mode aware via Tailwind classes */
 function heatColor(ratio: number): { bg: string; text: string } {
-  if (ratio > 1.02) return { bg: "#FEE2E2", text: "#B91C1C" };
-  if (ratio > 0.85) return { bg: "#D1FAE5", text: "#047857" };
-  if (ratio > 0.5)  return { bg: "#FEF9C3", text: "#A16207" };
-  if (ratio > 0.01) return { bg: "#F3F4F6", text: "#6B7280" };
-  return                    { bg: "#FAFAFA", text: "#D1D5DB" };
+  if (ratio > 1.02) return { bg: "bg-red-100 dark:bg-red-950/60",       text: "text-red-700 dark:text-red-400" };
+  if (ratio > 0.85) return { bg: "bg-emerald-100 dark:bg-emerald-950/60", text: "text-emerald-700 dark:text-emerald-400" };
+  if (ratio > 0.5)  return { bg: "bg-yellow-100 dark:bg-yellow-950/60",  text: "text-yellow-700 dark:text-yellow-400" };
+  if (ratio > 0.01) return { bg: "bg-gray-100 dark:bg-gray-800",         text: "text-gray-500 dark:text-gray-400" };
+  return                    { bg: "bg-gray-50 dark:bg-gray-800/50",       text: "text-gray-300 dark:text-gray-500" };
 }
 
 export { heatColor };
@@ -181,9 +181,11 @@ export function PlannerCell({
         {/* Heatmap pill — click to edit existing allocation */}
         {!vacation && totalAllocated > 0 && !weekend && !holiday && (
           <div
-            className="rounded-[6px] px-2.5 py-1.5 text-center min-w-[44px] transition-all duration-200 cursor-pointer"
+            className={cn(
+              "rounded-[6px] px-2.5 py-1.5 text-center min-w-[44px] transition-all duration-200 cursor-pointer",
+              hc.bg
+            )}
             style={{
-              backgroundColor: hc.bg,
               transform: isHovered ? "scale(1.08)" : "scale(1)",
               boxShadow: isHovered ? "0 2px 8px rgba(0,0,0,0.08)" : "none",
             }}
@@ -198,14 +200,13 @@ export function PlannerCell({
             }}
           >
             <div
-              className="text-[13px] font-bold font-mono leading-none"
-              style={{ color: hc.text, fontVariantNumeric: "tabular-nums" }}
+              className={cn("text-[13px] font-bold font-mono leading-none", hc.text)}
+              style={{ fontVariantNumeric: "tabular-nums" }}
             >
               {totalAllocated}
             </div>
             <div
-              className="text-[8px] font-medium leading-none mt-0.5"
-              style={{ color: hc.text, opacity: 0.7 }}
+              className={cn("text-[8px] font-medium leading-none mt-0.5 opacity-70", hc.text)}
             >
               hrs
             </div>
