@@ -490,10 +490,10 @@ export default function ExpensesPage() {
               <Input
                 type="number"
                 min="0"
-                step="0.01"
+                step="1"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
+                placeholder="0"
               />
             </div>
             <div className="space-y-2">
