@@ -1124,6 +1124,17 @@ export const EconomicSyncWizard = ({
     const projectsWithOms = projects.filter((p) => !!p.omsaetningData);
     if (projectsWithOms.length === 0) return null;
 
+    // Collect ALL activities from ALL Projektkort files, deduplicated by number
+    const activityMap = new Map<number, { number: number; name: string }>();
+    projects.forEach((p) => {
+      p.projektkortData.activities.forEach((a) => {
+        if (!activityMap.has(a.number)) {
+          activityMap.set(a.number, { number: a.number, name: a.name });
+        }
+      });
+    });
+    const allActivities = Array.from(activityMap.values()).sort((a, b) => a.number - b.number);
+
     return (
       <div className="space-y-4">
         <div>
@@ -1171,7 +1182,7 @@ export const EconomicSyncWizard = ({
                         <SelectItem value="none">
                           {t("noActivityMatch")}
                         </SelectItem>
-                        {proj.projektkortData.activities.map((act) => (
+                        {allActivities.map((act) => (
                           <SelectItem key={act.number} value={String(act.number)}>
                             {act.number} - {act.name}
                           </SelectItem>
