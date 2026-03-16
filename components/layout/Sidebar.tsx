@@ -43,7 +43,7 @@ const navItems: NavItem[] = [
   { labelKey: "aiAssistant", href: "/ai", icon: Sparkles, roles: ["admin", "manager"], badge: true },
   { labelKey: "billing", href: "/billing", icon: FileText, roles: ["admin", "manager"], badge: true },
   { labelKey: "expenses", href: "/expenses", icon: Receipt },
-  { labelKey: "vacations", href: "/vacations", icon: Palmtree, roles: ["employee"] },
+  { labelKey: "vacations", href: "/vacations", icon: Palmtree },
   { labelKey: "settings", href: "/settings", icon: Settings },
   { labelKey: "platform", href: "/super-admin", icon: Shield, superAdminOnly: true },
 ];

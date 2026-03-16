@@ -1624,7 +1624,9 @@
     "billingDetails": "Billing Company Details",
     "accountingIntegration": "Accounting Integration",
     "dataExport": "Data Export",
-    "auditLog": "Audit Log"
+    "auditLog": "Audit Log",
+    "phases": "Project Phases",
+    "employeeCategories": "Employee Categories"
   },
   "tour": {
     "welcome": "Welcome!",

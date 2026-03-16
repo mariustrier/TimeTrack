@@ -12,7 +12,9 @@ import { AdminAuditLog } from "@/components/admin/AdminAuditLog";
 import { CompanySettings } from "@/components/settings/CompanySettings";
 import { TimeTrackingSettings } from "@/components/settings/TimeTrackingSettings";
 import { HolidaySettings } from "@/components/settings/HolidaySettings";
-import { NonBillableCategorySettings } from "@/components/settings/NonBillableCategorySettings";
+import { PhaseSettings } from "@/components/settings/PhaseSettings";
+import { RoleCategorySettings } from "@/components/settings/RoleCategorySettings";
+import { AbsenceCategorySettings } from "@/components/settings/AbsenceCategorySettings";
 import { BillingCompanyDetails } from "@/components/settings/BillingCompanyDetails";
 import { AccountingSettings } from "@/components/settings/AccountingSettings";
 import { ExportSettings } from "@/components/settings/ExportSettings";
@@ -119,8 +121,16 @@ export default function ManagementPage() {
             <HolidaySettings />
           </SettingsSection>
 
+          <SettingsSection title={t("phases") || "Project Phases"}>
+            <PhaseSettings />
+          </SettingsSection>
+
+          <SettingsSection title={t("employeeCategories") || "Employee Categories"}>
+            <RoleCategorySettings />
+          </SettingsSection>
+
           <SettingsSection title={t("absenceCategories") || "Absence Categories"}>
-            <NonBillableCategorySettings />
+            <AbsenceCategorySettings />
           </SettingsSection>
 
           <SettingsSection title={t("billingDetails") || "Billing Company Details"}>
