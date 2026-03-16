@@ -266,9 +266,10 @@ export const parseProjektkort = (buffer: ArrayBuffer): ProjektkortData => {
         continue;
       }
 
-      // Activity header detection: bold row with "N - Name" pattern
+      // Activity header detection: row with "N - Name" pattern and no hours
+      // (bold detection via SheetJS is unreliable — use hours column instead)
       const actMatch = colA.match(ACTIVITY_PATTERN);
-      if (actMatch && (cellBold(r, 0) || !cell(r, 1))) {
+      if (actMatch && !toNum(cell(r, 5))) {
         // Save previous activity if it exists without subtotal
         if (currentActivity) {
           classifyActivity(currentActivity);
