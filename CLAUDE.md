@@ -84,7 +84,7 @@ SaaS time-tracking application for companies. Deployed on Vercel with auto-deplo
 - `lib/economic-import.ts` - e-conomic Projektkort XLSX parser (legacy, used by old EconomicImport component)
 - `lib/economic-projektkort-parser.ts` - Enhanced Projektkort parser with billing classification (billable/nonBillable/mixed per activity based on salgspris), period extraction, dynamic row search
 - `lib/economic-omsaetning-parser.ts` - Omsætningsstatistik (revenue statistics) XLSX parser — extracts varekategorier with hours, revenue, costs per project
-- `lib/economic-matching.ts` - Auto-matching utilities: `matchEmployees` (name similarity), `matchTilbudCategories`, `matchInvoiceCategories` (cascading: exact → includes → startsWith)
+- `lib/economic-matching.ts` - Auto-matching utilities: `matchEmployees` (name similarity), `matchTilbudCategories`, `matchInvoiceCategories`, `matchPhases` (cascading: exact → includes → startsWith)
 - `lib/vacation-entries.ts` - createVacationEntries/deleteVacationEntries (shared by vacation routes)
 - `lib/invoice-pdf.ts` - Server-side A4 invoice PDF generation (pdf-lib), multi-page support, Danish formatting
 - `lib/timeline-excel-export.ts` - Client-side Excel workbook builder (ExcelJS + file-saver). 5 sheets: Projektoversigt, Aktiviteter, Milepæle, Tidslinje (Gantt via cell fills), Budgetstatus. A3 landscape, conditional formatting, today column highlight.
@@ -222,6 +222,7 @@ Company (+ billing fields: `invoicePrefix`, `nextInvoiceNumber`, `defaultPayment
   - Component: `components/economic-sync/EconomicSyncWizard.tsx` — 6 steps: Upload → Project Setup → Map Employees → Classify Activities → Invoicing Data → Review & Confirm
   - **Bulk import**: Drop multiple Projektkort files + Omsætningsstatistik files in a single unified drop zone. Files auto-classified by name. Omsætningsstatistik matched to Projektkort by project number in filename.
   - **Billing classification**: Per-activity billing status (billable/nonBillable/mixed) auto-suggested based on salgspris values. Mixed activities show per-entry breakdown.
+  - **Phase mapping**: Per-activity phase dropdown in Step 4 (Classify Activities). Auto-suggests matches using `matchPhases()` name similarity against company phases. Sets `phaseId`/`phaseName` on imported TimeEntry records.
   - **Omsætningsstatistik integration**: Revenue data parsed per project, varekategorier mapped to Projektkort activities for invoiced hours tracking
   - Server-side XLSX parsing via SheetJS — dynamic row search (robust to layout variations across companies)
   - Creates project, allocations, and time entries (pre-approved, billingStatus set, `externallyInvoiced` for invoiced hours) in a single Prisma transaction
