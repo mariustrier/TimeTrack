@@ -528,6 +528,7 @@ export const economicSyncConfirmSchema = z.object({
   activityClassifications: z.record(z.string(), z.object({
     billingStatus: z.enum(["billable", "nonBillable", "mixed"]),
     tilbudCategoryId: z.string().optional().nullable(),
+    entryOverrides: z.record(z.string(), z.enum(["billable", "nonBillable"])).optional(),
   })),
   invoiceMappings: z.record(z.string(), z.number().nullable()).optional(),
   projektkortData: z.any(),

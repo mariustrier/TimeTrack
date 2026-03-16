@@ -212,13 +212,16 @@ export async function PUT(req: Request) {
           const tilbudCategoryId = classification.tilbudCategoryId || null;
           let invoicedHoursRemaining = invoicedHoursPerActivity[activity.number] || 0;
 
-          activity.entries.forEach((entry) => {
+          activity.entries.forEach((entry, entryIdx) => {
             const userId = data.employeeMappings[entry.employeeName];
             if (!userId) return; // Skip unmapped employees
 
-            // Determine billing status
+            // Determine billing status (check per-entry overrides first)
             let billingStatus: string;
-            if (classification.billingStatus === "nonBillable") {
+            const override = classification.entryOverrides?.[String(entryIdx)];
+            if (override) {
+              billingStatus = override === "billable" ? "billable" : "non_billable";
+            } else if (classification.billingStatus === "nonBillable") {
               billingStatus = "non_billable";
             } else if (classification.billingStatus === "billable") {
               billingStatus = "billable";

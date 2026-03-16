@@ -2261,7 +2261,7 @@
     "registered": "Registreret",
     "invoiced": "Faktureret",
     "uninvoicedBillable": "Ufaktureret fakturerbar",
-    "internal": "Intern (ikke-fakturerbar)",
+    "internal": "Intern",
     "billingOverview": "Faktureringsoversigt",
     "activityBreakdown": "Fordeling per aktivitet",
     "employeeBreakdown": "Fordeling per medarbejder",
@@ -2275,6 +2275,11 @@
     "fileDetected": "Fil genkendt som {type}",
     "wrongFileType": "Filen ser ikke ud til at være en {expected}. Tjek at du har valgt den rigtige fil.",
     "reimport": "Importér igen",
-    "reimportWarning": "Eksisterende importerede entries for de valgte medarbejdere bliver slettet og erstattet."
+    "reimportWarning": "Eksisterende importerede entries for de valgte medarbejdere bliver slettet og erstattet.",
+    "showEntries": "Vis alle {count} entries",
+    "hideEntries": "Skjul entries",
+    "clickToChange": "Klik for at ændre",
+    "mixedSummary": "Blandet: {billable}t fakturerbar · {nonBillable}t intern",
+    "employee": "Medarbejder"
   }
 }

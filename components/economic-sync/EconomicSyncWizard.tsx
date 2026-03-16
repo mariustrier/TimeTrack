@@ -66,6 +66,7 @@ type BillingClassification = "billable" | "nonBillable" | "mixed";
 interface ActivityClassification {
   billingStatus: BillingClassification;
   tilbudCategoryId?: string | null;
+  entryOverrides?: Record<number, "billable" | "nonBillable">;
 }
 
 /** Per-project data parsed from a Projektkort file */
@@ -126,6 +127,7 @@ export const EconomicSyncWizard = ({
 
   // UI state
   const [expandedProject, setExpandedProject] = useState<number>(0);
+  const [expandedActivities, setExpandedActivities] = useState<Set<string>>(new Set());
 
   // Derived
   const hasOmsaetning = projects.some((p) => !!p.omsaetningData);
@@ -141,6 +143,7 @@ export const EconomicSyncWizard = ({
     setEmployeeMappings({});
     setSkippedEmployees(new Set());
     setExpandedProject(0);
+    setExpandedActivities(new Set());
     setImportProgress(0);
   };
 
@@ -471,24 +474,96 @@ export const EconomicSyncWizard = ({
     );
   };
 
+  // --- Entry-level billing helpers ---
+  const getEntryBillingStatus = (
+    proj: ProjectFileData,
+    activityNumber: number,
+    entryIdx: number,
+    entry: { salgspris: number }
+  ): "billable" | "nonBillable" => {
+    const cls = proj.activityClassifications[String(activityNumber)];
+    if (!cls) return "nonBillable";
+    const override = cls.entryOverrides?.[entryIdx];
+    if (override) return override;
+    if (cls.billingStatus === "billable") return "billable";
+    if (cls.billingStatus === "nonBillable") return "nonBillable";
+    // mixed: use salgspris
+    return entry.salgspris > 0 ? "billable" : "nonBillable";
+  };
+
+  const toggleEntryBillingStatus = (
+    projIdx: number,
+    activityNumber: number,
+    entryIdx: number,
+    entry: { salgspris: number },
+    allEntries: { salgspris: number }[]
+  ) => {
+    const proj = projects[projIdx];
+    const actKey = String(activityNumber);
+    const cls = proj.activityClassifications[actKey];
+    if (!cls) return;
+
+    // Current effective status → flip it
+    const current = getEntryBillingStatus(proj, activityNumber, entryIdx, entry);
+    const newStatus: "billable" | "nonBillable" = current === "billable" ? "nonBillable" : "billable";
+
+    // Default for this entry (what it would be without an override)
+    let defaultStatus: "billable" | "nonBillable";
+    if (cls.billingStatus === "billable") defaultStatus = "billable";
+    else if (cls.billingStatus === "nonBillable") defaultStatus = "nonBillable";
+    else defaultStatus = entry.salgspris > 0 ? "billable" : "nonBillable";
+
+    // Build new overrides
+    const newOverrides: Record<number, "billable" | "nonBillable"> = { ...(cls.entryOverrides || {}) };
+    if (newStatus === defaultStatus) {
+      delete newOverrides[entryIdx];
+    } else {
+      newOverrides[entryIdx] = newStatus;
+    }
+
+    // Check ALL entries' effective status with the new overrides
+    let allBillable = true;
+    let allNonBillable = true;
+    allEntries.forEach((e, idx) => {
+      const ov = newOverrides[idx];
+      let effectiveStatus: "billable" | "nonBillable";
+      if (ov) {
+        effectiveStatus = ov;
+      } else if (cls.billingStatus === "billable") {
+        effectiveStatus = "billable";
+      } else if (cls.billingStatus === "nonBillable") {
+        effectiveStatus = "nonBillable";
+      } else {
+        effectiveStatus = e.salgspris > 0 ? "billable" : "nonBillable";
+      }
+      if (effectiveStatus !== "billable") allBillable = false;
+      if (effectiveStatus !== "nonBillable") allNonBillable = false;
+    });
+
+    // Auto-switch classification if all entries are now uniform
+    const updated = { ...proj.activityClassifications };
+    if (allBillable) {
+      updated[actKey] = { ...cls, billingStatus: "billable", entryOverrides: undefined };
+    } else if (allNonBillable) {
+      updated[actKey] = { ...cls, billingStatus: "nonBillable", entryOverrides: undefined };
+    } else {
+      updated[actKey] = { ...cls, billingStatus: "mixed", entryOverrides: newOverrides };
+    }
+    updateProject(projIdx, { activityClassifications: updated });
+  };
+
   // --- Totals ---
   const computeGrandTotals = () => {
     let total = 0, billable = 0, nonBillable = 0, entries = 0;
     projects.forEach((proj) => {
       proj.projektkortData.activities.forEach((act) => {
-        const cls = proj.activityClassifications[String(act.number)];
-        act.entries.forEach((entry) => {
+        act.entries.forEach((entry, entryIdx) => {
           if (skippedEmployees.has(entry.employeeName) || !employeeMappings[entry.employeeName]) return;
           entries++;
           total += entry.hours;
-          if (!cls || cls.billingStatus === "nonBillable") {
-            nonBillable += entry.hours;
-          } else if (cls.billingStatus === "billable") {
-            billable += entry.hours;
-          } else {
-            if (entry.salgspris > 0) billable += entry.hours;
-            else nonBillable += entry.hours;
-          }
+          const status = getEntryBillingStatus(proj, act.number, entryIdx, entry);
+          if (status === "billable") billable += entry.hours;
+          else nonBillable += entry.hours;
         });
       });
     });
@@ -908,26 +983,21 @@ export const EconomicSyncWizard = ({
                 </Badge>
               </div>
 
-              {activity.suggestedBillingStatus === "mixed" && (
-                <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/20 p-2 rounded">
-                  <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
-                  {t("mixedWarning")
-                    .replace(
-                      "{billable}",
-                      activity.entries
-                        .filter((e) => e.salgspris > 0)
-                        .reduce((s, e) => s + e.hours, 0)
-                        .toFixed(1)
-                    )
-                    .replace(
-                      "{nonBillable}",
-                      activity.entries
-                        .filter((e) => e.salgspris === 0)
-                        .reduce((s, e) => s + e.hours, 0)
-                        .toFixed(1)
-                    )}
-                </div>
-              )}
+              {cls.billingStatus === "mixed" && (() => {
+                let bH = 0, nbH = 0;
+                activity.entries.forEach((e, idx) => {
+                  const s = getEntryBillingStatus(proj, activity.number, idx, e);
+                  if (s === "billable") bH += e.hours; else nbH += e.hours;
+                });
+                return (
+                  <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/20 p-2 rounded">
+                    <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+                    {t("mixedSummary")
+                      .replace("{billable}", bH.toFixed(1))
+                      .replace("{nonBillable}", nbH.toFixed(1))}
+                  </div>
+                );
+              })()}
 
               <div className="flex gap-2">
                 {(["billable", "nonBillable", "mixed"] as const).map((status) => (
@@ -938,6 +1008,10 @@ export const EconomicSyncWizard = ({
                       updated[String(activity.number)] = {
                         ...updated[String(activity.number)],
                         billingStatus: status,
+                        // Clear overrides when switching to billable/nonBillable; preserve for mixed
+                        entryOverrides: status === "mixed"
+                          ? updated[String(activity.number)]?.entryOverrides
+                          : undefined,
                       };
                       updateProject(projIdx, { activityClassifications: updated });
                     }}
@@ -955,6 +1029,90 @@ export const EconomicSyncWizard = ({
                   </button>
                 ))}
               </div>
+
+              {/* Expandable per-entry table */}
+              {(() => {
+                const actKey = `${projIdx}-${activity.number}`;
+                const isExpanded = expandedActivities.has(actKey);
+                return (
+                  <>
+                    <button
+                      onClick={() => {
+                        setExpandedActivities((prev) => {
+                          const next = new Set(Array.from(prev));
+                          if (next.has(actKey)) next.delete(actKey);
+                          else next.add(actKey);
+                          return next;
+                        });
+                      }}
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {isExpanded ? (
+                        <ChevronUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      )}
+                      {isExpanded
+                        ? t("hideEntries")
+                        : t("showEntries").replace("{count}", String(activity.entries.length))}
+                    </button>
+                    {isExpanded && (
+                      <table className="w-full text-xs border-collapse">
+                        <thead>
+                          <tr className="border-b text-left text-muted-foreground">
+                            <th className="py-1 pr-2 font-medium w-5"></th>
+                            <th className="py-1 pr-2 font-medium">Dato</th>
+                            <th className="py-1 pr-2 font-medium">{t("employee")}</th>
+                            <th className="py-1 pr-2 font-medium text-right">{t("hours")}</th>
+                            <th className="py-1 font-medium text-right">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {activity.entries.map((entry, entryIdx) => {
+                            const entryStatus = getEntryBillingStatus(proj, activity.number, entryIdx, entry);
+                            const isBillable = entryStatus === "billable";
+                            return (
+                              <tr key={entryIdx} className="border-b border-muted/50 last:border-0">
+                                <td className="py-1.5 pr-2">
+                                  <span
+                                    className={`inline-block w-2 h-2 rounded-full ${
+                                      isBillable ? "bg-green-500" : "bg-red-500"
+                                    }`}
+                                  />
+                                </td>
+                                <td className="py-1.5 pr-2 text-muted-foreground">{entry.date}</td>
+                                <td className="py-1.5 pr-2 truncate max-w-[120px]">{entry.employeeName}</td>
+                                <td className="py-1.5 pr-2 text-right tabular-nums">{entry.hours.toFixed(1)}</td>
+                                <td className="py-1.5 text-right">
+                                  <button
+                                    onClick={() =>
+                                      toggleEntryBillingStatus(
+                                        projIdx,
+                                        activity.number,
+                                        entryIdx,
+                                        entry,
+                                        activity.entries
+                                      )
+                                    }
+                                    title={t("clickToChange")}
+                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                                      isBillable
+                                        ? "bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-300 dark:hover:bg-green-900/60"
+                                        : "bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 dark:hover:bg-red-900/60"
+                                    }`}
+                                  >
+                                    {isBillable ? t("billable") : t("internal")}
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           );
         })}

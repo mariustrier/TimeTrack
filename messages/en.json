@@ -2264,7 +2264,7 @@
     "registered": "Registered",
     "invoiced": "Invoiced",
     "uninvoicedBillable": "Uninvoiced billable",
-    "internal": "Internal (non-billable)",
+    "internal": "Internal",
     "billingOverview": "Billing overview",
     "activityBreakdown": "Breakdown by activity",
     "employeeBreakdown": "Breakdown by employee",
@@ -2278,6 +2278,11 @@
     "fileDetected": "File detected as {type}",
     "wrongFileType": "This file does not appear to be a {expected}. Check that you selected the correct file.",
     "reimport": "Re-import",
-    "reimportWarning": "Existing imported entries for the selected employees will be deleted and replaced."
+    "reimportWarning": "Existing imported entries for the selected employees will be deleted and replaced.",
+    "showEntries": "Show all {count} entries",
+    "hideEntries": "Hide entries",
+    "clickToChange": "Click to change",
+    "mixedSummary": "Mixed: {billable}h billable · {nonBillable}h internal",
+    "employee": "Employee"
   }
 }
