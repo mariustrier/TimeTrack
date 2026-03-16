@@ -2285,6 +2285,8 @@
     "hideEntries": "Hide entries",
     "clickToChange": "Click to change",
     "mixedSummary": "Mixed: {billable}h billable · {nonBillable}h internal",
-    "employee": "Employee"
+    "employee": "Employee",
+    "phase": "Phase",
+    "noPhase": "No phase"
   }
 }

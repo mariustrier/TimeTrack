@@ -40,6 +40,7 @@ import { useTranslations } from "@/lib/i18n";
 import { toast } from "sonner";
 import type { ProjektkortData, ProjektkortActivity } from "@/lib/economic-projektkort-parser";
 import type { OmsaetningData } from "@/lib/economic-omsaetning-parser";
+import { matchPhases } from "@/lib/economic-matching";
 
 interface TeamMember {
   id: string;
@@ -67,6 +68,14 @@ interface ActivityClassification {
   billingStatus: BillingClassification;
   tilbudCategoryId?: string | null;
   entryOverrides?: Record<number, "billable" | "nonBillable">;
+  phaseId?: string | null;
+}
+
+interface CompanyPhase {
+  id: string;
+  name: string;
+  color: string;
+  active: boolean;
 }
 
 /** Per-project data parsed from a Projektkort file */
@@ -128,6 +137,7 @@ export const EconomicSyncWizard = ({
   // UI state
   const [expandedProject, setExpandedProject] = useState<number>(0);
   const [expandedActivities, setExpandedActivities] = useState<Set<string>>(new Set());
+  const [companyPhases, setCompanyPhases] = useState<CompanyPhase[]>([]);
 
   // Derived
   const hasOmsaetning = projects.some((p) => !!p.omsaetningData);
@@ -144,6 +154,7 @@ export const EconomicSyncWizard = ({
     setSkippedEmployees(new Set());
     setExpandedProject(0);
     setExpandedActivities(new Set());
+    setCompanyPhases([]);
     setImportProgress(0);
   };
 
@@ -302,7 +313,6 @@ export const EconomicSyncWizard = ({
         }
       }
 
-      setProjects(parsedProjects);
       setEmployeeMappings(allEmployeeMappings);
 
       // Fetch existing projects for mapping
@@ -318,6 +328,34 @@ export const EconomicSyncWizard = ({
         );
       }
 
+      // Fetch company phases for activity mapping
+      const phaseRes = await fetch("/api/admin/phases");
+      if (phaseRes.ok) {
+        const phaseData = await phaseRes.json();
+        const activePhases = phaseData.filter((p: CompanyPhase) => p.active);
+        setCompanyPhases(activePhases);
+
+        // Auto-suggest phase mappings for all projects
+        if (activePhases.length > 0) {
+          parsedProjects.forEach((proj) => {
+            const actInfos = proj.projektkortData.activities.map((a) => ({
+              number: a.number,
+              name: a.name,
+            }));
+            const suggestions = matchPhases(actInfos, activePhases);
+            Object.entries(suggestions).forEach(([numStr, phaseId]) => {
+              if (proj.activityClassifications[numStr]) {
+                proj.activityClassifications[numStr] = {
+                  ...proj.activityClassifications[numStr],
+                  phaseId,
+                };
+              }
+            });
+          });
+        }
+      }
+
+      setProjects(parsedProjects);
       setStep(1);
     } catch (err) {
       toast.error(t("parseError"));
@@ -1029,6 +1067,39 @@ export const EconomicSyncWizard = ({
                   </button>
                 ))}
               </div>
+
+              {/* Phase mapping dropdown */}
+              {companyPhases.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">{t("phase")}</Label>
+                  <Select
+                    value={cls.phaseId || "none"}
+                    onValueChange={(val) => {
+                      const updated = { ...proj.activityClassifications };
+                      updated[String(activity.number)] = {
+                        ...updated[String(activity.number)],
+                        phaseId: val === "none" ? null : val,
+                      };
+                      updateProject(projIdx, { activityClassifications: updated });
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-xs w-[200px]">
+                      <SelectValue placeholder={t("noPhase")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">{t("noPhase")}</SelectItem>
+                      {companyPhases.map((phase) => (
+                        <SelectItem key={phase.id} value={phase.id}>
+                          <div className="flex items-center gap-2">
+                            <div className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: phase.color }} />
+                            {phase.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {/* Expandable per-entry table */}
               {(() => {

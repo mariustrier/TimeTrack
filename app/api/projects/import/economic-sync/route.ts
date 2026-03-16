@@ -148,6 +148,13 @@ export async function PUT(req: Request) {
         throw new Error("Project not found");
       }
 
+      // Fetch company phases for phaseId → phaseName resolution
+      const companyPhases = await tx.phase.findMany({
+        where: { companyId: user.companyId, active: true },
+        select: { id: true, name: true },
+      });
+      const phaseMap = new Map(companyPhases.map((p) => [p.id, p.name]));
+
       // 2. Delete existing imported entries for mapped employees (re-import safe)
       const mappedUserIds = Object.values(data.employeeMappings).filter(Boolean);
       if (mappedUserIds.length > 0) {
@@ -210,6 +217,7 @@ export async function PUT(req: Request) {
           if (!classification) return;
 
           const tilbudCategoryId = classification.tilbudCategoryId || null;
+          const phaseId = classification.phaseId || null;
           let invoicedHoursRemaining = invoicedHoursPerActivity[activity.number] || 0;
 
           activity.entries.forEach((entry, entryIdx) => {
@@ -261,6 +269,8 @@ export async function PUT(req: Request) {
               externallyInvoiced,
               invoicedAt: externallyInvoiced ? new Date() : null,
               tilbudCategoryId,
+              phaseId,
+              phaseName: phaseId ? phaseMap.get(phaseId) || null : null,
               economicActivityNumber: activity.number,
               economicActivityName: activity.name,
               economicSalgspris: entry.salgspris,

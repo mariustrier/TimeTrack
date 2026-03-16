@@ -20,6 +20,11 @@ interface ActivityInfo {
   name: string;
 }
 
+interface PhaseInfo {
+  id: string;
+  name: string;
+}
+
 interface OmsaetningCategoryInfo {
   number: number;
   name: string;
@@ -119,6 +124,46 @@ export const matchTilbudCategories = (
     const starts = categories.find((c) => {
       const cLower = c.name.toLowerCase().trim();
       return actLower.startsWith(cLower) || cLower.startsWith(actLower);
+    });
+    if (starts) {
+      result[act.number] = starts.id;
+    }
+  });
+
+  return result;
+};
+
+/** Match e-conomic activities to company phases. Returns { activityNumber → phaseId } */
+export const matchPhases = (
+  activities: ActivityInfo[],
+  phases: PhaseInfo[]
+): Record<number, string> => {
+  const result: Record<number, string> = {};
+
+  activities.forEach((act) => {
+    const actLower = act.name.toLowerCase().trim();
+
+    // Exact lowercase match
+    const exact = phases.find((p) => p.name.toLowerCase().trim() === actLower);
+    if (exact) {
+      result[act.number] = exact.id;
+      return;
+    }
+
+    // Includes match
+    const includes = phases.find((p) => {
+      const pLower = p.name.toLowerCase().trim();
+      return actLower.includes(pLower) || pLower.includes(actLower);
+    });
+    if (includes) {
+      result[act.number] = includes.id;
+      return;
+    }
+
+    // StartsWith match
+    const starts = phases.find((p) => {
+      const pLower = p.name.toLowerCase().trim();
+      return actLower.startsWith(pLower) || pLower.startsWith(actLower);
     });
     if (starts) {
       result[act.number] = starts.id;

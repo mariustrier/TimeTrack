@@ -2282,6 +2282,8 @@
     "hideEntries": "Skjul entries",
     "clickToChange": "Klik for at ændre",
     "mixedSummary": "Blandet: {billable}t fakturerbar · {nonBillable}t intern",
-    "employee": "Medarbejder"
+    "employee": "Medarbejder",
+    "phase": "Fase",
+    "noPhase": "Ingen fase"
   }
 }
