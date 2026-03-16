@@ -998,11 +998,11 @@ export const EconomicSyncWizard = ({
                       value={
                         proj.invoiceMappings[String(cat.number)] != null
                           ? String(proj.invoiceMappings[String(cat.number)])
-                          : ""
+                          : "none"
                       }
                       onValueChange={(val) => {
                         const updated = { ...proj.invoiceMappings };
-                        updated[String(cat.number)] = val ? parseInt(val) : null;
+                        updated[String(cat.number)] = val && val !== "none" ? parseInt(val) : null;
                         updateProject(projIdx, { invoiceMappings: updated });
                       }}
                     >
@@ -1010,7 +1010,7 @@ export const EconomicSyncWizard = ({
                         <SelectValue placeholder={t("noActivityMatch")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">
+                        <SelectItem value="none">
                           {t("noActivityMatch")}
                         </SelectItem>
                         {proj.projektkortData.activities.map((act) => (
