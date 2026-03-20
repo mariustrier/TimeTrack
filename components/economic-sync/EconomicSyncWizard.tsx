@@ -801,7 +801,7 @@ export const EconomicSyncWizard = ({
                         <SelectTrigger>
                           <SelectValue placeholder="Vælg projekt..." />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent position="popper" className="max-h-[300px] overflow-y-auto">
                           {existingProjects.map((p) => (
                             <SelectItem key={p.id} value={p.id}>
                               {p.name}{p.client ? ` (${p.client})` : ""}
@@ -895,7 +895,7 @@ export const EconomicSyncWizard = ({
                   <SelectTrigger className="w-[200px]">
                     <SelectValue placeholder={t("noMatch")} />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper" className="max-h-[300px] overflow-y-auto">
                     {team.map((m) => (
                       <SelectItem key={m.id} value={m.id}>
                         {m.firstName} {m.lastName}
@@ -1086,7 +1086,7 @@ export const EconomicSyncWizard = ({
                     <SelectTrigger className="h-8 text-xs w-[200px]">
                       <SelectValue placeholder={t("noPhase")} />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper" className="max-h-[300px] overflow-y-auto">
                       <SelectItem value="none">{t("noPhase")}</SelectItem>
                       {companyPhases.map((phase) => (
                         <SelectItem key={phase.id} value={phase.id}>
@@ -1249,7 +1249,7 @@ export const EconomicSyncWizard = ({
                       <SelectTrigger className="w-[220px]">
                         <SelectValue placeholder={t("noActivityMatch")} />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent position="popper" className="max-h-[300px] overflow-y-auto">
                         <SelectItem value="none">
                           {t("noActivityMatch")}
                         </SelectItem>
